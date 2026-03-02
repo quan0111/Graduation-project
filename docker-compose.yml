@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    container_name: ecommerce_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: DATN
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./BE
+    container_name: ecommerce_backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./BE/.env
+    depends_on:
+      - db
+
+  user-fe:
+    build: ./user-fe
+    container_name: ecommerce_user
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+  admin-fe:
+    build: ./admin-fe
+    container_name: ecommerce_admin
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
