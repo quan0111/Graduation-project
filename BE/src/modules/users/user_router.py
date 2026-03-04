@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends
 from typing import List
-from src.modules.users.user_schema import UserCreate, UserUpdate, UserOut, UserRespone
+from src.modules.users.user_schema import UserCreate, UserUpdate, UserOut
 from src.modules.users.user_service import UserService
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
-@router.post("/", response_model=UserRespone)
+@router.post("/", response_model=UserOut)
 async def create_user(user_data: UserCreate):
     new_user = await UserService.create_user(user_data)
     return new_user

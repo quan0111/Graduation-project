@@ -1,4 +1,4 @@
-from core.database import prisma
+from src.core.database import prisma
 from fastapi import HTTPException
 from datetime import datetime
 

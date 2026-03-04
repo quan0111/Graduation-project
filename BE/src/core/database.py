@@ -1,3 +1,3 @@
 from prisma import Prisma
 
-db = Prisma()
+prisma = Prisma()

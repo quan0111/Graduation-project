@@ -2,10 +2,27 @@ from fastapi import APIRouter, Depends
 from src.modules.users.user_router import router as user_router
 from src.modules.auth.router import router as auth_router
 from src.modules.shop.shop_router import router as shop_router
+from src.modules.product.product_router import router as product_router
+from src.modules.category.category_router import router as category_router
+from src.modules.address.address_router import router as address_router
+from src.modules.notification.notification_router import router as notification_router
+from src.modules.coupon.coupon_router import router as coupon_router
+from src.modules.review.review_router import router as review_router
+from src.modules.follower.follower_router import router as follower_router
+from src.modules.user_behavior.userBehavior_router import router as user_behavior_router
 api_router = APIRouter(prefix="/api/v1")
 
 api_router.include_router(auth_router)
 api_router.include_router(user_router)
 api_router.include_router(shop_router)
+api_router.include_router(product_router)
+api_router.include_router(category_router)
+api_router.include_router(address_router)
+api_router.include_router(notification_router)
+api_router.include_router(coupon_router)
+api_router.include_router(review_router)
+api_router.include_router(follower_router)
+api_router.include_router(user_behavior_router)
+
 
 api_router.get("/", tags=["Root"])(lambda: {"message": "Welcome to the API"})

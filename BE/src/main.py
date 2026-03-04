@@ -5,7 +5,7 @@ from src.core.config import get_settings  # chỉ cần import get_settings
 from src.core.lifespan import lifespan
 from src.api.router import api_router
 from src.core.docs import custom_openapi
-
+from src.ai.schedule import start_scheduler
 settings = get_settings()
 
 def create_app() -> FastAPI:

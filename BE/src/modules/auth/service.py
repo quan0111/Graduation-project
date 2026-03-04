@@ -1,4 +1,4 @@
-from src.core.database import db
+from src.core.database import prisma
 from src.core.security import hash_password, verify_password, create_access_token
 from src.modules.auth.schema import RegisterRequest, LoginRequest
 
@@ -7,7 +7,7 @@ class AuthService:
 
     @staticmethod
     async def register(data: RegisterRequest):
-        user = await db.user.create(
+        user = await prisma.user.create(
             data={
                 "email": data.email,
                 "password": hash_password(data.password),
@@ -19,7 +19,7 @@ class AuthService:
 
     @staticmethod
     async def login(data: LoginRequest):
-        user = await db.user.find_unique(where={"email": data.email})
+        user = await prisma.user.find_unique(where={"email": data.email})
         if not user:
             raise Exception("User not found")
 
