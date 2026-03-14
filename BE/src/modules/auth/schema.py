@@ -5,6 +5,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     fullName: str
+    phone: str
 
 
 class LoginRequest(BaseModel):
@@ -12,6 +13,14 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class TokenResponse(BaseModel):
+class AuthUser(BaseModel):
+    id: str
+    email: str
+    fullname: str
+    role: str
+
+
+class AuthResponse(BaseModel):
+    user: AuthUser
     access_token: str
-    token_type: str = "bearer"
+    refresh_token: str

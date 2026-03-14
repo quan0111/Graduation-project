@@ -6,6 +6,7 @@ from src.core.lifespan import lifespan
 from src.api.router import api_router
 from src.core.docs import custom_openapi
 from src.ai.schedule import start_scheduler
+from src.middleware.security_middleware import SecurityMiddleware
 settings = get_settings()
 
 def create_app() -> FastAPI:
@@ -35,5 +36,5 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-
+app.add_middleware(SecurityMiddleware)
 app.include_router(api_router)
