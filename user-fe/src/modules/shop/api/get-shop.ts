@@ -15,12 +15,12 @@ interface ShopResponse {
     timestamp: string;
 }
 
-const getContracts = async (): Promise<ShopResponse> => {
+const getShop = async (): Promise<ShopResponse> => {
     const res = await apiClient.get(API_URL_SHOP);
     return res.data;
 };
 
-export const useGetContract = (
+export const useGetShop = (
     config?: Omit<
         UseQueryOptions<ShopResponse, Error, ShopResponse, [string]>,
         "queryKey" | "queryFn"
@@ -28,7 +28,7 @@ export const useGetContract = (
 ) => {
     return useQuery<ShopResponse, Error, ShopResponse, [string]>({
         queryKey: ["shops"],
-        queryFn: () => getContracts(),
+        queryFn: () => getShop(),
         ...config,
     });
 };

@@ -10,6 +10,8 @@ from src.modules.coupon.coupon_router import router as coupon_router
 from src.modules.review.review_router import router as review_router
 from src.modules.follower.follower_router import router as follower_router
 from src.modules.user_behavior.userBehavior_router import router as user_behavior_router
+from src.modules.cart.cart_router import router as cart_router
+from src.modules.order.order_router import router as order_router
 api_router = APIRouter(prefix="/api/v1")
 
 api_router.include_router(auth_router)
@@ -23,6 +25,8 @@ api_router.include_router(coupon_router)
 api_router.include_router(review_router)
 api_router.include_router(follower_router)
 api_router.include_router(user_behavior_router)
+api_router.include_router(cart_router)
+api_router.include_router(order_router)
 
 
 api_router.get("/", tags=["Root"])(lambda: {"message": "Welcome to the API"})
