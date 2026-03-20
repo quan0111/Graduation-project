@@ -1,5 +1,5 @@
 
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,10 +15,10 @@ export function LoginForm() {
   const [error,setError] = useState("")
   const [success,setSuccess] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const loginMutation = useLogin()
+  const isLoading = loginMutation.isPending
 
   const HandleLogin = (e:React.FormEvent) =>{
     e.preventDefault()

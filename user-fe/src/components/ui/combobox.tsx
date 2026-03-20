@@ -9,8 +9,7 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowDown01Icon, Cancel01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
+import { Check, ChevronDown, X } from "lucide-react"
 
 const Combobox = ComboboxPrimitive.Root
 
@@ -30,7 +29,7 @@ function ComboboxTrigger({
       {...props}
     >
       {children}
-      <HugeiconsIcon icon={ArrowDown01Icon} strokeWidth={2} className="pointer-events-none size-4 text-muted-foreground" />
+      <ChevronDown strokeWidth={2} className="pointer-events-none size-4 text-muted-foreground" />
     </ComboboxPrimitive.Trigger>
   )
 }
@@ -43,7 +42,7 @@ function ComboboxClear({ className, ...props }: ComboboxPrimitive.Clear.Props) {
       className={cn(className)}
       {...props}
     >
-      <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="pointer-events-none" />
+      <X strokeWidth={2} className="pointer-events-none" />
     </ComboboxPrimitive.Clear>
   )
 }
@@ -150,7 +149,7 @@ function ComboboxItem({
           <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center" />
         }
       >
-        <HugeiconsIcon icon={Tick02Icon} strokeWidth={2} className="pointer-events-none" />
+        <Check strokeWidth={2} className="pointer-events-none" />
       </ComboboxPrimitive.ItemIndicator>
     </ComboboxPrimitive.Item>
   )
@@ -252,7 +251,7 @@ function ComboboxChip({
           className="-ml-1 opacity-50 hover:opacity-100"
           data-slot="combobox-chip-remove"
         >
-          <HugeiconsIcon icon={Cancel01Icon} strokeWidth={2} className="pointer-events-none" />
+          <X strokeWidth={2} className="pointer-events-none" />
         </ComboboxPrimitive.ChipRemove>
       )}
     </ComboboxPrimitive.Chip>

@@ -7,7 +7,7 @@ export type ProductStatusType =
   | "BANNED"
 
 export interface IProduct {
-  id: number
+  id: string
   name: string
   slug?: string | null
   description?: string | null
@@ -40,7 +40,7 @@ export interface IProductVariant {
   created_at: string
   updated_at: string
   deleted_at?: string | null
-
+  VariantImage: IVariantImage[]
   Product?: IProduct
 
 }

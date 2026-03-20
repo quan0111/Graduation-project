@@ -1,23 +1,27 @@
 import type { IProduct } from "../../product/types"
 import type { IProductVariant } from "../../product/types"
 
-export interface ICart {
+export interface ICartDB{
   id: number
   user_id: number
-
   created_at: string
   updated_at: string
+  items: ICartItem[]
 
-  Items?: ICartItem[]
 }
-export interface ICartItem {
-  id: number
-  cart_id: number
-  product_id: number
-  variant_id?: number | null
+export interface ICart {
+  items: ICartItem[]
+  total: number
+  itemCount: number
+}
 
+export interface ICartItem {
+  id: number | string
+  product_id: string
   quantity: number
 
-  Product?: IProduct
-  Variant?: IProductVariant
+  product: IProduct
+  variant?: IProductVariant
+
+  addedAt?: number
 }
