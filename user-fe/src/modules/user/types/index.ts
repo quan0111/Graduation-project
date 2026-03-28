@@ -1,5 +1,5 @@
 import type { IAddress } from "../../address/types"
-import type { IShop } from "../../shop/types"
+import type { IShop } from "../../seller/types"
 import type { IProduct } from "../../product/types"
 export type UserRoleType =
   | "ADMIN"

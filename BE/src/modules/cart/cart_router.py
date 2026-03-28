@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from typing import List
-from BE.src.modules.cart.cart_service import CartService
+from src.modules.cart.cart_service import CartService
 from src.modules.cart.cart_schema import (
     CartCreate,
     CartOut,

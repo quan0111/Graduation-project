@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { Header } from '@/components/header'
 import { DashboardOverview } from '../../component/dash-board-overview'
 import { ProductsManagement } from '../../component/product-management'
 import { OrdersManagement } from '../../component/order-management'
@@ -29,7 +28,6 @@ export function SellerDashboardView() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
 
       <div className="flex h-[calc(100vh-64px)]">
         {/* Sidebar */}

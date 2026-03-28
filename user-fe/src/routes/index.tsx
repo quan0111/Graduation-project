@@ -3,9 +3,9 @@ import RootLayout from "../components/layout"
 import Home from "../modules/home/view/index"
 import LoginPage from "../modules/auth/view/LoginPage"
 import SignupPage from "@/modules/auth/view/signupPage"
-import { SellerRegistrationView } from "@/modules/shop/view/create"
-import { SellerDashboardView } from "@/modules/shop/view/dashboard"
-import { CartView } from "@/modules/cart/view"
+import { SellerRegistrationView } from "@/modules/seller/view/create"
+import { SellerDashboardView } from "@/modules/seller/view/dashboard"
+import CartPage from "@/modules/cart/view"
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -36,7 +36,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "/cart",
-        element: <CartView></CartView>,
+        element: <CartPage></CartPage>,
       },
       
 ])

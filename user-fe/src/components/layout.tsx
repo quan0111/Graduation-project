@@ -1,6 +1,6 @@
 import { Outlet } from "react-router-dom"
-import { Header } from "./header"
-
+import Header from "./header"
+import Footer from "./footer"
 function RootLayout() {
   return (
     <>
@@ -8,6 +8,7 @@ function RootLayout() {
       <main>
         <Outlet />
       </main>
+      <Footer></Footer>
     </>
   )
 }

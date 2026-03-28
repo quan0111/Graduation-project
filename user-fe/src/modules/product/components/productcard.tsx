@@ -1,91 +1,51 @@
-'use client'
+// components/products/ProductCard.tsx
+import type { IProduct } from "../types";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
-import Image from 'next/image'
-import { Link } from 'react-router-dom'
-import { Star } from 'lucide-react'
+const getAvgRating = (reviews?: any[]) => {
+  if (!reviews?.length) return 0;
+  return (
+    reviews.reduce((acc, r) => acc + (r.rating || 0), 0) /
+    reviews.length
+  );
+};
 
-interface ProductCardProps {
-  id: string
-  name: string
-  image: string
-  price: number
-  originalPrice?: number
-  rating: number
-  reviewsCount: number
-  category: string
-}
-
-export function ProductCard({
-  id,
-  name,
-  image,
-  price,
-  originalPrice,
-  rating,
-  reviewsCount,
-  category,
-}: ProductCardProps) {
-  const discount = originalPrice
-    ? Math.round(((originalPrice - price) / originalPrice) * 100)
-    : 0
+export const ProductCard = ({ product }: { product: IProduct }) => {
+  const avgRating = getAvgRating(product.Review);
 
   return (
-    <Link to={`/product/${id}`}>
-      <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition border border-border h-full flex flex-col">
-        {/* Image container */}
-        <div className="relative w-full aspect-square bg-gray-100 overflow-hidden group">
-          <Image
-            src={image}
-            alt={name}
-            fill
-            className="object-cover group-hover:scale-105 transition"
-          />
-          {discount > 0 && (
-            <div className="absolute top-2 right-2 bg-primary text-white text-xs font-bold px-2 py-1 rounded">
-              -{discount}%
-            </div>
-          )}
-        </div>
-
-        {/* Content */}
-        <div className="p-3 flex-1 flex flex-col justify-between">
-          <div>
-            <p className="text-xs text-gray-500 mb-1">{category}</p>
-            <h3 className="text-sm font-medium text-foreground line-clamp-2 mb-2">
-              {name}
-            </h3>
-          </div>
-
-          {/* Rating */}
-          <div className="flex items-center gap-1 mb-2">
-            <div className="flex">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-3 h-3 ${
-                    i < Math.round(rating)
-                      ? 'fill-yellow-400 text-yellow-400'
-                      : 'text-gray-300'
-                  }`}
-                />
-              ))}
-            </div>
-            <span className="text-xs text-gray-500">({reviewsCount})</span>
-          </div>
-
-          {/* Price */}
-          <div className="flex items-baseline gap-2">
-            <span className="text-lg font-bold text-primary">
-              {price.toLocaleString('vi-VN')}đ
-            </span>
-            {originalPrice && (
-              <span className="text-xs text-gray-400 line-through">
-                {originalPrice.toLocaleString('vi-VN')}đ
-              </span>
-            )}
-          </div>
-        </div>
+    <Card className="group hover:shadow-xl transition">
+      <div className="aspect-square overflow-hidden relative">
+        <img
+          src={product.image || product.Images?.[0]?.url}
+          className="w-full h-full object-cover group-hover:scale-110 transition"
+        />
       </div>
-    </Link>
-  )
-}
+
+      <CardContent>
+        <p className="text-xs text-muted">
+          {product.Shop?.name || "Unknown shop"}
+        </p>
+
+        <h3 className="line-clamp-2 font-semibold">
+          {product.name}
+        </h3>
+
+        {/* Rating */}
+        <div className="text-sm text-yellow-500">
+          ⭐ {avgRating.toFixed(1)} ({product.Review?.length || 0})
+        </div>
+
+        {/* Price */}
+        <div className="flex gap-2">
+          <span className="text-primary font-bold">
+            {product.price.toLocaleString()}đ
+          </span>
+        </div>
+
+        <Button className="w-full mt-2">Thêm</Button>
+      </CardContent>
+    </Card>
+  );
+};

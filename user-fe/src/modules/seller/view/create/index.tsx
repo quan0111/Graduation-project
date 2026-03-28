@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { Header } from '@/components/header'
 import { StepIndicator } from '../../component/step-indicator'
 import { ShopInfoForm } from '../../component/shop-info'
 import { ShippingSettings } from '../../component/shipp-setting'
@@ -124,7 +123,6 @@ export function SellerRegistrationView() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
 
       <div className="container py-8">
         <div className="max-w-4xl mx-auto">
