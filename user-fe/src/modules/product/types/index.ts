@@ -8,8 +8,6 @@ export type ProductStatusType =
   | "BANNED"
 
 export interface IProduct {
-  images: any[]
-  image: string
   id: string
   name: string
   slug?: string | null

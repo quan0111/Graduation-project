@@ -1,11 +1,29 @@
 // containers/HomeContainer.tsx
-import { HeroSection } from "../components/HeroSection";
-import { CategoryGrid } from "../components/CategoryGrid";
-import { FeatureSection } from "../components/FeatureSection";
-import { FeaturedProducts } from "../components/FeaturedProducts";
-import { Newsletter } from "../components/Newsletter";
 
-export const HomeContainer = ({
+import { HeroSection } from "./heroSection";
+import { CategoryGrid } from "./categoryGrid";
+import { FeatureSection } from "./featureSection";
+import { FeaturedProducts } from "./featureProduct";
+import { Newsletter } from "./newsLetter";
+
+import type { ICategory } from "@/modules/category/types";
+import type { IProduct } from "@/modules/product/types";
+import type { ReactNode } from "react";
+
+interface Feature {
+  id: string | number;
+  icon: ReactNode;
+  title: string;
+  description: string;
+}
+
+interface HomeContainerProps {
+  categories: ICategory[];
+  features: Feature[];
+  products: IProduct[];
+}
+
+export const HomeContainer: React.FC<HomeContainerProps> = ({
   categories,
   features,
   products,
@@ -13,9 +31,19 @@ export const HomeContainer = ({
   return (
     <>
       <HeroSection />
-      <CategoryGrid categories={categories} />
-      <FeatureSection features={features} />
-      <FeaturedProducts products={products} />
+
+      {categories?.length > 0 && (
+        <CategoryGrid categories={categories} />
+      )}
+
+      {features?.length > 0 && (
+        <FeatureSection features={features} />
+      )}
+
+      {products?.length > 0 && (
+        <FeaturedProducts products={products} />
+      )}
+
       <Newsletter />
     </>
   );

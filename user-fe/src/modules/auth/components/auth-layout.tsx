@@ -17,7 +17,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
               <div className="w-14 h-14 rounded-full bg-linear-to-br from-primary to-orange-500 flex items-center justify-center">
                 <ShoppingBag className="w-8 h-8 text-white" />
               </div>
-              <h1 className="text-4xl font-bold text-foreground">ShopHub</h1>
+              <h1 className="text-4xl font-bold text-foreground">MarketHub</h1>
             </div>
             <p className="text-xl text-muted-foreground font-medium">
               Mua sắm thông minh, giá tốt nhất

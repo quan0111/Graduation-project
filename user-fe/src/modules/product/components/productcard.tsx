@@ -18,13 +18,13 @@ export const ProductCard = ({ product }: { product: IProduct }) => {
     <Card className="group hover:shadow-xl transition">
       <div className="aspect-square overflow-hidden relative">
         <img
-          src={product.image || product.Images?.[0]?.url}
+          src={product.Images?.[0]?.url || "/placeholder.png"}
           className="w-full h-full object-cover group-hover:scale-110 transition"
         />
       </div>
 
       <CardContent>
-        <p className="text-xs text-muted">
+        <p className="text-lg font-bold text-primary">
           {product.Shop?.name || "Unknown shop"}
         </p>
 
@@ -34,12 +34,12 @@ export const ProductCard = ({ product }: { product: IProduct }) => {
 
         {/* Rating */}
         <div className="text-sm text-yellow-500">
-          ⭐ {avgRating.toFixed(1)} ({product.Review?.length || 0})
+           {avgRating.toFixed(1)} ({product.Review?.length || 0})
         </div>
 
         {/* Price */}
-        <div className="flex gap-2">
-          <span className="text-primary font-bold">
+        <div className="flex gap-2 items-center mt-2 justify-center ">
+          <span className="text-primary font-bold text-lg   ">
             {product.price.toLocaleString()}đ
           </span>
         </div>

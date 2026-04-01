@@ -1,26 +1,47 @@
 // blocks/SpecRow.tsx
 import { Check } from "lucide-react";
 
-export const SpecRow = ({ spec, list }) => {
-  const bestId = list[0]?.id;
+interface Product {
+  id: string | number;
+  specs?: Record<string, string | number>;
+}
 
+interface SpecRowProps {
+  spec: string;
+  list: Product[];
+  bestId?: string | number; // truyền từ ngoài sẽ đúng hơn
+}
+
+export const SpecRow: React.FC<SpecRowProps> = ({
+  spec,
+  list,
+  bestId,
+}) => {
   return (
-    <tr>
-      <td className="p-3 font-medium">{spec}</td>
+    <tr className="border-b">
+      {/* Spec name */}
+      <td className="p-3 font-medium text-gray-700 whitespace-nowrap">
+        {spec}
+      </td>
 
-      {list.map(p => {
-        const value = p.specs[spec] || "-";
+      {/* Values */}
+      {list.map((p) => {
+        const value = p.specs?.[spec] ?? "-";
         const isBest = p.id === bestId;
 
         return (
           <td
-            key={p.id}
-            className={`text-center p-3 ${
-              isBest ? "bg-green-50 text-green-600 font-bold" : ""
+            key={`${p.id}-${spec}`}
+            className={`text-center p-3 transition ${
+              isBest
+                ? "bg-green-50 text-green-600 font-semibold"
+                : "text-gray-600"
             }`}
           >
-            {value}
-            {isBest && <Check size={12}/>}
+            <div className="flex items-center justify-center gap-1">
+              <span>{value}</span>
+              {isBest && <Check size={14} />}
+            </div>
           </td>
         );
       })}

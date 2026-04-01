@@ -1,28 +1,67 @@
-// components/filters/ShopFilter.tsx
-export const ShopFilter = ({ shops, filters, setFilters }) => {
-  const toggle = (shop: string) => {
+import type { IShop } from "@/modules/shop/types";
+import type { Filters } from "../types/filter";
+
+interface ShopFilterProps {
+  shops: IShop[];
+  filters: Filters;
+  setFilters: React.Dispatch<React.SetStateAction<Filters>>;
+}
+
+export const ShopFilter: React.FC<ShopFilterProps> = ({
+  shops,
+  filters,
+  setFilters,
+}) => {
+  const toggle = (shopId: number) => {
     setFilters((prev) => {
-      const exists = prev.shops.includes(shop);
+      const current = prev.shop_ids ?? [];
+      const exists = current.includes(shopId);
 
       return {
         ...prev,
-        shops: exists
-          ? prev.shops.filter((s) => s !== shop)
-          : [...prev.shops, shop],
+        shop_ids: exists
+          ? current.filter((id) => id !== shopId)
+          : [...current, shopId],
       };
     });
   };
 
-  return (
-    <div className="card p-4">
-      <h3 className="font-semibold mb-3">Shop</h3>
+  const isChecked = (shopId: number) =>
+    filters.shop_ids?.includes(shopId);
 
-      {shops.map((s) => (
-        <label key={s} className="flex gap-2 p-2 hover:bg-muted rounded cursor-pointer">
-          <input type="checkbox" onChange={() => toggle(s)} />
-          {s}
-        </label>
-      ))}
-    </div>
+  return (
+    <div className="bg-white rounded-2xl shadow p-4 border">
+  <h3 className="font-semibold mb-3 text-gray-800">Shop</h3>
+
+  <div className="space-y-2">
+    {/* Tất cả */}
+    <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg">
+      <input
+        type="checkbox"
+        checked={!filters.shop_ids?.length}
+        onChange={() =>
+          setFilters((p) => ({ ...p, shop_ids: [] }))
+        }
+        className="accent-black"
+      />
+      <span className="text-sm font-medium">Tất cả</span>
+    </label>
+
+    {shops.map((shop) => (
+      <label
+        key={shop.id}
+        className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg"
+      >
+        <input
+          type="checkbox"
+          checked={isChecked(shop.id)}
+          onChange={() => toggle(shop.id)}
+          className="accent-black"
+        />
+        <span className="text-sm">{shop.name}</span>
+      </label>
+    ))}
+  </div>
+</div>
   );
 };

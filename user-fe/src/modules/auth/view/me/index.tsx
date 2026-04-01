@@ -2,7 +2,7 @@
 import { useAccount } from "../../hook/useAccount";
 import { Sidebar } from "../../components/sidebar";
 import { Content } from "../../components/contentSwitcher";
-export default function Page() {
+export default function AccountPage() {
   type TabType = "profile" | "address" | "password";
   const state = useAccount();
 

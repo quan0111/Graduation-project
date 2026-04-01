@@ -8,7 +8,7 @@ import { CTASection } from "../components/CTA";
 
 // mock data (hoặc API)
 
-export default function Page() {
+export default function PromotionPage() {
   const [categories] = useState<string[]>([
     "Tất cả",
     "Shopee",

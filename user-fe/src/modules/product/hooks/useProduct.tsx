@@ -1,34 +1,22 @@
 // hooks/useProducts.ts
-import { useState, useMemo } from 'react';
-import type { IProduct } from '../types';
-
-type PriceRange = {
-  min: number;
-  max: number;
-};
-
-interface IFilters {
-  price: PriceRange[];
-  rating: number | null;
-  shops: string[]; // dùng tên shop thay vì vendor
-  status?: string[];
-}
+import { useState, useMemo } from "react";
+import type { IProduct } from "../types";
+import type { Filters } from "../types/filter";
 
 export const useProducts = (products: IProduct[]) => {
-  const [filters, setFilters] = useState<IFilters>({
+  const [filters, setFilters] = useState<Filters>({
     price: [],
-    rating: null,
-    shops: [],
-    status: [],
+    rating: undefined,
+    shop_ids: [],
   });
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
-      // ❌ Bỏ product bị xóa / banned
+      // ❌ bỏ product bị xóa / banned
       if (p.deleted_at) return false;
-      if (p.status === 'BANNED') return false;
+      if (p.status === "BANNED") return false;
 
-      // ✅ FILTER PRICE
+      // ✅ PRICE
       if (filters.price.length > 0) {
         const matchPrice = filters.price.some(
           (range) => p.price >= range.min && p.price <= range.max
@@ -36,8 +24,8 @@ export const useProducts = (products: IProduct[]) => {
         if (!matchPrice) return false;
       }
 
-      // ✅ FILTER RATING (tính từ Review)
-      if (filters.rating) {
+      // ✅ RATING
+      if (filters.rating !== undefined) {
         const avgRating =
           p.Review && p.Review.length > 0
             ? p.Review.reduce((acc, r) => acc + (r.rating || 0), 0) /
@@ -47,17 +35,12 @@ export const useProducts = (products: IProduct[]) => {
         if (avgRating < filters.rating) return false;
       }
 
-      // ✅ FILTER SHOP
-      if (filters.shops.length > 0) {
-        const shopName = p.Shop?.name;
-        if (!shopName || !filters.shops.includes(shopName)) {
+      // ✅ SHOP (đổi sang shop_ids)
+      if (filters.shop_ids.length > 0) {
+        const shopId = p.shop_id;
+        if (!filters.shop_ids.includes(shopId)) {
           return false;
         }
-      }
-
-      // ✅ FILTER STATUS (optional)
-      if (filters.status && filters.status.length > 0) {
-        if (!filters.status.includes(p.status)) return false;
       }
 
       return true;

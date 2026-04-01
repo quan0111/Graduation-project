@@ -1,7 +1,15 @@
 // components/FeaturedProducts.tsx
-import { ProductCard } from "@/modules/products/components/ProductCard";
 
-export const FeaturedProducts = ({ products }) => {
+import { ProductCard } from "./productCard";
+import type { IProduct } from "@/modules/product/types";
+
+interface FeaturedProductsProps {
+  products: IProduct[];
+}
+
+export const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ products }) => {
+  if (!products || products.length === 0) return null;
+
   return (
     <section className="py-12">
       <div className="max-w-7xl mx-auto px-4">
@@ -10,8 +18,8 @@ export const FeaturedProducts = ({ products }) => {
           Sản phẩm nổi bật
         </h2>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {products.map(p => (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {products.map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}
         </div>

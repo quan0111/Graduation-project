@@ -1,14 +1,22 @@
-// OrderDetails.tsx
-import { OrderItems } from "./OrderItems";
-import { OrderTimeline } from "./OrderTimeline";
-import { OrderActions } from "./OrderActions";
+import { OrderItems } from "./orderItems";
+import { OrderTimeline } from "./orderTimeLine";
+import { OrderActions } from "./orderAction";
+import type { IOrder } from "../types";
 
-export const OrderDetails = ({ order }) => {
+interface OrderDetailsProps {
+  order: IOrder;
+}
+
+export const OrderDetails: React.FC<OrderDetailsProps> = ({ order }) => {
   return (
     <div className="p-6 space-y-6 bg-muted/20">
-      <OrderItems items={order.items_detail} />
+      {/* items */}
+      <OrderItems items={order.Items ?? []} />
+
+      {/* timeline */}
       <OrderTimeline status={order.status} />
-      <OrderActions order={order} />
+
+      <OrderActions  />
     </div>
   );
 };

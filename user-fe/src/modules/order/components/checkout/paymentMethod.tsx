@@ -1,8 +1,25 @@
-// PaymentMethod.tsx
-export const PaymentMethod = ({ value, onChange, methods }) => {
+import type { PaymentMethodType } from "../../types";
+
+type PaymentMethodItem = {
+  id: PaymentMethodType;
+  name: string;
+  icon?: React.ReactNode;
+};
+
+interface PaymentMethodProps {
+  value: PaymentMethodType;
+  onChange: (value: PaymentMethodType) => void;
+  methods: PaymentMethodItem[];
+}
+
+export const PaymentMethod: React.FC<PaymentMethodProps> = ({
+  value,
+  onChange,
+  methods,
+}) => {
   return (
     <div className="space-y-3">
-      {methods.map(m => (
+      {methods.map((m) => (
         <div
           key={m.id}
           onClick={() => onChange(m.id)}

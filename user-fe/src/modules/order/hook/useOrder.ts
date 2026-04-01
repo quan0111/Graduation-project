@@ -1,24 +1,32 @@
-// hooks/useOrders.ts
 import { useState, useMemo } from "react";
+import type { IOrder, OrderStatusType } from "../types";
 
-export const useOrders = (orders) => {
-  const [filter, setFilter] = useState("all");
-  const [expanded, setExpanded] = useState<string | null>(null);
+/* ---------- types ---------- */
+
+export type OrderFilterType = "ALL" | OrderStatusType;
+
+/* ---------- hook ---------- */
+
+export const useOrders = (orders: IOrder[]) => {
+  const [filter, setFilter] = useState<OrderFilterType>("ALL");
+
+  const [expanded, setExpanded] = useState<number | null>(null);
+
+  const toggleExpand = (id: number) => {
+    setExpanded((prev) => (prev === id ? null : id));
+  };
 
   const filtered = useMemo(() => {
-    if (filter === "all") return orders;
-    return orders.filter(o => o.status === filter);
-  }, [orders, filter]);
+    if (filter === "ALL") return orders;
 
-  const toggleExpand = (id: string) => {
-    setExpanded(prev => (prev === id ? null : id));
-  };
+    return orders.filter((o) => o.status === filter);
+  }, [orders, filter]);
 
   return {
     filter,
     setFilter,
     expanded,
     toggleExpand,
-    orders: filtered
+    orders: filtered,
   };
 };

@@ -1,26 +1,35 @@
-// page.tsx
-import { useCompare } from "@/hooks/useCompare";
-import { CompareTable } from "@/components/compare/sections/CompareTable";
-import { CompareSummary } from "@/components/compare/sections/CompareSummary";
-import { EmptyCompare } from "@/components/compare/sections/EmptyCompare";
+// // app/compare/page.tsx (hoặc page.tsx nếu bạn dùng pages router)
 
-export default function Page() {
-  const compare = useCompare(sampleProducts.slice(0,2));
+// import { useCompare } from "../hook/useCompare";
+// import { EmptyCompare } from "../components/emptyState";
+// import { CompareTable } from "../components/Table";
+// import { CompareSummary } from "../components/summary";
+// import type { IProduct } from "../components/Table";
 
-  if (compare.list.length === 0) return <EmptyCompare/>;
+// // 👉 mock data (hoặc import từ API)
+// import { sampleProducts } from "../data/sampleProducts";
 
-  return (
-    <div className="p-6">
+// export default function Page() {
+//   const compare = useCompare(sampleProducts.slice(0, 2));
 
-      <CompareTable
-        list={compare.list}
-        allSpecs={compare.allSpecs}
-        onRemove={compare.remove}
-        onAdd={() => compare.add(sampleProducts)}
-      />
+//   if (!compare.list || compare.list.length === 0) {
+//     return <EmptyCompare />;
+//   }
 
-      <CompareSummary list={compare.list}/>
+//   return (
+//     <div className="p-6 max-w-7xl mx-auto">
 
-    </div>
-  );
-}
+//       {/* Compare Table */}
+//       <CompareTable
+//         list={compare.list}
+//         allSpecs={compare.allSpecs}
+//         onRemove={compare.remove}
+//         onAdd={() => compare.add(sampleProducts)}
+//       />
+
+//       {/* Summary */}
+//       <CompareSummary list={compare.list} />
+
+//     </div>
+//   );
+// }
