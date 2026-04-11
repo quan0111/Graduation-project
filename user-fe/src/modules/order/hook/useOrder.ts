@@ -1,11 +1,9 @@
 import { useState, useMemo } from "react";
 import type { IOrder, OrderStatusType } from "../types";
 
-/* ---------- types ---------- */
 
 export type OrderFilterType = "ALL" | OrderStatusType;
 
-/* ---------- hook ---------- */
 
 export const useOrders = (orders: IOrder[]) => {
   const [filter, setFilter] = useState<OrderFilterType>("ALL");

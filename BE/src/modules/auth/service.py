@@ -74,3 +74,54 @@ class AuthService:
             "access_token": access_token,
             "refresh_token": refresh_token,
         }
+    
+    @staticmethod
+    async def refresh_token(user_id: str):
+
+        user = await prisma.user.find_unique(
+            where={"id": user_id}
+        )
+
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail="User not found"
+            )
+
+        access_token = create_access_token({"sub": str(user.id)})
+        refresh_token = create_refresh_token({"sub": str(user.id)})
+
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+        }
+    @staticmethod
+    async def logout(user_id: str):
+        # Invalidate the refresh token by removing it from the database or cache
+        # This is a placeholder implementation and should be replaced with actual token invalidation logic
+        return {"message": "Logged out successfully"}
+    @staticmethod
+    async def OAuthLogin(provider: str, token: str):
+        # This is a placeholder implementation and should be replaced with actual OAuth login logic
+        # You would typically verify the token with the provider and retrieve user information
+        return {"message": f"Logged in with {provider} successfully"}
+    @staticmethod
+    async def change_password(user_id: str, new_password: str):
+        user = await prisma.user.find_unique(
+            where={"id": user_id}
+        )
+
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail="User not found"
+            )
+
+        hashed_password = hash_password(new_password)
+
+        await prisma.user.update(
+            where={"id": user_id},
+            data={"password": hashed_password}
+        )
+
+        return {"message": "Password changed successfully"}

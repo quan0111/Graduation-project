@@ -2,99 +2,23 @@ import { HomeContainer } from "../component/HomeContainer";
 
 import type { IProduct } from "@/modules/product/types";
 import type { ICategory } from "@/modules/category/types";
+import type { Category } from "@/modules/category/api/category";
 
 import { Truck, ShieldCheck, RefreshCw, Headphones } from "lucide-react";
+import { useGetProduct } from "@/modules/product/api/get-product";
+import { useGetCategories } from "@/modules/category/api/category";
 
-/* ---------- MOCK DATA ---------- */
-
-const now = new Date().toISOString();
-
-const createProduct = (id: number, name: string, price: number): IProduct => ({
-  id: String(id),
-  name,
-  slug: name.toLowerCase().replace(/\s+/g, "-"),
-  description: "Sản phẩm chất lượng cao",
-
-  price,
-  shop_id: id % 2 === 0 ? 2 : 1,
-  category_id: (id % 3) + 1,
-
-  status: "ACTIVE",
-
-  created_at: now,
-  updated_at: now,
-
-  Images: [
-    {
-      id,
-      url: `https://picsum.photos/300/300?random=${id}`,
-      position: 1,
-      is_primary: true,
-      product_id: id,
-      created_at: now,
-    },
-  ],
-
-  Variants: [
-    {
-      id,
-      name: "Default",
-      stock: 10 + id,
-      price,
-      product_id: id,
-      created_at: now,
-      updated_at: now,
-      VariantImage: [],
-    },
-  ],
-
-  Category: {
-    id: (id % 3) + 1,
-    name: ["Áo", "Quần", "Giày"][id % 3],
-    created_at: "",
-    updated_at: "",
-  },
-
-  Shop: {
-    id: id % 2 === 0 ? 2 : 1,
-    name: id % 2 === 0 ? "Fashion Store" : "Local Brand",
-  } as any,
-
-  Attributes: [],
-  Tags: [],
-  Review: [],
+// Transform Category API response to ICategory format
+const transformCategory = (cat: Category): ICategory => ({
+  id: cat.id,
+  name: cat.name,
+  slug: cat.slug,
+  parent_id: cat.parentId,
+  created_at: cat.createdAt,
+  updated_at: cat.updatedAt,
+  Parent: cat.parent ? transformCategory(cat.parent) : undefined,
+  Children: cat.children?.map(transformCategory),
 });
-
-const mockProducts: IProduct[] = [
-  createProduct(1, "Áo thun basic", 120000),
-  createProduct(2, "Quần jean slim fit", 350000),
-  createProduct(3, "Giày sneaker trắng", 890000),
-  createProduct(4, "Áo hoodie oversize", 450000),
-  createProduct(5, "Quần short thể thao", 180000),
-  createProduct(6, "Giày chạy bộ", 1200000),
-  createProduct(7, "Áo sơ mi form rộng", 320000),
-  createProduct(8, "Dép sandal", 150000),
-];
-const mockCategories: ICategory[] = [
-  {
-    id:1,
-    name: "Áo",
-    created_at: "",
-    updated_at: "",
-  },
-  {
-    id: 2,
-    name: "Quần",
-    created_at: "",
-    updated_at: "",
-  },
-  {
-    id: 3,
-    name: "Giày",
-    created_at: "",
-    updated_at: "",
-  },
-];
 
 /* ---------- FEATURES ---------- */
 
@@ -128,10 +52,26 @@ const features = [
 /* ---------- PAGE ---------- */
 
 export default function HomePage() {
-  const products = mockProducts;
-  const categories = mockCategories;
+  const { data: productsData, isLoading: productsLoading } = useGetProduct();
+  const { data: categoriesData, isLoading: categoriesLoading } = useGetCategories();
+
+  // Transform API data to match the expected format
+  const products: IProduct[] = productsData?.data?.data || [];
+  const categories: ICategory[] = (categoriesData || []).map(transformCategory);
 
   const featuredProducts = products.slice(0, 8);
+
+  // Show loading state if either API is loading
+  if (productsLoading || categoriesLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải dữ liệu...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <HomeContainer

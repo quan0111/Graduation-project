@@ -18,7 +18,7 @@ import { useProductDetail } from "../../hooks/useProductDetail";
 import type { IProduct } from "../../types";
 
 /* ---------- TOGGLE ---------- */
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 /* ---------- MOCK ---------- */
 

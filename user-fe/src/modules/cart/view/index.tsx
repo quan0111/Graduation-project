@@ -1,45 +1,99 @@
-import { useCart } from "../hooks/useCart";
+import { useGetCart } from "../api/get-cart";
+import { useDeleteCartItem } from "../api/delete-cart";
+import { useUpdateCart } from "../api/update-cart";
 import { EmptyCart } from "../components/emptyCart";
 import { CartList } from "../components/cartList";
 import { CartSummary } from "../components/cartSummary";
-export const initialCartItems = [
-  {
-    id: "1",
-    name: "Áo thun basic",
-    image: "https://via.placeholder.com/100",
-    variant: "Size M",
-    price: 120000,
-    quantity: 1,
-    shopId: "shop1",
-    shopName: "Shop A",
-  },
-  {
-    id: "2",
-    name: "Quần jeans",
-    image: "https://via.placeholder.com/100",
-    variant: "Size L",
-    price: 300000,
-    quantity: 2,
-    shopId: "shop1",
-    shopName: "Shop A",
-  },
-  {
-    id: "3",
-    name: "Giày sneaker",
-    image: "https://via.placeholder.com/100",
-    variant: "42",
-    price: 500000,
-    quantity: 1,
-    shopId: "shop2",
-    shopName: "Shop B",
-  },
-];
+import type { ICartItem } from "../types";
+
+// Type for transformed cart item that matches component expectations
+type TransformedCartItem = {
+  id: string;
+  name: string;
+  image: string;
+  variant?: string;
+  price: number;
+  quantity: number;
+  shopId: string;
+  shopName: string;
+};
+
+/* ---------- PAGE ---------- */
+
 export default function CartPage() {
-  const cart = useCart(initialCartItems);
+  const { data: cartData, isLoading, refetch } = useGetCart();
+  const deleteMutation = useDeleteCartItem();
+  const updateMutation = useUpdateCart();
 
-  if (cart.items.length === 0) return <EmptyCart />;
+  // Transform API data - handle both array and single cart object
+  const cartItems: ICartItem[] = cartData?.data?.data?.[0]?.items || 
+                                  cartData?.data?.items || 
+                                  [];
 
-  const grouped = cart.items.reduce((acc: any, item: any) => {
+  // Transform cart items to match the component's expected format
+  const transformedItems: TransformedCartItem[] = cartItems.map((item) => ({
+    id: String(item.id),
+    name: item.product?.name || "Sản phẩm",
+    image: item.product?.Images?.[0]?.url || "https://via.placeholder.com/100",
+    variant: item.variant?.name || "Default",
+    price: item.variant?.price || item.product?.price || 0,
+    quantity: item.quantity,
+    shopId: String(item.product?.shop_id || ""),
+    shopName: item.product?.Shop?.name || "Shop",
+  }));
+
+  // Handle remove item
+  const handleRemove = async (id: string) => {
+    try {
+      await deleteMutation.mutateAsync(id);
+      refetch();
+    } catch (error) {
+      console.error("Failed to remove item:", error);
+    }
+  };
+
+  // Handle update quantity
+  const handleUpdateQty = async (id: string, quantity: number) => {
+    try {
+      await updateMutation.mutateAsync({ id, data: { items: [{ quantity }] } });
+      refetch();
+    } catch (error) {
+      console.error("Failed to update quantity:", error);
+    }
+  };
+
+  // Handle select item (for checkout)
+  const handleSelect = (id: string) => {
+    // Implement selection logic if needed
+    console.log("Selected item:", id);
+  };
+
+  // Calculate totals
+  const selectedItems = transformedItems; // All items selected by default
+  const subtotal = selectedItems.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải giỏ hàng...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show empty cart if no items
+  if (transformedItems.length === 0) {
+    return <EmptyCart />;
+  }
+
+  // Group items by shop
+  const grouped = transformedItems.reduce((acc: Record<string, TransformedCartItem[]>, item) => {
     if (!acc[item.shopId]) acc[item.shopId] = [];
     acc[item.shopId].push(item);
     return acc;
@@ -47,22 +101,21 @@ export default function CartPage() {
 
   return (
     <div className="grid lg:grid-cols-3 gap-6 p-6">
-      
       <div className="lg:col-span-2">
         <CartList
           grouped={grouped}
-          selected={cart.selected.map(String)}
-          onSelect={(id: string) => cart.toggleItem(Number(id))}
-          onQty={(id: string, value: number) => cart.updateQty(Number(id), value)}
-          onRemove={(id: string) => cart.remove(Number(id))}
+          selected={selectedItems.map((item) => item.id)}
+          onSelect={handleSelect}
+          onQty={handleUpdateQty}
+          onRemove={handleRemove}
+          isLoading={deleteMutation.isPending || updateMutation.isPending}
         />
       </div>
 
       <CartSummary
-        subtotal={cart.subtotal}
-        disabled={cart.selected.length === 0}
+        subtotal={subtotal}
+        disabled={selectedItems.length === 0}
       />
-
     </div>
   );
 }

@@ -1,99 +1,63 @@
-import { useOrders } from "../../hook/useOrder";
+import { useGetOrder } from "../../api/get-order";
 import { OrdersFilterTabs } from "../../components/filterTab";
 import { OrderCard } from "../../components/orderCard";
 import { EmptyState } from "@/modules/order/components/emptyState";
 import type { IOrder } from "../../types";
-
-/* ---------- MOCK ---------- */
-
-const now = new Date().toISOString();
-
-const statuses: IOrder["status"][] = [
-  "PENDING",
-  "PROCESSING",
-  "SHIPPED",
-  "DELIVERED",
-  "CANCELLED",
-];
-
-const random = (min: number, max: number) =>
-  Math.floor(Math.random() * (max - min) + min);
-
-const createOrder = (id: number): IOrder => {
-  const itemCount = random(1, 4);
-
-  const items = Array.from({ length: itemCount }, (_, i) => ({
-    id: i + 1,
-    order_id: id,
-    product_id: i + 1,
-    quantity: random(1, 3),
-    price: random(100000, 500000),
-    product_name: `Sản phẩm ${i + 1}`,
-    variant_name: "Default",
-    product_image: `https://picsum.photos/100?random=${id + i}`,
-    created_at: now,
-  }));
-
-  const subtotal = items.reduce(
-    (sum, i) => sum + i.price * i.quantity,
-    0
-  );
-
-  const shipping = 30000;
-  const discount = random(0, 50000);
-
-  return {
-    id,
-    user_id: 1,
-
-    status: statuses[id % statuses.length],
-
-    subtotal,
-    shipping_fee: shipping,
-    discount_amount: discount,
-    total_amount: subtotal + shipping - discount,
-
-    created_at: now,
-    updated_at: now,
-
-    Items: items,
-  };
-};
-
-/* 👉 tạo 18 đơn */
-const mockOrders: IOrder[] = Array.from({ length: 18 }, (_, i) =>
-  createOrder(i + 1)
-);
+import { useState, useMemo } from "react";
 
 /* ---------- PAGE ---------- */
 
 export default function OrderPage() {
-  const {
-    filter,
-    setFilter,
-    expanded,
-    toggleExpand,
-    orders: filtered,
-  } = useOrders(mockOrders);
+  const { data: ordersData, isLoading } = useGetOrder();
+  
+  // Filter state
+  const [filter, setFilter] = useState<IOrder["status"] | "ALL">("ALL");
+  const [expanded, setExpanded] = useState<number | null>(null);
+
+  // Transform API data
+  const orders: IOrder[] = ordersData?.data?.data || [];
+
+  // Filter orders
+  const filteredOrders = useMemo(() => {
+    if (filter === "ALL") return orders;
+    return orders.filter((order) => order.status === filter);
+  }, [orders, filter]);
+
+  // Toggle expand order details
+  const toggleExpand = (orderId: number) => {
+    setExpanded(expanded === orderId ? null : orderId);
+  };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Đang tải đơn hàng...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
-      {/* filter */}
+      {/* Filter tabs */}
       <OrdersFilterTabs
         filter={filter.toLocaleLowerCase() as any}
         setFilter={(value) => setFilter(value.toUpperCase() as any)}
       />
 
-      {/* list */}
-      {filtered.length === 0 ? (
+      {/* Order list */}
+      {filteredOrders.length === 0 ? (
         <EmptyState />
       ) : (
-        filtered.map((o) => (
+        filteredOrders.map((order) => (
           <OrderCard
-            key={o.id}
-            order={o}
-            expanded={expanded === o.id}
-            onToggle={() => toggleExpand(o.id)}
+            key={order.id}
+            order={order}
+            expanded={expanded === order.id}
+            onToggle={() => toggleExpand(order.id)}
           />
         ))
       )}

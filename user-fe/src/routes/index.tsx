@@ -18,8 +18,7 @@ import PromotionPage from "@/modules/promotion/view";
 
 // ❗ seller (không dùng layout)
 import { SellerRegistrationView } from "@/modules/seller/view/create";
-import { SellerDashboardView } from "@/modules/seller/view/dashboard";
-
+import SellerDashboardPage from "@/modules/seller/view/dashboard";
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -52,6 +51,6 @@ export const router = createBrowserRouter([
   },
   {
     path: "/dashboard",
-    element: <SellerDashboardView />,
+    element: <SellerDashboardPage />,
   },
 ]);

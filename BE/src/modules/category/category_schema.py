@@ -18,6 +18,7 @@ class CategoryUpdate(BaseModel):
     description: Optional[str] = None
     parent_id: Optional[int] = None
 
+
 class CategoryInDB(CategoryBase):
     id: int
     parent_id: Optional[int] = None
