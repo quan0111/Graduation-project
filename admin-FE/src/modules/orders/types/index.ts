@@ -1,4 +1,4 @@
-import type { IProduct } from "../../product/types"
+import type { IProduct } from "../../products/types"
 import type { IUser } from "../../user/types"
 export type OrderStatusType =
   | "PENDING"
