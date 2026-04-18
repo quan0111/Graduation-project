@@ -1,11 +1,11 @@
-from pydantic import BaseModel, EmailStr
-
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
 
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str
-    fullName: str
-    phone: str
+    password: str = Field(min_length=6)
+    fullName: Optional[str] = None
+    phone: Optional[str] = None
 
 
 class LoginRequest(BaseModel):
@@ -14,13 +14,14 @@ class LoginRequest(BaseModel):
 
 
 class AuthUser(BaseModel):
-    id: str
-    email: str
-    fullname: str
+    id: int
+    email: EmailStr
+    fullName: Optional[str] = None
     role: str
-
+    isActive: bool
 
 class AuthResponse(BaseModel):
     user: AuthUser
     access_token: str
     refresh_token: str
+    token_type: str = "bearer"

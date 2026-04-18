@@ -1,13 +1,12 @@
 from datetime import datetime, timedelta
-from jose import jwt
+from jose import JWTError, ExpiredSignatureError, jwt
 from passlib.context import CryptContext
 from src.core.config import settings
-
+from src.core.database import prisma
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 ALGORITHM = "HS256"
-
 
 def hash_password(password: str):
     return pwd_context.hash(password)
@@ -20,28 +19,66 @@ def verify_password(plain, hashed):
 def create_access_token(data: dict, expires_delta: int = 60):
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=expires_delta)
-    to_encode.update({"exp": expire})
+
+    to_encode.update({
+        "exp": expire,
+        "type": "access"   # 🔥 thêm type
+    })
+
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
 
 
-def create_refresh_token(data: dict, expires_delta: int = 10080):  # 7 days in minutes
+def create_refresh_token(data: dict, expires_delta: int = 10080):
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(minutes=expires_delta)
-    to_encode.update({"exp": expire})
+
+    to_encode.update({
+        "exp": expire,
+        "type": "refresh"   # 🔥 thêm type
+    })
+
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
 
-
-def decode_access_token(token: str):
+def decode_token(token: str):
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
-    except jwt.JWTError:
+        return jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+    except ExpiredSignatureError:
         return None
+    except JWTError:
+        return None
+
+def verify_token_type(payload: dict, expected_type: str):
+    if not payload or payload.get("type") != expected_type:
+        return False
+    return True
+
+
 def refresh_access_token(token: str, expires_delta: int = 60):
-    payload = decode_access_token(token)
-    if payload is None:
+    payload = decode_token(token)
+
+    if not verify_token_type(payload, "refresh"):
         return None
-    return create_access_token(data={"sub": payload.get("sub")}, expires_delta=expires_delta)
-def revoke_token(token: str):    # Trong thực tế, bạn cần lưu token đã bị thu hồi vào cơ sở dữ liệu hoặc cache để kiểm tra sau này
-    # Ví dụ: revoked_tokens.add(token)
-    pass
+
+    return create_access_token(
+        data={"sub": payload.get("sub")},
+        expires_delta=expires_delta
+    )
+
+async def revoke_token(token: str):
+    stored = await prisma.refreshtoken.find_unique(
+        where={"token": token}
+    )
+
+    if not stored:
+        return False
+
+    await prisma.refreshtoken.update(
+        where={"token": token},
+        data={"isRevoked": True}
+    )
+
+    return True

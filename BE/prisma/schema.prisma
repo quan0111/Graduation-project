@@ -403,6 +403,7 @@ model ProductAttribute {
   productId Int
   key       String
   value     String
+  createdAt DateTime  @default(now())
   deletedAt DateTime?
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)

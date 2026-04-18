@@ -14,9 +14,6 @@ from src.modules.cart.cart_service import CartService
 router = APIRouter(prefix="/cart", tags=["Cart"])
 service = CartService()
 
-
-
-
 @router.post("/", response_model=CartOut)
 async def create_cart(data: CartCreate):
     return await service.create_cart(data)
