@@ -1,36 +1,40 @@
 import type { ICategory } from "../../categories/types"
 import type { IShop } from "../../shop/types"
-
+import type { ProductStatusType } from "@/constant"
 import type { IReview } from "@/modules/review/types"
-export type ProductStatusType =
-  | "DRAFT"
-  | "ACTIVE"
-  | "OUT_OF_STOCK"
-  | "BANNED"
 
 export interface IProduct {
-  id: string
+  id: number
   name: string
   slug?: string | null
   description?: string | null
-
   price: number
-  shop_id: number
-  category_id: number
+
+  // ✅ đúng BE
+  shopId: number
+  categoryId: number
 
   status: ProductStatusType
 
-  created_at: string
-  updated_at: string
-  deleted_at?: string | null
+  // ✅ đúng BE
+  createdAt: string
 
-  Attributes?: IProductAttribute[]
-  Tags?: ITag[]
-  Shop?: IShop
-  Category?: ICategory
-  Variants?: IProductVariant[]
-  Images?: IProductImage[]
-  Review?: IReview[]
+  // ❌ BE chưa có thì để optional
+  updatedAt?: string
+  deletedAt?: string | null
+
+  // ✅ relation đúng BE
+  shop?: IShop
+  category?: ICategory
+  variants?: IProductVariant[]
+  images?: IProductImage[] | null
+  attributes?: IProductAttribute[] | null
+  tags?: ITag[]
+
+  // extra BE có
+  totalStock?: number
+
+  review?: IReview[]
 }
 export interface IProductVariant {
   id: number
@@ -40,14 +44,43 @@ export interface IProductVariant {
   stock: number
   weight?: number | null
 
-  product_id: number
+  // ❌ BE KHÔNG có product_id → bỏ
+  // product_id: number
 
-  created_at: string
-  updated_at: string
-  deleted_at?: string | null
-  VariantImage: IVariantImage[]
-  Product?: IProduct
+  createdAt: string
+  updatedAt?: string
+  deletedAt?: string | null
 
+  images?: IVariantImage[] | null
+}
+export interface IProductImage {
+  id: number
+  url: string
+  position: number
+  isPrimary: boolean
+  productId: number
+
+  createdAt: string
+  deletedAt?: string | null
+}
+export interface IVariantImage {
+  id: number
+  url: string
+  position: number
+  variantId: number
+
+  createdAt: string
+  deletedAt?: string | null
+}
+export interface IProductAttribute {
+  id: number
+  productId: number
+  key: string
+  value: string
+}
+export interface ITag {
+  id: number
+  name: string
 }
 export interface IProductFormInputs {
   name: string
@@ -55,8 +88,8 @@ export interface IProductFormInputs {
   description?: string | null
 
   price: number
-  shop_id: number
-  category_id: number
+  shopId: number
+  categoryId: number
 
   status: ProductStatusType
 
@@ -65,42 +98,4 @@ export interface IProductFormInputs {
     stock: number
     weight?: number
   }[]
-}
-export interface IProductImage {
-  id: number
-
-  url: string
-  position: number
-
-  is_primary: boolean
-
-  product_id: number
-
-  created_at: string
-  deleted_at?: string | null
-}
-export interface IVariantImage {
-  id: number
-
-  url: string
-  position: number
-
-  variant_id: number
-
-  created_at: string
-  deleted_at?: string | null
-}
-export interface IProductAttribute {
-  id: number
-
-  product_id: number
-
-  key: string
-  value: string
-}
-export interface ITag {
-  id: number
-  name: string
-
-  Products?: IProduct[]
 }

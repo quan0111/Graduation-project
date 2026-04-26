@@ -1,5 +1,4 @@
-'use client';
-
+import { useProducts } from "../api/get-all-product";
 import { useState, useEffect } from "react";
 import { DataTable } from "@/components/common/data-table";
 import { ProductFilter } from "../component/filter-search-product";
@@ -7,71 +6,8 @@ import { productColumns } from "../component/product-collum";
 import { ProductPreviewModal } from "../component/product-preview-modal";
 import { Button } from "@/components/ui/button";
 
-const PRODUCTS = [
-  {
-    id: 1,
-    name: 'Áo thun nam cao cấp',
-    shop: 'Fashion Store Vietnam',
-    category: 'Thời trang',
-    status: 'pending',
-    price: 299000,
-    image: '👔',
-    rating: 0,
-    sales: 0,
-    submitDate: '2024-03-27'
-  },
-  {
-    id: 2,
-    name: 'Quần jeans nữ',
-    shop: 'Fashion Store Vietnam',
-    category: 'Thời trang',
-    status: 'approved',
-    price: 499000,
-    image: '👖',
-    rating: 4.7,
-    sales: 234,
-    submitDate: '2024-03-20'
-  },
-  {
-    id: 3,
-    name: 'Laptop Gaming RTX 4080',
-    shop: 'Electronics Plus',
-    category: 'Điện tử',
-    status: 'pending',
-    price: 49999000,
-    image: '💻',
-    rating: 0,
-    sales: 0,
-    submitDate: '2024-03-26'
-  },
-  {
-    id: 4,
-    name: 'Đèn LED thông minh',
-    shop: 'Home & Living',
-    category: 'Nhà & Cuộc sống',
-    status: 'rejected',
-    price: 199000,
-    image: '💡',
-    rating: 0,
-    sales: 0,
-    submitDate: '2024-03-15'
-  },
-  {
-    id: 5,
-    name: 'Serum dưỡng da',
-    shop: 'Beauty World',
-    category: 'Sắc đẹp',
-    status: 'approved',
-    price: 899000,
-    image: '💄',
-    rating: 4.9,
-    sales: 567,
-    submitDate: '2024-03-10'
-  }
-];
-
-
 export default function ProductsPage() {
+  const { data: products = [] } = useProducts();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [category, setCategory] = useState("all");
@@ -85,27 +21,28 @@ export default function ProductsPage() {
     order: "asc",
   });
 
-  // 🔥 mock backend sort
   useEffect(() => {
     console.log("fetch API", { sort });
   }, [sort]);
 
-  // 🔍 FILTER
-  const filtered = PRODUCTS.filter((p) => {
+  const filtered = products.filter((p: any) => {
     const matchSearch =
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.shop.toLowerCase().includes(search.toLowerCase());
+      p.name?.toLowerCase().includes(search.toLowerCase()) ||
+      p.shop?.name?.toLowerCase().includes(search.toLowerCase());
 
     const matchStatus =
-      status === "all" || p.status === status;
+      status === "all" ||
+      (status === "pending" && p.status === "DRAFT") ||
+      (status === "approved" && p.status === "PUBLISHED") ||
+      (status === "rejected" && p.status === "REJECTED");
 
     const matchCategory =
-      category === "all" || p.category === category;
+      category === "all" ||
+      p.category?.name === category;
 
     return matchSearch && matchStatus && matchCategory;
   });
 
-  // 🔥 ACTIONS
   const handleApprove = (p: any) => {
     console.log("approve", p.id);
   };
@@ -119,7 +56,6 @@ export default function ProductsPage() {
     setOpen(true);
   };
 
-  // 🔥 columns inject
   const columns = productColumns(
     handleApprove,
     handleReject,
@@ -129,16 +65,14 @@ export default function ProductsPage() {
   return (
     <main className="flex-1 overflow-auto p-6 w-full">
 
-      {/* 🔥 FILTER */}
       <ProductFilter
         search={search}
         setSearch={setSearch}
         status={status}
         setStatus={setStatus}
-        data={PRODUCTS}
+        data={products}
       />
 
-      {/* 🔥 CATEGORY */}
       <div className="mb-4">
         <select
           value={category}
@@ -152,7 +86,6 @@ export default function ProductsPage() {
         </select>
       </div>
 
-      {/* 🔥 BULK ACTION */}
       <div className="flex gap-2 mb-4">
         <Button
           disabled={selectedIds.length === 0}
@@ -164,7 +97,6 @@ export default function ProductsPage() {
         </Button>
       </div>
 
-      {/* 🔥 TABLE */}
       <DataTable
         data={filtered}
         columns={columns}
@@ -172,7 +104,6 @@ export default function ProductsPage() {
         onSelectChange={setSelectedIds}
       />
 
-      {/* 🔥 MODAL */}
       <ProductPreviewModal
         open={open}
         onClose={() => setOpen(false)}

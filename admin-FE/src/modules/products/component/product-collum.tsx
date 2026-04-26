@@ -11,41 +11,51 @@ export const productColumns = (
     label: "Sản phẩm",
     render: (p: any) => (
       <div className="flex items-center gap-3">
-        <span className="text-2xl">{p.image}</span>
+        <span className="text-2xl">📦</span>
         <div>
           <p className="font-medium">{p.name}</p>
-          <p className="text-xs text-muted-foreground">{p.shop}</p>
+          <p className="text-xs text-muted-foreground">
+            {p.shop?.name}
+          </p>
         </div>
       </div>
     ),
   },
-  { key: "category", label: "Danh mục" },
+
+  {
+    key: "category",
+    label: "Danh mục",
+    render: (p: any) => p.category?.name,
+  },
 
   {
     key: "price",
     label: "Giá",
-    sortable: true,
     render: (p: any) => `${(p.price / 1000).toFixed(0)}K`,
-  },
-
-  { key: "sales", label: "Bán", sortable: true },
-
-  {
-    key: "rating",
-    label: "Đánh giá",
-    render: (p: any) =>
-      p.rating > 0 ? `⭐ ${p.rating}` : "-",
   },
 
   {
     key: "status",
     label: "Trạng thái",
-    render: (p: any) => (
-      <ProductStatusBadge status={p.status} />
-    ),
+    render: (p: any) => {
+      const statusMap: any = {
+        DRAFT: "pending",
+        PUBLISHED: "approved",
+        REJECTED: "rejected",
+      };
+
+      return (
+        <ProductStatusBadge status={statusMap[p.status]} />
+      );
+    },
   },
 
-  { key: "submitDate", label: "Ngày gửi" },
+  {
+    key: "submitDate",
+    label: "Ngày gửi",
+    render: (p: any) =>
+      new Date(p.createdAt).toLocaleDateString(),
+  },
 
   {
     key: "actions",

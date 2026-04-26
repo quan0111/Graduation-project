@@ -1,6 +1,5 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
 
 export function ProductFilter({
   search,
@@ -9,17 +8,20 @@ export function ProductFilter({
   setStatus,
   data,
 }: any) {
-  const count = (s: string) =>
-    data.filter((p: any) => p.status === s).length;
+
+  const count = (s: string) => {
+    if (s === "pending") return data.filter((p: any) => p.status === "DRAFT").length;
+    if (s === "approved") return data.filter((p: any) => p.status === "ACTIVE").length;
+    if (s === "rejected") return data.filter((p: any) => p.status === "BANNED").length;
+    return data.length;
+  };
 
   return (
     <div className="mb-6 space-y-4">
       
-      <div className="flex-1 relative">
-        <Search className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
+      <div className="flex-1">
         <Input
           placeholder="Tìm kiếm sản phẩm..."
-          className="pl-10"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />

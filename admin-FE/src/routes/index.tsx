@@ -12,11 +12,17 @@ import ProductsPage from "@/modules/products/view"
 import OrdersPage from "@/modules/orders/view"
 import CategoriesPage from "@/modules/categories/view"
 import AnalyticsPage from "@/modules/analytics/view"
-
+import AdminLoginPage from "@/modules/auth/view/LoginPage"
+import ProtectedRoute from "./protectedGuard"
+import SellerApplicationsPage from "@/modules/shop/view/sellerAplication"
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <RootLayout />,
+        element: (
+      <ProtectedRoute>
+        <RootLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,
@@ -66,7 +72,16 @@ export const router = createBrowserRouter([
         path: "analytics",
         element: <AnalyticsPage />,
       }
+        ,
+      {
+        path: "seller-applications",
+        element: <SellerApplicationsPage />,
+      },
 
     ],
   },
+  {
+    path: "/admin/login",
+    element: <AdminLoginPage />,
+  }
 ])

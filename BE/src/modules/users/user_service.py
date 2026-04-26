@@ -71,10 +71,17 @@ class UserService:
         elif "password" in data:
             del data["password"]
 
-        return await prisma.user.update(
+        updated_user = await prisma.user.update(
             where={"id": user_id},
-            data=data
+            data=data,
+            include={
+                "addresses": True,
+                "carts": True,
+                "orders": True
+            }
         )
+
+        return updated_user
     @staticmethod
     async def delete_user(user_id: int):
         existing = await prisma.user.find_unique(

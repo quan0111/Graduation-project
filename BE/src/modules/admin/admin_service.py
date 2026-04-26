@@ -13,16 +13,16 @@ class AdminService:
         total_products = await prisma.product.count()
         total_shops = await prisma.shop.count()
 
-        revenue = await prisma.order.aggregate(
-            _sum={"totalPrice": True}
-        )
+        orders = await prisma.order.find_many()
+
+        total_revenue = sum(o.totalPrice for o in orders)
 
         return DashboardStats(
             totalUsers=total_users,
             totalOrders=total_orders,
             totalProducts=total_products,
             totalShops=total_shops,
-            totalRevenue=revenue["_sum"]["totalPrice"] or 0.0
+            totalRevenue=total_revenue or 0.0
         )
     @staticmethod
     async def get_orders(filter_data: OrderFilter, pagination: Pagination):

@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from tracemalloc import start
 from fastapi import FastAPI
+
 from src.core.database import prisma
 from src.ai.schedule import start_scheduler,stop_scheduler
 
@@ -12,7 +13,6 @@ async def lifespan(app: FastAPI):
     print(" Database connected")
     await start_scheduler()
     print(" Scheduler started")
-
     yield
     print(" Shutting down scheduler...")
     await stop_scheduler()

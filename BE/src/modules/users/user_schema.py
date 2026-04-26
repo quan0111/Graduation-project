@@ -14,6 +14,8 @@ class UserUpdate(BaseModel):
     fullName: Optional[str] = None
     avatarUrl: Optional[str] = None
     password: Optional[str] = None
+    role: Optional[str] = None
+    isActive: Optional[bool] = None
 
 class AddressShort(BaseModel):
     id: int

@@ -111,6 +111,7 @@ class ProductService:
         products = await prisma.product.find_many(
             where={"deletedAt": None},
             include={
+                "shop": True,
                 "variants": True,
                 "tags": True,
                 "category": True

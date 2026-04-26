@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
+from src.modules.category.category_schema import CategoryBase
+from src.modules.shop.shop_schema import ShopOut
 
 
 class ProductBase(BaseModel):
@@ -24,11 +26,12 @@ class ProductUpdate(BaseModel):
     description: Optional[str] = None
     price: Optional[float] = None
     shopId: Optional[int] = None
-
 class ProductOut(ProductBase):
     id: int
     status: str
     createdAt: datetime
+    shop: Optional["ShopOut"] = None
+    category: Optional["CategoryBase"] = None
     variants: Optional[List["VariantOut"]] = []
     images: Optional[List["ProductImageOut"]] = []
     attributes: Optional[List["ProductAttributeOut"]] = []

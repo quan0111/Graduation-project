@@ -10,7 +10,7 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
     function (config) {
         // Get token from localStorage
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("access_token");
         
         // Add Authorization header if token exists
         if (token) {

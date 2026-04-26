@@ -1,5 +1,7 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from datetime import datetime, timedelta
+import hashlib
+
 from src.core.database import prisma
 from src.core.security import (
     hash_password,
@@ -11,7 +13,13 @@ from src.core.security import (
 from src.modules.auth.schema import RegisterRequest, LoginRequest
 
 
+# 🔥 hash refresh token
+def hash_token(token: str):
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
 class AuthService:
+
     @staticmethod
     def _build_user(user):
         return {
@@ -22,6 +30,7 @@ class AuthService:
             "isActive": user.isActive
         }
 
+    # ================= REGISTER =================
     @staticmethod
     async def register(data: RegisterRequest):
         existing = await prisma.user.find_unique(
@@ -44,11 +53,11 @@ class AuthService:
         access_token = create_access_token({"sub": str(user.id)})
         refresh_token = create_refresh_token({"sub": str(user.id)})
 
-        # 🔥 lưu refresh token
+        # 🔥 lưu HASH refresh token
         await prisma.refreshtoken.create(
             data={
                 "userId": user.id,
-                "token": refresh_token,
+                "token": hash_token(refresh_token),
                 "expiresAt": datetime.utcnow() + timedelta(days=7)
             }
         )
@@ -59,6 +68,8 @@ class AuthService:
             "refresh_token": refresh_token,
             "token_type": "bearer"
         }
+
+    # ================= LOGIN =================
     @staticmethod
     async def login(data: LoginRequest):
         user = await prisma.user.find_unique(
@@ -77,11 +88,11 @@ class AuthService:
         access_token = create_access_token({"sub": str(user.id)})
         refresh_token = create_refresh_token({"sub": str(user.id)})
 
-        # 🔥 lưu refresh token
+        # 🔥 lưu HASH refresh token
         await prisma.refreshtoken.create(
             data={
                 "userId": user.id,
-                "token": refresh_token,
+                "token": hash_token(refresh_token),
                 "expiresAt": datetime.utcnow() + timedelta(days=7)
             }
         )
@@ -92,15 +103,21 @@ class AuthService:
             "refresh_token": refresh_token,
             "token_type": "bearer"
         }
+
     @staticmethod
     async def refresh_token(refresh_token: str):
         payload = decode_token(refresh_token)
-        if not payload:
+
+        # 🔥 check token + type
+        if not payload or payload.get("type") != "refresh":
             raise HTTPException(401, "Invalid refresh token")
+
         user_id = int(payload.get("sub"))
 
+        hashed = hash_token(refresh_token)
+
         stored = await prisma.refreshtoken.find_unique(
-            where={"token": refresh_token}
+            where={"token": hashed}
         )
 
         if not stored or stored.isRevoked:
@@ -113,8 +130,9 @@ class AuthService:
 
         if not user or user.deletedAt or not user.isActive:
             raise HTTPException(401, "User invalid")
+
         await prisma.refreshtoken.update(
-            where={"token": refresh_token},
+            where={"token": hashed},
             data={"isRevoked": True}
         )
 
@@ -124,7 +142,7 @@ class AuthService:
         await prisma.refreshtoken.create(
             data={
                 "userId": user.id,
-                "token": new_refresh,
+                "token": hash_token(new_refresh),
                 "expiresAt": datetime.utcnow() + timedelta(days=7)
             }
         )
@@ -134,20 +152,23 @@ class AuthService:
             "refresh_token": new_refresh,
             "token_type": "bearer"
         }
+
     @staticmethod
     async def logout(refresh_token: str):
+        hashed = hash_token(refresh_token)
 
         stored = await prisma.refreshtoken.find_unique(
-            where={"token": refresh_token}
+            where={"token": hashed}
         )
 
         if not stored:
             return {"message": "Already logged out"}
 
         await prisma.refreshtoken.update(
-            where={"token": refresh_token},
+            where={"token": hashed},
             data={"isRevoked": True}
         )
+
         return {"message": "Logged out successfully"}
 
     @staticmethod

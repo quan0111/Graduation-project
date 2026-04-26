@@ -34,7 +34,6 @@ class SellerApplicationOut(BaseModel):
     status: str
     createdAt: datetime
 
-    # 🔥 relationship
     user: Optional[UserShort] = None
     shop: Optional[ShopShort] = None
     reviewedBy: Optional[UserShort] = None
