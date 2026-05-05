@@ -1,28 +1,32 @@
-// components/Confirmation.tsx
-
 import { Key } from "lucide-react";
 
-interface ConfirmationProps {
+interface Props {
   total: number;
+  onSubmit: () => void;
+  loading?: boolean;
 }
 
-export const Confirmation: React.FC<ConfirmationProps> = ({ total }) => {
+export const Confirmation: React.FC<Props> = ({
+  total,
+  onSubmit,
+  loading,
+}) => {
   return (
     <div className="space-y-4">
-
-      {/* Security notice */}
-      <div className="flex items-center gap-2 bg-green-50 text-green-700 p-4 rounded-lg">
+      <div className="flex items-center gap-2 bg-green-50 p-4 rounded">
         <Key size={18} />
-        <span className="text-sm font-medium">
-          Thanh toán bảo mật
-        </span>
+        <span>Thanh toán bảo mật</span>
       </div>
 
-      {/* Checkout button */}
-      <button className="btn-accent w-full py-3 text-sm font-semibold">
-        Thanh toán {total.toLocaleString("vi-VN")}đ
+      <button
+        onClick={onSubmit}
+        disabled={loading}
+        className="btn-accent w-full py-3"
+      >
+        {loading
+          ? "Đang xử lý..."
+          : `Thanh toán ${total.toLocaleString()}đ`}
       </button>
-
     </div>
   );
 };

@@ -14,7 +14,7 @@ async def get_all_shops():
     return shops
 @router.get("/{shop_id}", response_model=ShopOut)
 async def get_shop_by_id(shop_id: int):
-    shop = await ShopService.get_shop_by_id(shop_id)
+    shop = await ShopService.get_shop(shop_id)
     return shop
 @router.patch("/{shop_id}", response_model=ShopOut)
 async def update_shop(shop_id: int, shop_data: ShopUpdate):

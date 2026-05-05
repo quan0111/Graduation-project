@@ -9,7 +9,9 @@ router = APIRouter(prefix="/reviews", tags=["Reviews"])
 @router.post("/", response_model=ReviewOut)
 async def create_review(review_data: ReviewCreate):
     return await ReviewService.create_review(review_data)
-
+@router.get("/", response_model=List[ReviewOut])
+async def get_all_reviews():
+    return await ReviewService.get_all_review()
 @router.get("/product/{product_id}", response_model=List[ReviewOut])
 async def get_reviews_by_product(product_id: int):
     return await ReviewService.get_reviews_by_product(product_id)

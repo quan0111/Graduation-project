@@ -23,5 +23,4 @@ class AuthUser(BaseModel):
 class AuthResponse(BaseModel):
     user: AuthUser
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"

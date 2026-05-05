@@ -5,6 +5,7 @@ from datetime import datetime
 class OrderItemBase(BaseModel):
     productId: int
     variantId: Optional[int] = None
+    shopId: int
     quantity: int
     price: float
 class OrderItemCreate(OrderItemBase):
@@ -31,7 +32,6 @@ class PaymentOut(PaymentBase):
         from_attributes = True
 class OrderBase(BaseModel):
     userId: int
-    shopId: int
     subtotal: float
     shippingFee: float = 0
     discountAmount: float = 0
@@ -45,7 +45,6 @@ class OrderUpdate(BaseModel):
 class OrderOut(BaseModel):
     id: int
     userId: int
-    shopId: int
     status: str
     subtotal: float
     shippingFee: float

@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Request
 from typing import List
 from src.modules.cart.cart_service import CartService
 from src.modules.cart.cart_schema import (
@@ -28,7 +28,6 @@ async def get_cart(cart_id: int):
 async def get_cart_by_user(user_id: int):
     return await service.get_cart_by_user(user_id)
 
-
 @router.delete("/{cart_id}")
 async def delete_cart(cart_id: int):
     await service.delete_cart(cart_id)
@@ -36,11 +35,15 @@ async def delete_cart(cart_id: int):
 
 
 @router.post("/items", response_model=CartItemOut)
-async def add_item(data: CartItemCreate):
-    return await service.add_item(data)
+async def add_item(data: CartItemCreate, request: Request):
+    user = request.state.user
 
+    if not user:
+        raise HTTPException(401, "Unauthorized")
 
-@router.put("/items/{item_id}", response_model=CartItemOut)
+    return await service.add_item(user.id, data)
+
+@router.patch("/items/{item_id}", response_model=CartItemOut)
 async def update_item(item_id: int, data: CartItemUpdate):
     return await service.update_item(item_id, data.quantity)
 

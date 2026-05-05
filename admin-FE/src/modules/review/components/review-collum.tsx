@@ -1,42 +1,29 @@
-import { Button } from "@/components/ui/button";
-import { Eye, MoreVertical, Trash2 } from "lucide-react";
-import { RatingStars } from "./rating-star";
 
-import { ReviewBadge } from "./review-badge";
-
-export const reviewColumns = [
-  { key: "productName", label: "Sản phẩm" },
-  { key: "reviewer", label: "Người đánh giá" },
-
+export const reviewColumns = (onApprove: any, onDelete: any) => [
+  {
+    key: "productName",
+    label: "Sản phẩm",
+  },
+  {
+    key: "reviewer",
+    label: "Người đánh giá",
+  },
   {
     key: "rating",
-    label: "Sao",
-    render: (r: any) => <RatingStars rating={r.rating} />,
-    sortable: true,
+    label: "Rating",
+    render: (r: any) => "⭐".repeat(r.rating),
   },
-
-  { key: "title", label: "Tiêu đề", sortable: true },
-
   {
-    key: "status",
-    label: "Trạng thái",
-    render: (r: any) => <ReviewBadge status={r.status} />,
-    sortable: true,
+    key: "content",
+    label: "Nội dung",
   },
-
-  { key: "date", label: "Ngày", sortable: true },
-
   {
     key: "actions",
     label: "Thao tác",
-    render: () => (
+    render: (r: any) => (
       <div className="flex gap-2">
-        <Button size="sm" variant="ghost">
-          <Eye className="w-4 h-4" />
-        </Button>
-        <Button size="sm" variant="ghost">
-          <Trash2 className="w-4 h-4" />
-        </Button>
+        <button onClick={() => onApprove(r)}>Duyệt</button>
+        <button onClick={() => onDelete(r)}>Xóa</button>
       </div>
     ),
   },

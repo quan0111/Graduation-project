@@ -1,34 +1,50 @@
-import { useMutation, type UseMutationOptions } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api";
-import { API_URL_CART } from "@/constant/config";
-import type { ICart } from "../types";
+import { apiClient } from "../../../lib/api";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-export type UpdateCartDto = Partial<ICart>;
-
-interface UpdateCartResponse {
-    data: ICart;
-    error: boolean;
-    message: string;
-    timestamp: string;
-}
-
-const updateCart = async (
-    id: string,
-    data: UpdateCartDto,
-): Promise<UpdateCartResponse> => {
-    const res = await apiClient.patch(`${API_URL_CART}/${id}`, data);
-    return res.data;
+export const updateItem = async (data: {
+  item_id: number;
+  quantity: number;
+}) => {
+  const res = await apiClient.patch(`/cart/items/${data.item_id}`, {
+    quantity: data.quantity,
+  });
+  return res.data;
 };
 
-export const useUpdateCart = (
-    config?: UseMutationOptions<
-        UpdateCartResponse,
-        Error,
-        { id: string; data: UpdateCartDto }
-    >,
-) => {
-    return useMutation({
-        mutationFn: ({ id, data }) => updateCart(id, data),
-        ...config,
-    });
+export const useUpdateItem = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateItem,
+
+    // 🔥 optimistic update
+    onMutate: async (newData) => {
+      await queryClient.cancelQueries({ queryKey: ["cart"] });
+
+      const prev = queryClient.getQueryData<any>(["cart"]);
+
+      if (prev) {
+        queryClient.setQueryData(["cart"], {
+          ...prev,
+          items: prev.items.map((i: any) =>
+            i.id === newData.item_id
+              ? { ...i, quantity: newData.quantity }
+              : i
+          ),
+        });
+      }
+
+      return { prev };
+    },
+
+    onError: (_err, _newData, context) => {
+      if (context?.prev) {
+        queryClient.setQueryData(["cart"], context.prev);
+      }
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["cart"] });
+    },
+  });
 };

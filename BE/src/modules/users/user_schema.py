@@ -55,6 +55,5 @@ class UserOut(UserBase):
 
     addresses: List[AddressShort] = Field(default_factory=list)
     cart: Optional[CartShort] = None
-    orders: List[OrderShort] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}

@@ -15,8 +15,12 @@ async def get_all_products():
     return products
 @router.get("/{product_id}", response_model=ProductOut)
 async def get_product(product_id: int):
-    product = await ProductService.get_product(product_id)
+    product = await ProductService.get_product_by_id(product_id)
     return product
+@router.get("/products-by-shop/{shop_id}", response_model=List[ProductOut]) 
+async def get_products_by_shop(shop_id: int):
+    products = await ProductService.get_products_by_shop(shop_id)
+    return products
 @router.patch("/{product_id}", response_model=ProductOut)
 async def update_product(product_id: int, product_data: ProductUpdate):
     updated_product = await ProductService.update_product(product_id, product_data)

@@ -1,5 +1,7 @@
 from fastapi import HTTPException
 from datetime import datetime
+
+import fastapi
 from src.core.database import prisma
 from src.modules.product.product_schema import ProductCreate, ProductOut, ProductUpdate
 
@@ -76,60 +78,84 @@ class ProductService:
         product_dict["totalStock"] = sum(v.stock for v in product.variants)
         return ProductOut(**product_dict)
     @staticmethod
-    async def get_product(product_id: int) -> ProductOut:
-        product = await prisma.product.find_unique(
-            where={"id": product_id, "deletedAt": None},
-            include={
-                "variants": {
-                    "include": {
-                        "images": True
-                    }
-                },
-                "category": True,
-                "images": True,
-                "attributes": True,
-                "tags": True,
-            }
-        )
-
-        if not product:
-            raise HTTPException(status_code=404, detail="Product not found")
-
-        total_stock = sum(v.stock for v in product.variants)
-
-        product_dict = product.model_dump()
-
-        for field in ["variants", "images", "attributes", "tags"]:
-            product_dict[field] = product_dict.get(field) or []
-
-        product_dict["totalStock"] = total_stock
-
-        return ProductOut(**product_dict)
-
-    @staticmethod
-    async def get_all_products() -> list[ProductOut]:
+    async def get_all_products():
         products = await prisma.product.find_many(
             where={"deletedAt": None},
             include={
                 "shop": True,
                 "variants": True,
                 "tags": True,
-                "category": True
+                "category": True,
+                "images": True,   # 👈 QUAN TRỌNG
             }
         )
 
         result = []
+
         for p in products:
             data = p.model_dump()
 
             # fix null
             data["variants"] = data.get("variants") or []
             data["tags"] = data.get("tags") or []
+            data["images"] = data.get("images") or []
 
-            result.append(ProductOut(**data))
+            result.append(data)
 
         return result
 
+    @staticmethod
+    async def get_product_by_id(product_id: int) -> ProductOut:
+        product = await prisma.product.find_unique(
+            where={"id": product_id},
+            include={
+                "shop": True,
+                "variants": True,
+                "tags": True,
+                "category": True,
+                "images": True,   # 👈 QUAN TRỌNG
+            }
+        )
+
+        if not product or product.deletedAt is not None:
+            raise HTTPException(404, "Product not found")
+
+        data = product.model_dump()
+
+        # fix null
+        data["variants"] = data.get("variants") or []
+        data["tags"] = data.get("tags") or []
+        data["images"] = data.get("images") or []
+
+        return ProductOut(**data)
+    
+    @staticmethod
+    async def get_products_by_shop(shop_id: int):
+        products = await prisma.product.find_many(
+            where={"shopId": shop_id, "deletedAt": None},
+            include={
+                "shop": True,
+                "variants": True,
+                "tags": True,
+                "category": True,
+                "images": True,   # 👈 QUAN TRỌNG
+            }
+        )
+
+        result = []
+
+        for p in products:
+            data = p.model_dump()
+
+            # fix null
+            data["variants"] = data.get("variants") or []
+            data["tags"] = data.get("tags") or []
+            data["images"] = data.get("images") or []
+
+            result.append(data)
+
+        return result
+    
     @staticmethod
     async def update_product(product_id: int, product_data: ProductUpdate) -> ProductOut:
         data = product_data.model_dump(exclude_unset=True)

@@ -1,3 +1,4 @@
+import type {  ICartShort } from "@/modules/cart/types";
 import type { UserRoleType } from "../../../constant";
 
 export interface IAuth {
@@ -7,11 +8,19 @@ export interface IAuth {
   phone?: string;
 }
 
-
+export interface IMe {
+  id: number;
+  email: string;
+  fullName?: string;
+  avatarUrl?: string;
+  role: string;
+  cart: ICartShort;
+}
 export interface AuthUser {
   id: string;
   email: string;
   fullname: string;
+  avatarUrl?: string;
   role: UserRoleType;
 }
 export interface RegisterRequest {

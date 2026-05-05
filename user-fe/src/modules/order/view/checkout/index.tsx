@@ -1,13 +1,9 @@
-import { useGetCart } from "@/modules/cart/api/get-cart";
+import { useCart } from "@/modules/cart/api/get-cart";
 import { useGetAddresses } from "@/modules/address/api/address";
 import { useCreateOrder } from "@/modules/order/api/add-order";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useCheckout } from "../../hook/useCheckout";
-import type {
-  IOrderItem,
-  PaymentMethodType,
-} from "../../types";
 
 import { Stepper } from "../../components/checkout/stepper";
 import { ShippingForm } from "../../components/checkout/shippingForm";
@@ -16,157 +12,126 @@ import { PaymentMethod } from "../../components/checkout/paymentMethod";
 import { Confirmation } from "../../components/checkout/confirmation";
 import { OrderSummary } from "../../components/checkout/orderSumary";
 
-/* ---------- shipping ---------- */
-
-type ShippingMethodType = "STANDARD" | "EXPRESS" | "SAME_DAY";
-
-const shippingMethods: {
-  id: ShippingMethodType;
-  name: string;
-  time: string;
-}[] = [
-  { id: "STANDARD", name: "Tiêu chuẩn", time: "3-5 ngày" },
-  { id: "EXPRESS", name: "Nhanh", time: "1-2 ngày" },
-  { id: "SAME_DAY", name: "Trong ngày", time: "2-6h" },
-];
-
-/* ---------- payment ---------- */
-
-const paymentMethods: {
-  id: PaymentMethodType;
-  name: string;
-}[] = [
-  { id: "COD", name: "Thanh toán khi nhận hàng" },
-  { id: "VNPAY", name: "VNPay" },
-  { id: "STRIPE", name: "Stripe" },
-];
-
-/* ---------- page ---------- */
-
 export default function CheckOutPage() {
   const navigate = useNavigate();
-  
-  // API hooks
-  const { data: cartData, isLoading: cartLoading } = useGetCart();
+
+  const { data: cartData, isLoading } = useCart();
   const { data: addresses } = useGetAddresses();
   const createOrderMutation = useCreateOrder();
 
-  // Transform cart data to order items
-  const checkoutItems: IOrderItem[] = (cartData?.data?.data?.[0]?.items || []).map((item: any) => ({
-    id: item.id,
-    order_id: 0, // Will be set when order is created
-    product_id: Number(item.product_id),
+  const cartItems = cartData?.items || [];
+
+  /* 🔥 TRANSFORM */
+  const checkoutItems = cartItems.map((item: any) => ({
+    productId: item.product_id,
     quantity: item.quantity,
     price: item.variant?.price || item.product?.price || 0,
-    product_name: item.product?.name || "Sản phẩm",
-    product_image: item.product?.Images?.[0]?.url || "/placeholder.png",
-    created_at: "",
   }));
 
-  const state = useCheckout(checkoutItems);
+  const state = useCheckout(cartItems as any);
 
-  // Handle place order
+  /* 🔥 CREATE ORDER */
   const handlePlaceOrder = async () => {
+    if (!state.shippingAddress) {
+      toast.error("Chọn địa chỉ trước");
+      return;
+    }
+
     try {
-      const orderData = {
-        items: checkoutItems.map(item => ({
-          product_id: item.product_id,
-          quantity: item.quantity,
-        })),
-        shipping_address: state.shippingAddress,
-        shipping_method: state.shipping,
-        payment_method: state.payment,
-        total_amount: state.total,
+      const raw = localStorage.getItem("auth-storage");
+      const user = raw ? JSON.parse(raw)?.state?.user : null;
+
+      if (!user) {
+        toast.error("Chưa đăng nhập");
+        return;
+      }
+
+      const subtotal = checkoutItems.reduce(
+        (sum, i) => sum + i.price * i.quantity,
+        0
+      );
+
+      const payload = {
+        userId: user.id,
+
+        shippingFee: state.shippingPrice,
+        discountAmount: 0,
+        totalAmount: subtotal + state.shippingPrice,
+
+        items: checkoutItems,
+
+        payment: {
+          method: state.payment,
+        },
       };
 
-      await createOrderMutation.mutateAsync(orderData);
-      toast.success("Đặt hàng thành công!");
+      console.log("🚀 ORDER PAYLOAD", payload);
+
+      await createOrderMutation.mutateAsync(payload);
+
+      toast.success("Đặt hàng thành công");
       navigate("/orders");
-    } catch (error) {
-      toast.error("Đặt hàng thất bại. Vui lòng thử lại.");
-      console.error("Order error:", error);
+
+    } catch (err) {
+      console.error(err);
+      toast.error("Lỗi tạo đơn");
     }
   };
 
-  if (cartLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Đang tải thông tin thanh toán...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (checkoutItems.length === 0) {
-    navigate("/cart");
-    return null;
-  }
+  if (isLoading) return <div>Loading...</div>;
 
   return (
     <div className="grid lg:grid-cols-3 gap-8 p-6">
-      {/* LEFT */}
       <div className="lg:col-span-2 space-y-6">
         <Stepper step={state.step} />
 
-        {/* STEP 1 */}
         {state.step === 1 && (
           <ShippingForm
             addresses={addresses || []}
-            onNext={(data) => {
-              console.log("shipping info:", data);
+            onNext={(a) => {
+              state.setShippingAddress(a);
               state.setStep(2);
             }}
           />
         )}
 
-        {/* STEP 2 */}
         {state.step === 2 && (
           <>
             <ShippingMethod
               value={state.shipping}
-              onChange={(value) => state.setShipping(value as ShippingMethodType)}
-              methods={shippingMethods}
+              onChange={(v) => state.setShipping(v as any)}
+              methods={[]}
             />
-
-            <button
-              onClick={() => state.setStep(3)}
-              className="btn-primary w-full"
-            >
+            <button onClick={() => state.setStep(3)}>
               Tiếp tục
             </button>
           </>
         )}
 
-        {/* STEP 3 */}
         {state.step === 3 && (
           <>
             <PaymentMethod
               value={state.payment}
               onChange={state.setPayment}
-              methods={paymentMethods}
+              methods={[]}
             />
-
-            <button
-              onClick={() => state.setStep(4)}
-              className="btn-primary w-full"
-              disabled={createOrderMutation.isPending}
-            >
-              {createOrderMutation.isPending ? "Đang xử lý..." : "Xác nhận"}
+            <button onClick={() => state.setStep(4)}>
+              Tiếp tục
             </button>
           </>
         )}
 
-        {/* STEP 4 */}
         {state.step === 4 && (
-          <Confirmation total={state.total} />
+          <Confirmation
+            total={state.total}
+            onSubmit={handlePlaceOrder}
+            loading={createOrderMutation.isPending}
+          />
         )}
       </div>
 
-      {/* RIGHT */}
       <OrderSummary
-        items={checkoutItems}
+        items={cartItems as any}
         total={state.total}
         subtotal={state.subtotal}
         tax={state.tax}

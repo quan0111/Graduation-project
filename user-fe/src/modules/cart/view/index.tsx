@@ -1,99 +1,90 @@
-import { useGetCart } from "../api/get-cart";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useCart } from "../api/get-cart";
 import { useDeleteCartItem } from "../api/delete-cart";
-import { useUpdateCart } from "../api/update-cart";
+import { useUpdateItem } from "../api/update-cart";
+import { useClearCart } from "../api/clear-cart";
+
 import { EmptyCart } from "../components/emptyCart";
 import { CartList } from "../components/cartList";
 import { CartSummary } from "../components/cartSummary";
-import type { ICartItem } from "../types";
-
-// Type for transformed cart item that matches component expectations
-type TransformedCartItem = {
-  id: string;
-  name: string;
-  image: string;
-  variant?: string;
-  price: number;
-  quantity: number;
-  shopId: string;
-  shopName: string;
-};
-
-/* ---------- PAGE ---------- */
 
 export default function CartPage() {
-  const { data: cartData, isLoading, refetch } = useGetCart();
+  const navigate = useNavigate();
+
+  const { data: cartData, isLoading } = useCart();
   const deleteMutation = useDeleteCartItem();
-  const updateMutation = useUpdateCart();
+  const updateMutation = useUpdateItem();
+  const clearMutation = useClearCart();
 
-  // Transform API data - handle both array and single cart object
-  const cartItems: ICartItem[] = cartData?.data?.data?.[0]?.items || 
-                                  cartData?.data?.items || 
-                                  [];
+  const [selected, setSelected] = useState<string[]>([]);
 
-  // Transform cart items to match the component's expected format
-  const transformedItems: TransformedCartItem[] = cartItems.map((item) => ({
+  const cartItems = cartData?.items || [];
+
+  const transformedItems = cartItems.map((item: any) => ({
     id: String(item.id),
     name: item.product?.name || "Sản phẩm",
-    image: item.product?.Images?.[0]?.url || "https://via.placeholder.com/100",
-    variant: item.variant?.name || "Default",
+    image: item.product?.Images?.[0]?.url || "",
+    variant: item.variant?.name,
     price: item.variant?.price || item.product?.price || 0,
     quantity: item.quantity,
     shopId: String(item.product?.shop_id || ""),
     shopName: item.product?.Shop?.name || "Shop",
   }));
 
-  // Handle remove item
-  const handleRemove = async (id: string) => {
-    try {
-      await deleteMutation.mutateAsync(id);
-      refetch();
-    } catch (error) {
-      console.error("Failed to remove item:", error);
-    }
-  };
-
-  // Handle update quantity
-  const handleUpdateQty = async (id: string, quantity: number) => {
-    try {
-      await updateMutation.mutateAsync({ id, data: { items: [{ quantity }] } });
-      refetch();
-    } catch (error) {
-      console.error("Failed to update quantity:", error);
-    }
-  };
-
-  // Handle select item (for checkout)
+  // SELECT
   const handleSelect = (id: string) => {
-    // Implement selection logic if needed
-    console.log("Selected item:", id);
+    setSelected((prev) =>
+      prev.includes(id)
+        ? prev.filter((i) => i !== id)
+        : [...prev, id]
+    );
   };
 
-  // Calculate totals
-  const selectedItems = transformedItems; // All items selected by default
+  // UPDATE
+  const handleUpdateQty = async (id: string, quantity: number) => {
+    await updateMutation.mutateAsync({
+      item_id: Number(id),
+      quantity,
+    });
+  };
+
+  // DELETE
+  const handleRemove = async (id: string) => {
+    await deleteMutation.mutateAsync(Number(id));
+  };
+
+  // CLEAR
+  const handleClear = async () => {
+    await clearMutation.mutateAsync(cartData?.id as number);
+  };
+
+  // CHECKOUT
+  const handleCheckout = () => {
+    const selectedItems = transformedItems.filter((item) =>
+      selected.includes(item.id)
+    );
+
+    navigate("/checkout", {
+      state: {
+        items: selectedItems,
+      },
+    });
+  };
+
+  const selectedItems = transformedItems.filter((i) =>
+    selected.includes(i.id)
+  );
+
   const subtotal = selectedItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
 
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Đang tải giỏ hàng...</p>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <div>Loading...</div>;
+  if (!transformedItems.length) return <EmptyCart />;
 
-  // Show empty cart if no items
-  if (transformedItems.length === 0) {
-    return <EmptyCart />;
-  }
-
-  // Group items by shop
-  const grouped = transformedItems.reduce((acc: Record<string, TransformedCartItem[]>, item) => {
+  const grouped = transformedItems.reduce((acc: any, item) => {
     if (!acc[item.shopId]) acc[item.shopId] = [];
     acc[item.shopId].push(item);
     return acc;
@@ -104,17 +95,24 @@ export default function CartPage() {
       <div className="lg:col-span-2">
         <CartList
           grouped={grouped}
-          selected={selectedItems.map((item) => item.id)}
+          selected={selected}
           onSelect={handleSelect}
           onQty={handleUpdateQty}
           onRemove={handleRemove}
-          isLoading={deleteMutation.isPending || updateMutation.isPending}
         />
+
+        <button
+          onClick={handleClear}
+          className="mt-4 text-red-500"
+        >
+          Xóa toàn bộ
+        </button>
       </div>
 
       <CartSummary
         subtotal={subtotal}
-        disabled={selectedItems.length === 0}
+        disabled={!selected.length}
+        onCheckout={handleCheckout}
       />
     </div>
   );

@@ -27,9 +27,9 @@ export const useProducts = (products: IProduct[]) => {
       // ✅ RATING
       if (filters.rating !== undefined) {
         const avgRating =
-          p.Review && p.Review.length > 0
-            ? p.Review.reduce((acc, r) => acc + (r.rating || 0), 0) /
-              p.Review.length
+          p.reviews && p.reviews.length > 0
+            ? p.reviews.reduce((acc, r) => acc + (r.rating || 0), 0) /
+              p.reviews.length
             : 0;
 
         if (avgRating < filters.rating) return false;

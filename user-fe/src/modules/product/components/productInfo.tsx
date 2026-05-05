@@ -3,7 +3,7 @@ import { Star } from "lucide-react";
 import type { IProduct } from "@/modules/product/types";
 
 export const ProductInfo: React.FC<{ product: IProduct }> = ({ product }) => {
-  const reviews = product.Review ?? [];
+  const reviews = product.reviews ?? [];
 
   // 👉 tính rating trung bình từ Review
   const rating =
@@ -53,13 +53,13 @@ export const ProductInfo: React.FC<{ product: IProduct }> = ({ product }) => {
         <span>{format(reviewCount)} đánh giá</span>
 
         {/* Category */}
-        {product.Category?.name && (
-          <span>Danh mục: {product.Category.name}</span>
+        {product.category?.name && (
+          <span>Danh mục: {product.category.name}</span>
         )}
 
         {/* Shop */}
-        {product.Shop?.name && (
-          <span>Shop: {product.Shop.name}</span>
+        {product.shop?.name && (
+          <span>Shop: {product.shop.name}</span>
         )}
       </div>
     </>

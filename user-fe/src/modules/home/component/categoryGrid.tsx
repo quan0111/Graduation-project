@@ -24,20 +24,15 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({ categories }) => {
           {categories.map((c) => (
             <Link
               key={c.id}
-              to={`/products?category=${encodeURIComponent(c.name)}`}
+              to={`/products?category=${encodeURIComponent(c.slug || c.name)}`}
             >
               <Card className="hover:shadow-md transition cursor-pointer">
                 <CardContent className="text-center p-4 space-y-2">
 
                   {/* Icon */}
                   <div className="text-3xl">
-                    {c.slug || "📦"}
+                    {c.name || "📦"}
                   </div>
-
-                  {/* Name */}
-                  <p className="text-sm font-medium truncate">
-                    {c.name}
-                  </p>
 
                 </CardContent>
               </Card>

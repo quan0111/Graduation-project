@@ -23,7 +23,6 @@ class OrderService:
                     if variant.stock < item.quantity:
                         raise HTTPException(400, "Not enough stock")
 
-                # 👉 lấy product
                 product = await tx.product.find_unique(
                     where={"id": item.productId}
                 )
@@ -35,6 +34,7 @@ class OrderService:
                 order_items_data.append({
                     "productId": item.productId,
                     "variantId": item.variantId,
+                    "shopId": item.shopId,
                     "quantity": item.quantity,
                     "price": price,
                     "productName": product.name,
@@ -51,7 +51,6 @@ class OrderService:
             order = await tx.order.create(
                 data={
                     "user": {"connect": {"id": order_data.userId}},
-                    "shop": {"connect": {"id": order_data.shopId}},
                     "subtotal": subtotal,
                     "shippingFee": order_data.shippingFee,
                     "discountAmount": order_data.discountAmount,
@@ -82,11 +81,14 @@ class OrderService:
             },
             include={
                 "items": {
-                    "where": {"deletedAt": None}
+                    "where": {"deletedAt": None},
+                    "include": {
+                        "product": True,
+                        "variant": True
+                    }
                 },
                 "payment": True,
                 "user": True,
-                "shop": True
             }
         )
 

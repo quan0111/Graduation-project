@@ -15,6 +15,10 @@ export interface ICart {
   itemCount: number
 }
 
+export interface ICartShort{
+  total: number
+  itemCount: number
+}
 export interface ICartItem {
   id: number | string
   product_id: string

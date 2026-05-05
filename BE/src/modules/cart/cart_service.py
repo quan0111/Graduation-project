@@ -4,17 +4,19 @@ from datetime import datetime
 
 
 class CartService:
-    async def create_cart(self, data):
-        existing = await prisma.cart.find_unique(
-            where={"userId": data.userId}
+
+    async def get_or_create_cart(self, user_id: int):
+        cart = await prisma.cart.find_unique(
+            where={"userId": user_id}
         )
 
-        if existing:
-            raise HTTPException(400, "User already has a cart")
+        if not cart:
+            cart = await prisma.cart.create(
+                data={"userId": user_id}
+            )
 
-        return await prisma.cart.create(
-            data=data.model_dump()
-        )
+        return cart
+
     async def get_cart(self, cart_id: int):
         cart = await prisma.cart.find_unique(
             where={"id": cart_id},
@@ -51,24 +53,15 @@ class CartService:
 
         return self._attach_total(cart)
 
-    # ======================
-    # ADD ITEM
-    # ======================
-    async def add_item(self, data):
-        cart = await prisma.cart.find_unique(
-            where={"id": data.cartId}
-        )
-        if not cart:
-            raise HTTPException(404, "Cart does not exist")
+    async def add_item(self, user_id: int, data):
+        cart = await self.get_or_create_cart(user_id)
 
-        # Validate product
         product = await prisma.product.find_unique(
             where={"id": data.productId}
         )
         if not product:
             raise HTTPException(400, "Product not found")
 
-        # Validate variant
         variant = None
         if data.variantId:
             variant = await prisma.productvariant.find_unique(
@@ -78,27 +71,32 @@ class CartService:
                 raise HTTPException(400, "Variant not found")
 
             if variant.productId != data.productId:
-                raise HTTPException(400, "Variant does not belong to product")
+                raise HTTPException(400, "Variant invalid")
 
-        # Validate quantity
         if data.quantity <= 0:
             raise HTTPException(400, "Quantity must be > 0")
 
         return await prisma.cartitem.upsert(
             where={
                 "cartId_productId_variantId": {
-                    "cartId": data.cartId,
+                    "cartId": cart.id,
                     "productId": data.productId,
                     "variantId": data.variantId
                 }
             },
             data={
-                "create": data.model_dump(),
+                "create": {
+                    "cartId": cart.id,
+                    "productId": data.productId,
+                    "variantId": data.variantId,
+                    "quantity": data.quantity
+                },
                 "update": {
                     "quantity": {"increment": data.quantity}
                 }
             }
         )
+
     async def update_item(self, item_id: int, quantity: int):
         if quantity < 0:
             raise HTTPException(400, "Quantity must be >= 0")
@@ -107,7 +105,6 @@ class CartService:
         if not item:
             raise HTTPException(404, "Item not found")
 
-        # Auto delete nếu = 0
         if quantity == 0:
             await prisma.cartitem.delete(where={"id": item_id})
             return {"message": "Item removed"}
@@ -116,14 +113,13 @@ class CartService:
             where={"id": item_id},
             data={"quantity": quantity}
         )
+
     async def delete_item(self, item_id: int):
         item = await prisma.cartitem.find_unique(where={"id": item_id})
         if not item:
             raise HTTPException(404, "Item not found")
 
-        return await prisma.cartitem.delete(
-            where={"id": item_id}
-        )
+        return await prisma.cartitem.delete(where={"id": item_id})
 
     async def clear_cart(self, cart_id: int):
         cart = await prisma.cart.find_unique(where={"id": cart_id})
@@ -141,9 +137,8 @@ class CartService:
         if not cart:
             raise HTTPException(404, "Cart not found")
 
-        return await prisma.cart.delete(
-            where={"id": cart_id}
-        )
+        return await prisma.cart.delete(where={"id": cart_id})
+
     def _attach_total(self, cart):
         total = 0
 

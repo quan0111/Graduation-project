@@ -74,12 +74,20 @@ export interface IPayment {
   deleted_at?: string | null
 }
 export interface ICreateOrderFormInputs {
-  shipping_address_id: number
-  coupon_id?: number
+  userId: number;
+
+  shippingFee: number;
+  discountAmount: number;
+  totalAmount: number;
 
   items: {
-    product_id: number
-    variant_id?: number
-    quantity: number
-  }[]
+    productId: number;
+    variantId?: number | null;
+    quantity: number;
+    price: number;
+  }[];
+
+  payment?: {
+    method: PaymentMethodType;
+  };
 }

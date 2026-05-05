@@ -1,28 +1,31 @@
 import { useGetProduct } from "../api/get-product";
 import type { IProduct } from "../types";
 import type { IShop } from "@/modules/seller/types";
-import type { Filters } from "../types/filter";
 
 import { FilterSidebar } from "../components/sideBar";
 import { ProductGrid } from "../components/productGrid";
 import { ProductToolbar } from "../components/toolBar";
-import { useState, useMemo } from "react";
+
+import { useMemo, useState } from "react";
 import { useProducts } from "../hooks/useProduct";
+import { useDebounce } from "@/hook/useDebounce";
 
 /* ---------- PAGE ---------- */
 
 export default function ProductPage() {
   const { data: productsData, isLoading } = useGetProduct();
 
-  // Transform API data
-  const apiProducts: IProduct[] = productsData?.data?.data || [];
-  
-  // Get unique shops from products
+  const apiProducts: IProduct[] = (productsData as unknown as IProduct[]) || [];
+
+  /* 🔥 SEARCH */
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 400);
+
   const shops = useMemo(() => {
     const shopMap = new Map<number, IShop>();
     apiProducts.forEach((p) => {
-      if (p.Shop && !shopMap.has(p.Shop.id)) {
-        shopMap.set(p.Shop.id, p.Shop);
+      if (p.shop && !shopMap.has(p.shop.id)) {
+        shopMap.set(p.shop.id, p.shop);
       }
     });
     return Array.from(shopMap.values());
@@ -35,19 +38,17 @@ export default function ProductPage() {
     { label: "Trên 3M", min: 3000000, max: Infinity },
   ];
 
-  // Use the existing useProducts hook for filtering
-  const { products: filtered, filters, setFilters } = useProducts(apiProducts);
+  const { products, filters, setFilters } = useProducts(apiProducts);
 
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Đang tải sản phẩm...</p>
-        </div>
-      </div>
+  /* 🔥 APPLY SEARCH */
+  const filtered = useMemo(() => {
+    return products.filter((p) =>
+      p.name.toLowerCase().includes(debouncedSearch.toLowerCase())
     );
+  }, [products, debouncedSearch]);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
   }
 
   return (
@@ -59,7 +60,16 @@ export default function ProductPage() {
         shops={shops}
       />
 
-      <div className="lg:col-span-3">
+      <div className="lg:col-span-3 space-y-4">
+
+        {/* 🔥 SEARCH INPUT */}
+        <input
+          placeholder="Tìm sản phẩm..."
+          className="w-full border p-2 rounded"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+
         <ProductToolbar count={filtered.length} />
         <ProductGrid products={filtered} />
       </div>

@@ -1,4 +1,4 @@
-import { useGetOrder } from "../../api/get-order";
+import { useGetOrder } from "../../api/get-orders";
 import { OrdersFilterTabs } from "../../components/filterTab";
 import { OrderCard } from "../../components/orderCard";
 import { EmptyState } from "@/modules/order/components/emptyState";

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, Response
 from fastapi.security import HTTPBearer
 
 from src.modules.auth.schema import (
@@ -20,8 +20,8 @@ async def register(data: RegisterRequest):
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(data: LoginRequest):
-    return await AuthService.login(data)
+async def login(data: LoginRequest, response: Response):
+    return await AuthService.login(data, response)
 
 
 @router.post("/refresh", response_model=AuthResponse)
@@ -97,3 +97,9 @@ async def facebook_login(body: dict):
         return await AuthService.OAuthLogin("facebook", token)
     except Exception as e:
         raise HTTPException(400, str(e))
+@router.get("/me")
+async def get_current_user(request: Request):
+    user = await AuthService.get_current_user(request)
+    if not user:
+        raise HTTPException(404, "User not found")
+    return user

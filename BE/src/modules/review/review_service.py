@@ -29,7 +29,15 @@ class ReviewService:
             },
             order={"createdAt": "desc"}
         )
-
+    @staticmethod
+    async def get_all_review():
+        return await prisma.review.find_many(
+            include={
+                "user": True,
+                "product": True
+            },
+            order={"createdAt": "desc"}
+        )
     @staticmethod
     async def get_review(review_id: int):
         review = await prisma.review.find_unique(

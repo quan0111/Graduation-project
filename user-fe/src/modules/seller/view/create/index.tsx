@@ -7,7 +7,13 @@ import { ShippingSettings } from '../../component/shipp-setting'
 import { IdentityForm } from '../../component/identify-form'
 import { TaxForm } from '../../component/tax-form'
 import { Button } from '@/components/ui/button'
-import type { RegistrationStep, SellerRegistration, IdentityInfo, TaxInfo, ShopInfo } from '../../types'
+
+import { useApplySeller } from "@/modules/seller/api/apply"
+import { toast } from "sonner"
+
+import type { ShopInfo, IdentityInfo, TaxInfo, SellerRegistration } from '../../types'
+
+type RegistrationStep = 'shop-info' | 'shipping' | 'identity' | 'tax' | 'complete'
 
 const STEPS: { id: RegistrationStep; label: string }[] = [
   { id: 'shop-info', label: 'Thông tin Shop' },
@@ -21,6 +27,9 @@ export function SellerRegistrationView() {
   const [currentStep, setCurrentStep] = useState<RegistrationStep>('shop-info')
   const [completedSteps, setCompletedSteps] = useState<RegistrationStep[]>([])
   const [isLoading, setIsLoading] = useState(false)
+
+  const applyMutation = useApplySeller()
+
   const [registration, setRegistration] = useState<SellerRegistration>({
     shopInfo: {
       shopName: '',
@@ -51,56 +60,30 @@ export function SellerRegistrationView() {
     currentStep: 'shop-info',
   })
 
+  // ================= STEP HANDLERS =================
+
   const handleShopInfoSubmit = (data: ShopInfo) => {
-    setIsLoading(true)
-    setTimeout(() => {
-      setRegistration(prev => ({
-        ...prev,
-        shopInfo: data,
-      }))
-      setCompletedSteps(prev => [...new Set<RegistrationStep>([...prev, 'shop-info'])])
-      setCurrentStep('shipping')
-      setIsLoading(false)
-    }, 500)
+    setRegistration(prev => ({ ...prev, shopInfo: data }))
+    setCompletedSteps(prev => ([...new Set([...prev, 'shop-info'])] as RegistrationStep[]))
+    setCurrentStep('shipping')
   }
 
   const handleShippingNext = (data: TaxInfo) => {
-    setIsLoading(true)
-    setTimeout(() => {
-      setRegistration(prev => ({
-        ...prev,
-        taxInfo: data,
-      }))
-      setCompletedSteps(prev => [...new Set<RegistrationStep>([...prev, 'shipping'])])
-      setCurrentStep('identity')
-      setIsLoading(false)
-    }, 500)
+    setRegistration(prev => ({ ...prev, taxInfo: data }))
+    setCompletedSteps(prev => ([...new Set([...prev, 'shipping'])] as RegistrationStep[]))
+    setCurrentStep('identity')
   }
 
   const handleIdentitySubmit = (data: IdentityInfo) => {
-    setIsLoading(true)
-    setTimeout(() => {
-      setRegistration(prev => ({
-        ...prev,
-        identityInfo: data,
-      }))
-      setCompletedSteps(prev => [...new Set<RegistrationStep>([...prev, 'identity'])])
-      setCurrentStep('tax')
-      setIsLoading(false)
-    }, 500)
+    setRegistration(prev => ({ ...prev, identityInfo: data }))
+    setCompletedSteps(prev => ([...new Set([...prev, 'identity'])] as RegistrationStep[]))
+    setCurrentStep('tax')
   }
 
   const handleTaxSubmit = (data: TaxInfo) => {
-    setIsLoading(true)
-    setTimeout(() => {
-      setRegistration(prev => ({
-        ...prev,
-        taxInfo: data,
-      }))
-      setCompletedSteps(prev => [...new Set<RegistrationStep>([...prev, 'tax'])])
-      setCurrentStep('complete')
-      setIsLoading(false)
-    }, 500)
+    setRegistration(prev => ({ ...prev, taxInfo: data }))
+    setCompletedSteps(prev => ([...new Set([...prev, 'tax'])] as RegistrationStep[]))
+    setCurrentStep('complete')
   }
 
   const handlePrevStep = () => {
@@ -109,97 +92,127 @@ export function SellerRegistrationView() {
     else if (currentStep === 'tax') setCurrentStep('identity')
   }
 
+  // ================= 🔥 CALL API (FIXED) =================
+
   const handleComplete = async () => {
-    // Here you would typically send the registration data to your backend
-    console.log('Registration complete:', registration)
-    
-    // Simulate API call
-    setIsLoading(true)
-    setTimeout(() => {
-      setCompletedSteps(prev => [...new Set<RegistrationStep>([...prev, 'complete'])])
+    try {
+      setIsLoading(true)
+
+      const payload = {
+        // shop
+        shopName: registration.shopInfo.shopName,
+
+        // contact
+        businessPhone: registration.shopInfo.phone,
+        businessEmail: registration.shopInfo.email,
+
+        // address
+        addressLine: registration.shopInfo.pickupAddress,
+        ward: registration.shopInfo.ward,
+        district: registration.shopInfo.district,
+        province: registration.shopInfo.city,
+
+        // tax
+        taxCode: registration.taxInfo.taxNumber,
+      }
+
+      console.log("🚀 payload:", payload)
+
+      const userId = 1 // TODO: replace bằng auth user
+
+      await applyMutation.mutateAsync({
+        data: payload,
+        userId,
+      })
+
+      toast.success("Đăng ký thành công 🎉")
+
+      setCompletedSteps(prev => (
+        [...new Set([...prev, 'complete'])] as RegistrationStep[]
+      ))
+
+    } catch (err: any) {
+      console.error(err)
+      toast.error(err?.response?.data?.detail || "Đăng ký thất bại ❌")
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
+
+  // ================= UI =================
 
   return (
     <div className="min-h-screen bg-background">
 
       <div className="container py-8">
         <div className="max-w-4xl mx-auto">
+
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Đăng ký trở thành Người bán ShopHub</h1>
-            <p className="text-muted-foreground">Hoàn thành các bước dưới đây để bắt đầu kinh doanh</p>
+            <h1 className="text-3xl font-bold mb-2">
+              Đăng ký trở thành Người bán ShopHub
+            </h1>
+            <p className="text-muted-foreground">
+              Hoàn thành các bước dưới đây để bắt đầu kinh doanh
+            </p>
           </div>
 
-          {/* Step Indicator */}
-          <StepIndicator steps={STEPS} currentStep={currentStep} completedSteps={completedSteps} />
+          <StepIndicator
+            steps={STEPS}
+            currentStep={currentStep}
+            completedSteps={completedSteps}
+          />
 
-          {/* Step Content */}
-          <div className="bg-card rounded-lg border border-border p-8">
-            {/* Shop Info Step */}
+          <div className="bg-card rounded-lg border p-8">
+
             {currentStep === 'shop-info' && (
               <ShopInfoForm data={registration.shopInfo} onNext={handleShopInfoSubmit} />
             )}
 
-            {/* Shipping Step */}
             {currentStep === 'shipping' && (
-              <ShippingSettings data={registration.taxInfo} onNext={handleShippingNext} onPrev={handlePrevStep} />
+              <ShippingSettings
+                data={registration.taxInfo}
+                onNext={handleShippingNext}
+                onPrev={handlePrevStep}
+              />
             )}
 
-            {/* Identity Step */}
             {currentStep === 'identity' && (
-              <div>
-                <h2 className="text-2xl font-bold text-foreground mb-6">Thông tin định danh</h2>
-                <p className="text-muted-foreground mb-8">
-                  Vui lòng cung cấp thông tin định danh của bạn. Ảnh CCCD phải rõ ràng và dễ đọc.
-                </p>
-                <IdentityForm
-                  initialData={registration.identityInfo}
-                  onSubmit={handleIdentitySubmit}
-                  isLoading={isLoading}
-                />
-              </div>
+              <IdentityForm
+                initialData={registration.identityInfo}
+                onSubmit={handleIdentitySubmit}
+                isLoading={isLoading}
+              />
             )}
 
-            {/* Tax Step */}
             {currentStep === 'tax' && (
-              <div>
-                <TaxForm
-                  initialData={registration.taxInfo}
-                  onSubmit={handleTaxSubmit}
-                  isLoading={isLoading}
-                />
-              </div>
+              <TaxForm
+                initialData={registration.taxInfo}
+                onSubmit={handleTaxSubmit}
+                isLoading={isLoading}
+              />
             )}
 
-            {/* Complete Step */}
             {currentStep === 'complete' && (
               <div className="text-center py-12">
-                <div className="mb-6">
-                  <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-                    <svg className="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                </div>
-                <h2 className="text-2xl font-bold text-foreground mb-2">Đăng ký thành công!</h2>
-                <p className="text-muted-foreground mb-8">
-                  Cảm ơn bạn đã đăng ký. Hệ thống của chúng tôi sẽ xác minh thông tin của bạn trong 24-48 giờ.
-                  Bạn sẽ nhận được email thông báo khi tài khoản được kích hoạt.
+
+                <h2 className="text-2xl font-bold mb-4">
+                  Xác nhận đăng ký
+                </h2>
+
+                <p className="mb-6 text-muted-foreground">
+                  Nhấn hoàn tất để gửi yêu cầu đăng ký seller
                 </p>
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    Số điện thoại hỗ trợ: <span className="font-semibold text-foreground">1900 1234</span>
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Email hỗ trợ: <span className="font-semibold text-foreground">seller@shophub.com</span>
-                  </p>
-                </div>
-                <Button className="mt-8">Quay về Trang chủ</Button>
+
+                <Button
+                  onClick={handleComplete}
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Đang gửi..." : "Hoàn tất"}
+                </Button>
+
               </div>
             )}
-
 
           </div>
         </div>

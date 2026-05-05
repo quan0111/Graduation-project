@@ -1,74 +1,79 @@
-import axios from 'axios';
+import axios from "axios";
 import { API_URL } from "../constant/config";
 
 export const apiClient = axios.create({
-    baseURL: API_URL,
-    timeout: 1000 * 60 * 30 * 3, 
+  baseURL: API_URL,
+  withCredentials: true, // 🔥 QUAN TRỌNG
 });
 
-// REQUEST INTERCEPTOR
-apiClient.interceptors.request.use(
-    function (config) {
-        // Get token from localStorage
-        const token = localStorage.getItem("access_token");
-        
-        // Add Authorization header if token exists
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        
-        // Add Content-Type header
-        config.headers["Content-Type"] = "application/json";
-        
-        return config;
-    },
-    function (error) {
-        return Promise.reject(error);
-    },
-);
+// ===== ACCESS TOKEN =====
+const getAccessToken = () => localStorage.getItem("access_token");
 
-// RESPONSE INTERCEPTOR
+const setAccessToken = (token: string) => {
+  localStorage.setItem("access_token", token);
+};
+
+const clearAuth = () => {
+  localStorage.removeItem("access_token");
+};
+
+// ===== REQUEST =====
+apiClient.interceptors.request.use((config) => {
+  const token = getAccessToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+// ===== REFRESH =====
+let isRefreshing = false;
+let queue: any[] = [];
+
 apiClient.interceptors.response.use(
-    function (response) {
-        return response;
-    },
-    async function (error) {
-        const status = error?.response?.status;
+  (res) => res,
+  async (error) => {
+    const original = error.config;
 
-        if (status === 401) {
-            return Promise.reject({
-                message: "Unauthorized: Invalid or expired token",
-                code: 401,
-                custom: true,
-            });
-        }
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true;
 
-        if (status === 403) {
-            return Promise.reject({
-                message: "No access to ECUSS system",
-                code: 403,
-                custom: true,
-            });
-        }
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          queue.push((token: string) => {
+            original.headers.Authorization = `Bearer ${token}`;
+            resolve(apiClient(original));
+          });
+        });
+      }
 
-        if (status === 404) {
-            return Promise.reject({
-                message: "Not Found",
-                code: 404,
-                custom: true,
-                data: error.response?.data,
-            });
-        }
+      isRefreshing = true;
 
-        if (status === 500) {
-            return Promise.reject({
-                message: "Internal Server Error",
-                code: 500,
-                custom: true,
-                data: error.response?.data,
-            });
-        }
+      try {
+        // 🔥 KHÔNG gửi refresh_token
+        const res = await axios.post(
+          `${API_URL}/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
 
-        return Promise.reject(error);
-    },
+        const newAccess = res.data.access_token;
+
+        setAccessToken(newAccess);
+
+        queue.forEach((cb) => cb(newAccess));
+        queue = [];
+
+        original.headers.Authorization = `Bearer ${newAccess}`;
+        return apiClient(original);
+
+      } catch (err) {
+        clearAuth();
+        window.location.href = "/login";
+        return Promise.reject(err);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    return Promise.reject(error);
+  }
 );

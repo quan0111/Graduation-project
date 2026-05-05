@@ -35,10 +35,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 const mainNavItems = [
   { title: "Tổng quan", icon: LayoutDashboard, href: "/" },
-  { title: "Quản lý Shop", icon: Store, href: "/shops", badge: 12 },
-  { title: "Duyệt sản phẩm", icon: Package, href: "/products", badge: 48 },
-  { title: "Quản lý Đơn hàng", icon: ShoppingCart, href: "/orders", badge: 127 },
+  { title: "Quản lý Shop", icon: Store, href: "/shops"},
+  { title: "Duyệt sản phẩm", icon: Package, href: "/products" },
+  { title: "Quản lý Đơn hàng", icon: ShoppingCart, href: "/orders" },
   { title: "Thống kê doanh thu", icon: BarChart3, href: "/analytics" },
+  { title: "Phê duyệt người bán", icon: Users, href: "/seller-applications" },
   { title: "Quản lý người dùng", icon: Users, href: "/users" },
 ]
 
