@@ -11,20 +11,20 @@ export const OrderItemList: React.FC<OrderItemListProps> = ({ items }) => {
         <div key={item.id} className="flex items-center gap-3">
           {/* image */}
           <img
-            src={item.product_image ?? ""}
-            alt={item.product_name}
+            src={item.Product?.images?.[0]?.url ?? ""}
+            alt={item.Product?.name ?? "Product Image"}
             className="w-12 h-12 object-cover rounded"
           />
 
           {/* info */}
           <div className="flex-1">
             <p className="text-sm font-medium">
-              {item.product_name}
+              {item.Product?.name ?? "Unknown Product"}
             </p>
 
-            {item.variant_name && (
+            {item.variant?.name && (
               <p className="text-xs text-muted">
-                {item.variant_name}
+                {item.variant.name}
               </p>
             )}
           </div>
@@ -33,7 +33,7 @@ export const OrderItemList: React.FC<OrderItemListProps> = ({ items }) => {
           <div className="text-right text-sm">
             <p>x{item.quantity}</p>
             <p className="font-semibold">
-              {item.price.toLocaleString()}đ
+              {item.price?.toLocaleString()}đ
             </p>
           </div>
         </div>

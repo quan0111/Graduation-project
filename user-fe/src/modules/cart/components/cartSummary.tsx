@@ -1,17 +1,16 @@
-// sections/CartSummary.tsx
-
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
 
 type CartSummaryProps = {
   subtotal: number;
   disabled?: boolean;
+  onCheckout?: () => void;
 };
 
 export const CartSummary: React.FC<CartSummaryProps> = ({
   subtotal,
-  disabled = false,
+  disabled,
+  onCheckout,
 }) => {
   return (
     <div className="sticky top-24 bg-white p-4 rounded-lg shadow-sm">
@@ -22,11 +21,13 @@ export const CartSummary: React.FC<CartSummaryProps> = ({
         </span>
       </div>
 
-      <Link to="/checkout">
-        <Button disabled={disabled} className="w-full bg-red-500">
-          Mua hàng
-        </Button>
-      </Link>
+      <Button
+        disabled={disabled}
+        className="w-full bg-red-500"
+        onClick={onCheckout}
+      >
+        Mua hàng
+      </Button>
     </div>
   );
 };

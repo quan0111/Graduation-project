@@ -1,23 +1,41 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Response, Request
+from datetime import datetime, timedelta
+import hashlib
+
 from src.core.database import prisma
-from src.core.security import hash_password, verify_password, create_access_token, create_refresh_token
+from src.core.security import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    create_refresh_token,
+    verify_refresh_token
+)
 from src.modules.auth.schema import RegisterRequest, LoginRequest
+
+
+def hash_token(token: str):
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 class AuthService:
 
     @staticmethod
-    async def register(data: RegisterRequest):
+    def _build_user(user):
+        return {
+            "id": user.id,
+            "email": user.email,
+            "fullName": user.fullName,
+            "avatarUrl": user.avatarUrl,
+            "role": user.role,
+            "isActive": user.isActive
+        }
 
-        existing_user = await prisma.user.find_unique(
-            where={"email": data.email}
-        )
-
-        if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
+    # ===== REGISTER =====
+    @staticmethod
+    async def register(data: RegisterRequest, response: Response):
+        existing = await prisma.user.find_unique(where={"email": data.email})
+        if existing:
+            raise HTTPException(400, "Email already registered")
 
         user = await prisma.user.create(
             data={
@@ -25,103 +43,175 @@ class AuthService:
                 "password": hash_password(data.password),
                 "fullName": data.fullName,
                 "phone": data.phone,
+                "carts": {"create": {}}
             }
         )
 
         access_token = create_access_token({"sub": str(user.id)})
         refresh_token = create_refresh_token({"sub": str(user.id)})
 
-        return {
-            "user": {
-                "id": str(user.id),
-                "email": user.email,
-                "fullname": user.fullName,
-                "role": user.role,
-            },
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-        }
-
-    @staticmethod
-    async def login(data: LoginRequest):
-
-        user = await prisma.user.find_unique(
-            where={"email": data.email}
+        await prisma.refreshtoken.create(
+            data={
+                "userId": user.id,
+                "token": hash_token(refresh_token),
+                "expiresAt": datetime.utcnow() + timedelta(days=7)
+            }
         )
 
-        if not user:
-            raise HTTPException(
-                status_code=404,
-                detail="User not found"
-            )
+        # 🔥 SET COOKIE
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            secure=False,  # dev = False | production = True
+            samesite="lax",
+            max_age=60 * 60 * 24 * 7
+        )
+
+        return {
+            "user": AuthService._build_user(user),
+            "access_token": access_token
+        }
+
+    # ===== LOGIN =====
+    @staticmethod
+    async def login(data: LoginRequest, response: Response):
+        user = await prisma.user.find_unique(where={"email": data.email})
+
+        if not user or user.deletedAt:
+            raise HTTPException(401, "Invalid credentials")
+
+        if not user.isActive:
+            raise HTTPException(403, "User disabled")
 
         if not verify_password(data.password, user.password):
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid password"
-            )
+            raise HTTPException(401, "Invalid credentials")
 
         access_token = create_access_token({"sub": str(user.id)})
         refresh_token = create_refresh_token({"sub": str(user.id)})
 
-        return {
-            "user": {
-                "id": str(user.id),
-                "email": user.email,
-                "fullname": user.fullName,
-                "role": user.role,
-            },
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-        }
-    
-    @staticmethod
-    async def refresh_token(user_id: str):
-
-        user = await prisma.user.find_unique(
-            where={"id": user_id}
+        await prisma.refreshtoken.create(
+            data={
+                "userId": user.id,
+                "token": hash_token(refresh_token),
+                "expiresAt": datetime.utcnow() + timedelta(days=7)
+            }
         )
 
-        if not user:
-            raise HTTPException(
-                status_code=404,
-                detail="User not found"
-            )
-
-        access_token = create_access_token({"sub": str(user.id)})
-        refresh_token = create_refresh_token({"sub": str(user.id)})
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=60 * 60 * 24 * 7
+        )
 
         return {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
+            "user": AuthService._build_user(user),
+            "access_token": access_token
         }
+
+    # ===== REFRESH =====
     @staticmethod
-    async def logout(user_id: str):
-        # Invalidate the refresh token by removing it from the database or cache
-        # This is a placeholder implementation and should be replaced with actual token invalidation logic
-        return {"message": "Logged out successfully"}
-    @staticmethod
-    async def OAuthLogin(provider: str, token: str):
-        # This is a placeholder implementation and should be replaced with actual OAuth login logic
-        # You would typically verify the token with the provider and retrieve user information
-        return {"message": f"Logged in with {provider} successfully"}
-    @staticmethod
-    async def change_password(user_id: str, new_password: str):
-        user = await prisma.user.find_unique(
-            where={"id": user_id}
+    async def refresh(request: Request, response: Response):
+        refresh_token = request.cookies.get("refresh_token")
+
+        if not refresh_token:
+            raise HTTPException(401, "No refresh token")
+
+        payload = await verify_refresh_token(refresh_token)
+
+        if not payload:
+            raise HTTPException(401, "Invalid refresh token")
+
+        user_id = int(payload["sub"])
+
+        # revoke token cũ
+        await prisma.refreshtoken.update(
+            where={"token": hash_token(refresh_token)},
+            data={"isRevoked": True}
         )
 
-        if not user:
-            raise HTTPException(
-                status_code=404,
-                detail="User not found"
+        # tạo token mới
+        new_access = create_access_token({"sub": str(user_id)})
+        new_refresh = create_refresh_token({"sub": str(user_id)})
+
+        await prisma.refreshtoken.create(
+            data={
+                "userId": user_id,
+                "token": hash_token(new_refresh),
+                "expiresAt": datetime.utcnow() + timedelta(days=7)
+            }
+        )
+
+        # set cookie mới
+        response.set_cookie(
+            key="refresh_token",
+            value=new_refresh,
+            httponly=True,
+            secure=False,
+            samesite="lax"
+        )
+
+        return {
+            "access_token": new_access  # 🔥 nhớ key này
+        }
+    # ===== LOGOUT =====
+    @staticmethod
+    async def logout(request: Request, response: Response):
+        refresh_token = request.cookies.get("refresh_token")
+
+        if refresh_token:
+            await prisma.refreshtoken.update(
+                where={"token": hash_token(refresh_token)},
+                data={"isRevoked": True}
             )
 
-        hashed_password = hash_password(new_password)
+        response.delete_cookie("refresh_token")
 
-        await prisma.user.update(
-            where={"id": user_id},
-            data={"password": hashed_password}
+        return {"message": "Logged out"}
+    @staticmethod
+    async def get_current_user(request: Request):
+        refresh_token = request.cookies.get("refresh_token")
+
+        if not refresh_token:
+            return None
+
+        payload = await verify_refresh_token(refresh_token)
+
+        if not payload:
+            return None
+
+        user_id = int(payload["sub"])
+
+        user = await prisma.user.find_unique(where={"id": user_id})
+
+        if not user or user.deletedAt:
+            return None
+
+        # ===== LẤY CART =====
+        cart = await prisma.cart.find_first(
+            where={"userId": user_id},
+            include={"items": True}
         )
 
-        return {"message": "Password changed successfully"}
+        total_items = 0
+
+        if cart and cart.items:
+            total_items = sum(item.quantity for item in cart.items)
+
+        # ===== RETURN =====
+        return {
+            "id": user.id,
+            "email": user.email,
+            "fullName": user.fullName,
+            "role": user.role,
+            "isActive": user.isActive,
+            "avatarUrl": user.avatarUrl,
+
+            "cart": {
+                "id": cart.id if cart else None,
+                "totalItems": total_items
+            }
+        }

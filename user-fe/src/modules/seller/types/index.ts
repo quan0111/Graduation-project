@@ -61,3 +61,39 @@ export interface ISellerOrderItem {
   quantity: number;
   price: number;
 }
+export type RegistrationStep = 'shop-info' | 'shipping' | 'identity' | 'tax' | 'complete'
+export interface ShopInfo {
+  shopName: string
+  pickupAddress: string
+  city: string
+  district: string
+  ward: string
+  email: string
+  phone: string
+}
+
+export interface IdentityInfo {
+  fullName: string
+  cccdFrontImage: File | null
+  cccdBackImage: File | null
+  cccdNumber: string
+}
+
+export interface TaxInfo {
+  businessType: 'individual' | 'household' | 'company'
+  businessRegistrationPlace: string
+  registeredEmail: string
+  taxNumber: string
+  codEnabled: boolean
+  dailyDeliveryEnabled: boolean
+  expressDeliveryEnabled: boolean
+  instantDeliveryEnabled: boolean
+  buyNowPayLaterEnabled: boolean
+}
+
+export interface SellerRegistration {
+  shopInfo: ShopInfo
+  identityInfo: IdentityInfo
+  taxInfo: TaxInfo
+  currentStep: RegistrationStep
+}

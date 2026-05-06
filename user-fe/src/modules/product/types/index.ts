@@ -8,45 +8,51 @@ export type ProductStatusType =
   | "BANNED"
 
 export interface IProduct {
-  id: string
-  name: string
-  slug?: string | null
-  description?: string | null
+  stock: number;
+  id: number;
 
-  price: number
-  shop_id: number
-  category_id: number
+  name: string;
+  slug?: string | null;
+  description?: string | null;
 
-  status: ProductStatusType
+  price: number;
 
-  created_at: string
-  updated_at: string
-  deleted_at?: string | null
+  shop_id: number;
+  category_id: number;
 
-  Attributes?: IProductAttribute[]
-  Tags?: ITag[]
-  Shop?: IShop
-  Category?: ICategory
-  Variants?: IProductVariant[]
-  Images?: IProductImage[]
-  Review?: IReview[]
+  status: ProductStatusType;
+
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+
+  shop?: IShop;
+  category?: ICategory;
+  variants?: IProductVariant[];
+  images?: IProductImage[];
+  reviews?: IReview[];
+
+  attributes?: IProductAttribute[];
+  tags?: ITag[];
 }
 export interface IProductVariant {
-  id: number
-  sku?: string | null
-  price?: number
-  name: string
-  stock: number
-  weight?: number | null
+  id: number;
 
-  product_id: number
+  sku?: string | null;
+  price?: number;
 
-  created_at: string
-  updated_at: string
-  deleted_at?: string | null
-  VariantImage: IVariantImage[]
-  Product?: IProduct
+  name: string;
+  stock: number;
+  weight?: number | null;
 
+  product_id: number;
+
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
+
+  variantImages?: IVariantImage[];
+  product?: IProduct;
 }
 export interface IProductFormInputs {
   name: string

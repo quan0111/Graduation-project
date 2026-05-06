@@ -1,33 +1,36 @@
-from pydantic import BaseModel, Field
-from typing import Optional
-from datetime import datetime
+from pydantic import BaseModel
+from typing import Optional, List, ForwardRef
+
 
 
 class CategoryBase(BaseModel):
     name: str
     slug: str
-    description: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    parentId: Optional[int] = None
+
 
 class CategoryCreate(CategoryBase):
     pass
+
+
 class CategoryUpdate(BaseModel):
     name: Optional[str] = None
     slug: Optional[str] = None
-    description: Optional[str] = None
-    parent_id: Optional[int] = None
-
-
+    parentId: Optional[int] = None
 class CategoryInDB(CategoryBase):
     id: int
-    parent_id: Optional[int] = None
 
     class Config:
         from_attributes = True
+
 class CategoryOut(CategoryBase):
     id: int
-    parent_id: Optional[int] = None
+    parent: Optional["CategoryOut"] = None
+    children: List["CategoryOut"] = []
 
     class Config:
         from_attributes = True
+
+
+# Fix forward reference
+CategoryOut.model_rebuild()

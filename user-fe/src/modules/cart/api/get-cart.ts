@@ -1,34 +1,32 @@
-import {  API_URL_CART } from "@/constant/config";
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
-import type { ICart } from "../types";
-import { apiClient } from "@/lib/api";
+import { apiClient } from "../../../lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { useMe } from "@/modules/auth/api/get-auth-me";
 
-interface CartApiResponse {
-    data: ICart[];
-    count: number;
+export interface ICartItem {
+  id: number;
+  quantity: number;
+  product?: any;
+  variant?: any;
 }
 
-interface CartResponse {
-    data: CartApiResponse;
-    error: boolean;
-    message: string;
-    timestamp: string;
+export interface ICart {
+  id: number;
+  userId: number;
+  items: ICartItem[];
 }
 
-const getCart = async (): Promise<CartResponse> => {
-    const res = await apiClient.get(API_URL_CART);
-    return res.data;
+export const getCart = async (userId: number): Promise<ICart> => {
+  const res = await apiClient.get(`/cart/user/${userId}`);
+  return res.data;
 };
 
-export const useGetCart = (
-    config?: Omit<
-        UseQueryOptions<CartResponse, Error, CartResponse, [string]>,
-        "queryKey" | "queryFn"
-    >,
-) => {
-    return useQuery<CartResponse, Error, CartResponse, [string]>({
-        queryKey: ["Carts"],
-        queryFn: () => getCart(),
-        ...config,
-    });
+export const useCart = () => {
+  const { data: user, isLoading: userLoading } = useMe();
+
+  return useQuery({
+    queryKey: ["cart", user?.id],
+    queryFn: () => getCart(user!.id),
+    enabled: !!user?.id, 
+    staleTime: 1000 * 60 * 2,
+  });
 };

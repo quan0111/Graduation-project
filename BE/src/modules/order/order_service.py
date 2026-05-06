@@ -1,54 +1,165 @@
 from fastapi import HTTPException
 from src.core.database import prisma
-from src.modules.order.order_schema import OrderCreate, OrderUpdate, OrderItemCreate, OrderItemUpdate
+from src.modules.order.order_schema import OrderCreate, OrderUpdate
 from datetime import datetime
 
 class OrderService:
     @staticmethod
     async def create_order(order_data: OrderCreate):
-        new_order = await prisma.order.create(data=order_data.dict())
-        return new_order
+        async with prisma.tx() as tx:
+            if not order_data.items:
+                raise HTTPException(400, "Order must have items")
+            subtotal = 0
+            order_items_data = []
+            for item in order_data.items:
+                variant = None
+                if item.variantId:
+                    variant = await tx.productvariant.find_unique(
+                        where={"id": item.variantId}
+                    )
+                    if not variant:
+                        raise HTTPException(404, "Variant not found")
 
-    @staticmethod
-    async def get_all_orders():
-        orders = await prisma.order.find_many()
-        return orders
+                    if variant.stock < item.quantity:
+                        raise HTTPException(400, "Not enough stock")
+
+                product = await tx.product.find_unique(
+                    where={"id": item.productId}
+                )
+                if not product:
+                    raise HTTPException(404, "Product not found")
+                price = item.price
+                subtotal += price * item.quantity
+
+                order_items_data.append({
+                    "productId": item.productId,
+                    "variantId": item.variantId,
+                    "shopId": item.shopId,
+                    "quantity": item.quantity,
+                    "price": price,
+                    "productName": product.name,
+                    "variantName": variant.name if variant else None,
+                    "productImage": None
+                })
+
+                # 👉 trừ stock
+                if variant:
+                    await tx.productvariant.update(
+                        where={"id": variant.id},
+                        data={"stock": variant.stock - item.quantity}
+                    )
+            order = await tx.order.create(
+                data={
+                    "user": {"connect": {"id": order_data.userId}},
+                    "subtotal": subtotal,
+                    "shippingFee": order_data.shippingFee,
+                    "discountAmount": order_data.discountAmount,
+                    "totalAmount": order_data.totalAmount,
+                    "items": {
+                        "create": order_items_data
+                    }
+                },
+                include={"items": True}
+            )
+
+            if order_data.payment:
+                await tx.payment.create(
+                    data={
+                        "order": {"connect": {"id": order.id}},
+                        "method": order_data.payment.method,
+                        "status": "PENDING"
+                    }
+                )
+            return order
 
     @staticmethod
     async def get_order(order_id: int):
-        order = await prisma.order.find_unique(where={"id": order_id})
-        return order
+        order = await prisma.order.find_first(
+            where={
+                "id": order_id,
+                "deletedAt": None
+            },
+            include={
+                "items": {
+                    "where": {"deletedAt": None},
+                    "include": {
+                        "product": True,
+                        "variant": True
+                    }
+                },
+                "payment": True,
+                "user": True,
+            }
+        )
 
-    @staticmethod
-    async def update_order(order_id: int, order_data: OrderUpdate):
-        update_data = order_data.dict(exclude_unset=True)
-        updated_order = await prisma.order.update(where={"id": order_id}, data=update_data)
-        return updated_order
-
-    @staticmethod
-    async def delete_order(order_id: int):
-        await prisma.order.update( where={"id": order_id}, data={"deletedAt": datetime.utcnow()} )
-    
-    @staticmethod
-    async def add_order_item(order_id: int, item_data: OrderItemCreate):
-        order = await prisma.order.find_unique(where={"id": order_id})
         if not order:
-            raise HTTPException(status_code=404, detail="Order not found")
-        new_item = await prisma.orderItem.create(data={**item_data.dict(), "orderId": order_id})
-        return new_item
+            raise HTTPException(404, "Order not found")
+
+        return order
     @staticmethod
-    async def update_order_item(item_id: int, item_data: OrderItemUpdate):
-        update_data = item_data.dict(exclude_unset=True)
-        updated_item = await prisma.orderItem.update(where={"id": item_id}, data=update_data)
-        return updated_item
+    async def get_all_orders():
+        return await prisma.order.find_many(
+            where={"deletedAt": None},
+            include={
+                "items": True,
+                "payment": True
+            }
+        )
+    async def update_order(order_id: int, order_data: OrderUpdate):
+        return await prisma.order.update(
+            where={"id": order_id},
+            data=order_data.model_dump(exclude_unset=True)
+        )
     @staticmethod
-    async def delete_order_item(item_id: int):
-        await prisma.orderItem.update( where={"id": item_id}, data={"deletedAt": datetime.utcnow()} )
+    async def cancel_order(order_id: int):
+        async with prisma.tx() as tx:
+            order = await tx.order.find_unique(
+                where={"id": order_id},
+                include={"items": True}
+            )
+
+            if not order:
+                raise HTTPException(404, "Order not found")
+
+            if order.status == "CANCELLED":
+                return {"message": "Already cancelled"}
+
+            # 👉 hoàn stock
+            for item in order.items:
+                if item.variantId:
+                    variant = await tx.productvariant.find_unique(
+                        where={"id": item.variantId}
+                    )
+
+                    await tx.productvariant.update(
+                        where={"id": variant.id},
+                        data={"stock": variant.stock + item.quantity}
+                    )
+
+            await tx.order.update(
+                where={"id": order_id},
+                data={"status": "CANCELLED"}
+            )
+
+            return {"message": "Order cancelled"}
     @staticmethod
-    async def get_order_items(order_id: int):
-        items = await prisma.orderItem.find_many(where={"orderId": order_id})
-        return items
-    @staticmethod
-    async def get_order_item(item_id: int):
-        item = await prisma.orderItem.find_unique(where={"id": item_id})
-        return item
+    async def update_payment(order_id: int, status: str):
+        payment = await prisma.payment.find_unique(
+            where={"orderId": order_id}
+        )
+        if not payment:
+            raise HTTPException(404, "Payment not found")
+
+        updated = await prisma.payment.update(
+            where={"id": payment.id},
+            data={"status": status}
+        )
+
+        if status == "SUCCESS":
+            await prisma.order.update(
+                where={"id": order_id},
+                data={"status": "PAID"}
+            )
+
+        return updated
+

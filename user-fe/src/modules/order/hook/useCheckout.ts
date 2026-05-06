@@ -1,8 +1,5 @@
 import { useState, useMemo } from "react";
-import type {
-  IOrderItem,
-  PaymentMethodType,
-} from "../types";
+import type { IOrderItem, PaymentMethodType } from "../types";
 
 /* ---------- types ---------- */
 
@@ -12,6 +9,13 @@ type ShippingMethodType =
   | "STANDARD"
   | "EXPRESS"
   | "SAME_DAY";
+
+export interface IShippingAddress {
+  id: number;
+  fullName: string;
+  phone: string;
+  addressLine: string;
+}
 
 /* ---------- constants ---------- */
 
@@ -31,6 +35,9 @@ export const useCheckout = (items: IOrderItem[]) => {
 
   const [payment, setPayment] =
     useState<PaymentMethodType>("COD");
+
+  const [shippingAddress, setShippingAddress] =
+    useState<IShippingAddress | null>(null);
 
   /* subtotal */
   const subtotal = useMemo(
@@ -61,7 +68,6 @@ export const useCheckout = (items: IOrderItem[]) => {
   );
 
   return {
-    /* state */
     step,
     setStep,
 
@@ -71,7 +77,9 @@ export const useCheckout = (items: IOrderItem[]) => {
     payment,
     setPayment,
 
-    /* calculated */
+    shippingAddress,
+    setShippingAddress,
+
     subtotal,
     shippingPrice,
     tax,

@@ -9,7 +9,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
+import * as XLSX from "xlsx";
 type Column<T> = {
   key: keyof T | string;
   label: string;
@@ -26,7 +26,7 @@ type DataTableProps<T> = {
   // new props
   pageSize?: number;
   onRowClick?: (row: T) => void;
-
+  onSelectChange?: (ids: any[]) => void;
   // server-side
   total?: number;
   page?: number;
@@ -40,7 +40,7 @@ export function DataTable<T extends { id?: number | string }>({
   description,
   pageSize = 10,
   onRowClick,
-
+  onSelectChange,
   total,
   page: controlledPage,
   onPageChange,
@@ -65,7 +65,24 @@ export function DataTable<T extends { id?: number | string }>({
       return 0;
     });
   }, [data, sortKey, sortAsc]);
+  const handleExport = () => {
+  // map data theo columns (chỉ lấy field hiển thị)
+  const exportData = data.map((row: any) => {
+    const obj: any = {};
 
+    columns.forEach((col) => {
+      obj[col.label] = row[col.key as string];
+    });
+
+    return obj;
+  });
+
+  const ws = XLSX.utils.json_to_sheet(exportData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Data");
+
+  XLSX.writeFile(wb, `${title || "data"}.xlsx`);
+};
   // 🔥 PAGINATION (client)
   const paginatedData = useMemo(() => {
     if (onPageChange) return sortedData; // server-side
@@ -82,13 +99,17 @@ export function DataTable<T extends { id?: number | string }>({
     const newSet = new Set(selected);
     newSet.has(id) ? newSet.delete(id) : newSet.add(id);
     setSelected(newSet);
+    onSelectChange?.(Array.from(newSet));
   };
 
   const toggleAll = () => {
     if (selected.size === paginatedData.length) {
       setSelected(new Set());
+      onSelectChange?.([]);
     } else {
-      setSelected(new Set(paginatedData.map((r: any) => r.id)));
+      const newSet = new Set(paginatedData.map((r: any) => r.id));
+      setSelected(newSet);
+      onSelectChange?.(Array.from(newSet));
     }
   };
 
@@ -109,54 +130,59 @@ export function DataTable<T extends { id?: number | string }>({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>
-          {description || `Tổng cộng ${totalItems} bản ghi`}
-        </CardDescription>
+    <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>
+            {description || `Tổng cộng ${totalItems} bản ghi`}
+          </CardDescription>
+        </div>
+
+        <Button size="sm" onClick={handleExport}>
+          Export Excel
+        </Button>
       </CardHeader>
 
       <CardContent>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             
-            {/* HEADER */}
-            <thead className="bg-muted">
-              <tr className="border-b border-border">
-                
-                {/* checkbox all */}
-                <th className="px-4">
-                  <input
-                    type="checkbox"
-                    onChange={toggleAll}
-                    checked={
-                      selected.size === paginatedData.length &&
-                      paginatedData.length > 0
-                    }
-                  />
-                </th>
+<thead className="bg-muted">
+  <tr className="border-b border-border">
+    
+    {/* checkbox */}
+    <th className="px-4 text-center">
+      <input
+        type="checkbox"
+        onChange={toggleAll}
+        checked={
+          selected.size === paginatedData.length &&
+          paginatedData.length > 0
+        }
+      />
+    </th>
 
-                {columns.map((col) => (
-                  <th
-                    key={String(col.key)}
-                    onClick={() =>
-                      col.sortable && handleSort(String(col.key))
-                    }
-                    className={`text-left py-3 px-4 font-semibold text-foreground ${
-                      col.sortable ? "cursor-pointer" : ""
-                    }`}
-                  >
-                    {col.label}
+    {columns.map((col) => (
+      <th
+        key={String(col.key)}
+        onClick={() =>
+          col.sortable && handleSort(String(col.key))
+        }
+        className={`text-center py-3 px-4 font-semibold text-foreground ${
+          col.sortable ? "cursor-pointer" : ""
+        }`}
+      >
+        {col.label}
 
-                    {sortKey === col.key && (
-                      <span className="ml-1">
-                        {sortAsc ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
+        {sortKey === col.key && (
+          <span className="ml-1">
+            {sortAsc ? "↑" : "↓"}
+          </span>
+        )}
+      </th>
+    ))}
+  </tr>
+</thead>
 
             {/* BODY */}
             <tbody>

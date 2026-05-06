@@ -1,5 +1,5 @@
 import { useGetCurrentUser } from "@/modules/user/api/user";
-import { useGetAddresses } from "@/modules/address/api/address";
+import { useGetAddresses } from "@/modules/address/api/get-address";
 import { Sidebar } from "../../components/sidebar";
 import { Content } from "../../components/contentSwitcher";
 import { useState, useMemo } from "react";

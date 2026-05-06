@@ -31,9 +31,9 @@ export type ExtractFnReturnType<FnType extends (...args: any) => any> =
 
 export type QueryConfig<
     QueryFnType extends (...args: any) => any,
-    TError = unknown,
+    TError = Error,
     TData = ExtractFnReturnType<QueryFnType>,
-    TQueryKey extends unknown[] = any[],
+    TQueryKey extends readonly unknown[] = readonly unknown[],
 > = Omit<
     UseQueryOptions<TData, TError, TData, TQueryKey>,
     "queryKey" | "queryFn"

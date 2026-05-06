@@ -8,9 +8,9 @@ export type UserRoleType =
   (typeof UserRole)[keyof typeof UserRole];
 
 export const UserRoleLabel: Record<UserRoleType, string> = {
-  admin: "Admin",
-  seller: "Seller",
-  customer: "Customer",
+  admin: "ADMIN",
+  seller: "SELLER",
+  customer: "CUSTOMER",
 };
 
 export const USER_ROLE_OPTIONS = [
@@ -34,20 +34,20 @@ export const AddressTypeLabel: Record<AddressTypeValue, string> = {
   other: "Khác",
 };
 export const ProductStatus = {
-  Draft: "draft",
-  Active: "active",
-  OutOfStock: "out_of_stock",
-  Banned: "banned",
+  Draft: "DRAFT",
+  Active: "ACTIVE",
+  OutOfStock: "OUT_OF_STOCK",
+  Banned: "BANNED",
 } as const;
 
 export type ProductStatusType =
   (typeof ProductStatus)[keyof typeof ProductStatus];
 
 export const ProductStatusLabel: Record<ProductStatusType, string> = {
-  draft: "Bản nháp",
-  active: "Đang bán",
-  out_of_stock: "Hết hàng",
-  banned: "Bị khóa",
+  DRAFT: "Bản nháp",
+  ACTIVE: "Đang bán",
+  OUT_OF_STOCK: "Hết hàng",
+  BANNED: "Bị khóa",
 };
 export const OrderStatus = {
   Pending: "pending",

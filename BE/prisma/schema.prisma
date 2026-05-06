@@ -10,13 +10,17 @@ datasource db {
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
-  password  String
+  password  String?   
+
   fullName  String?
   phone     String?
   avatarUrl String?
+
+  provider   String?   
+  providerId String?   
+
   role      UserRole @default(CUSTOMER)
   isActive  Boolean  @default(true)
-
   addresses                  Address[]
   shops                      Shop?
   orders                     Order[]
@@ -33,12 +37,11 @@ model User {
   returnRequests             ReturnRequest[]     @relation("ReturnRequestUser")
   reviewedReturns            ReturnRequest[]     @relation("ReturnReviewedBy")
   createdBanners             Banner[]            @relation("BannerCreatedBy")
-
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
-
   @@index([email])
+  @@unique([provider, providerId]) 
 }
 
 enum UserRole {
@@ -88,10 +91,11 @@ model Shop {
 
   followers        ShopFollower[]
   products         Product[]
-  orders           Order[]
+  orderitemss      OrderItem[]
   payouts          SellerPayout[]
   commissions      PlatformCommission[]
   commissionConfig ShopCommissionConfig?
+  cartitems        CartItem[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -220,19 +224,19 @@ model CartItem {
   cartId    Int
   productId Int
   variantId Int?
+  shopId    Int
   quantity  Int
 
   cart    Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
   product Product         @relation(fields: [productId], references: [id])
   variant ProductVariant? @relation(fields: [variantId], references: [id])
-
-  @@unique([cartId, productId, variantId])
+  shop    Shop            @relation(fields: [shopId], references: [id])
+  @@unique([cartId, productId, variantId,shopId])
 }
 
 model Order {
   id             Int         @id @default(autoincrement())
   userId         Int
-  shopId         Int
   status         OrderStatus @default(PENDING)
   subtotal       Float
   shippingFee    Float       @default(0)
@@ -243,7 +247,6 @@ model Order {
   couponId          Int?
 
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  shop            Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
   shippingAddress Address? @relation("ShippingAddress", fields: [shippingAddressId], references: [id])
   coupon          Coupon?  @relation(fields: [couponId], references: [id])
 
@@ -259,7 +262,6 @@ model Order {
   deletedAt DateTime?
 
   @@index([userId])
-  @@index([shopId])
   @@index([status])
   @@index([createdAt(sort: Desc)])
 }
@@ -281,6 +283,7 @@ enum OrderStatus {
 
 model OrderItem {
   id           Int     @id @default(autoincrement())
+  shopId       Int
   orderId      Int
   productId    Int
   variantId    Int?
@@ -293,7 +296,7 @@ model OrderItem {
   order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product         @relation(fields: [productId], references: [id])
   variant ProductVariant? @relation(fields: [variantId], references: [id])
-
+  shop    Shop            @relation(fields: [shopId], references:[id])
   returnItems ReturnItem[]
   commissions PlatformCommission[]
 
@@ -303,6 +306,7 @@ model OrderItem {
   @@index([orderId])
   @@index([productId])
   @@index([variantId])
+  @@index([shopId])
 }
 
 model Payment {
@@ -403,6 +407,7 @@ model ProductAttribute {
   productId Int
   key       String
   value     String
+  createdAt DateTime  @default(now())
   deletedAt DateTime?
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)

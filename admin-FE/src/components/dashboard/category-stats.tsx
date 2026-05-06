@@ -45,7 +45,7 @@ export function CategoryStats() {
                     borderRadius: "8px",
                     color: "oklch(0.98 0 0)",
                   }}
-                  formatter={(value: number) => [`${value}%`, "Tỷ lệ"]}
+                  formatter={(value) => [`${value}%`, "Tỷ lệ"]}
                 />
               </PieChart>
             </ResponsiveContainer>

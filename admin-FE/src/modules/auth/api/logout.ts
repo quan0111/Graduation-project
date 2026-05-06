@@ -1,34 +1,25 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { API_URL_LOGIN } from "@/constant/config";
-import { apiClient } from "@/lib/api";
-import type { MutationConfig } from "@/lib/react-query";
+import { apiClient } from "../../../lib/api";
+import { useMutation } from "@tanstack/react-query";
+import type { MutationConfig } from "../../../lib/react-query";
 
-export const logout = async (): Promise<void> => {
-    const token = localStorage.getItem("token");
-    await apiClient.post(`${API_URL_LOGIN}/logout`, null, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    });
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+export const Logout = async () => {
+  const res = await apiClient.post("/auth/logout", {}, {
+    withCredentials: true,
+  });
+  return res.data;
 };
 
-type UseLogoutOptions = {
-    config?: MutationConfig<typeof logout>;
-};
+export const useLogout = (config?: MutationConfig<typeof Logout>) => {
+  return useMutation({
+    mutationFn: Logout,
 
-export const useLogout = ({ config }: UseLogoutOptions = {}) => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: logout,
-        onMutate: () => {},
-        onError: (error) => {
-            console.error("Logout error:", error);
-        },
-        onSuccess: async () => {
-            await queryClient.clear();
-        },
-        ...config,
-    });
+    onSuccess: () => {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user");
+
+      window.location.href = "/login";
+    },
+
+    ...config,
+  });
 };

@@ -1,6 +1,6 @@
 from fastapi import Depends, HTTPException
 
-from src.core.deppendencies import get_current_user
+from BE.src.core.dependencies import get_current_user
 from src.core.role import Role
 
 

@@ -1,7 +1,6 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional, List
 from datetime import datetime
-
 class UserBase(BaseModel):
     email: EmailStr
     fullName: Optional[str] = None
@@ -10,17 +9,33 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
 
-
 class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
     fullName: Optional[str] = None
     avatarUrl: Optional[str] = None
-    
     password: Optional[str] = None
+    role: Optional[str] = None
+    isActive: Optional[bool] = None
+
+class AddressShort(BaseModel):
+    id: int
+    addressLine: str
+    district: str
+    province: str
+    model_config = {"from_attributes": True}
 
 
+class CartShort(BaseModel):
+    id: int
+    model_config = {"from_attributes": True}
 
 
+class OrderShort(BaseModel):
+    id: int
+    totalAmount: float
+    createdAt: datetime
 
+    model_config = {"from_attributes": True}
 class UserInDB(UserBase):
     id: int
     role: str
@@ -28,18 +43,17 @@ class UserInDB(UserBase):
     createdAt: datetime
     updatedAt: datetime
     deletedAt: Optional[datetime] = None
-    password: str   
+    password: str
 
-    class Config:
-        from_attributes = True
-
-
-
+    model_config = {"from_attributes": True}
 class UserOut(UserBase):
     id: int
     role: str
     isActive: bool
     createdAt: datetime
+    updatedAt: datetime
 
-    class Config:
-        from_attributes = True
+    addresses: List[AddressShort] = Field(default_factory=list)
+    cart: Optional[CartShort] = None
+
+    model_config = {"from_attributes": True}

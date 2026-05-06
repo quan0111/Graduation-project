@@ -1,3 +1,5 @@
+'use client';
+
 import { HomeContainer } from "../component/HomeContainer";
 
 import type { IProduct } from "@/modules/product/types";
@@ -5,10 +7,10 @@ import type { ICategory } from "@/modules/category/types";
 import type { Category } from "@/modules/category/api/category";
 
 import { Truck, ShieldCheck, RefreshCw, Headphones } from "lucide-react";
+
 import { useGetProduct } from "@/modules/product/api/get-product";
 import { useGetCategories } from "@/modules/category/api/category";
 
-// Transform Category API response to ICategory format
 const transformCategory = (cat: Category): ICategory => ({
   id: cat.id,
   name: cat.name,
@@ -20,7 +22,19 @@ const transformCategory = (cat: Category): ICategory => ({
   Children: cat.children?.map(transformCategory),
 });
 
-/* ---------- FEATURES ---------- */
+const transformProduct = (p: any): IProduct => ({
+  id: p.id,
+  name: p.name,
+  price: p.price,
+  images: p.images|| [],
+  shop_id: p.shopId,
+  status: p.status,
+  updated_at: p.updatedAt,
+  category: p.category,
+  created_at: p.createdAt,
+  category_id: p.categoryId,
+});
+
 
 const features = [
   {
@@ -49,35 +63,55 @@ const features = [
   },
 ];
 
-/* ---------- PAGE ---------- */
 
 export default function HomePage() {
-  const { data: productsData, isLoading: productsLoading } = useGetProduct();
-  const { data: categoriesData, isLoading: categoriesLoading } = useGetCategories();
+  const {
+    data: productsRes,
+    isLoading: productsLoading,
+    isError: productsError,
+  } = useGetProduct();
 
-  // Transform API data to match the expected format
-  const products: IProduct[] = productsData?.data?.data || [];
-  const categories: ICategory[] = (categoriesData || []).map(transformCategory);
+  const {
+    data: categoriesRes,
+    isLoading: categoriesLoading,
+    isError: categoriesError,
+  } = useGetCategories();
 
-  const featuredProducts = products.slice(0, 8);
 
-  // Show loading state if either API is loading
+  const products: IProduct[] =
+    (productsRes as unknown as IProduct[])?.map(transformProduct) || [];
+
+  const categories: ICategory[] =
+    (categoriesRes || []).map(transformCategory);
+
+
+
   if (productsLoading || categoriesLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Đang tải dữ liệu...</p>
+          <div className="animate-spin h-10 w-10 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+          <p>Đang tải dữ liệu...</p>
         </div>
       </div>
     );
   }
 
+  if (productsError || categoriesError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-red-500">
+        Lỗi tải dữ liệu 😢
+      </div>
+    );
+  }
+
+  // ================= UI =================
+
   return (
     <HomeContainer
       categories={categories}
       features={features}
-      products={featuredProducts}
+      products={products}
     />
   );
 }

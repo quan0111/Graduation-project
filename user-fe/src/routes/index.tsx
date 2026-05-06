@@ -8,7 +8,7 @@ import SignupPage from "@/modules/auth/view/signupPage";
 import CartPage from "@/modules/cart/view";
 import ProductDetailPage from "@/modules/product/view/product-detail";
 import ProductPage from "@/modules/product/view";
-
+import ShopPage from "@/modules/shop/view";
 import CheckOutPage from "@/modules/order/view/checkout";
 import OrderPage from "@/modules/order/view/order";
 import OrderDetailPage from "@/modules/order/view/order-detail";
@@ -16,7 +16,6 @@ import OrderDetailPage from "@/modules/order/view/order-detail";
 import AccountPage from "@/modules/auth/view/me";
 import PromotionPage from "@/modules/promotion/view";
 
-// ❗ seller (không dùng layout)
 import { SellerRegistrationView } from "@/modules/seller/view/create";
 import SellerDashboardPage from "@/modules/seller/view/dashboard";
 export const router = createBrowserRouter([
@@ -40,6 +39,7 @@ export const router = createBrowserRouter([
       { path: "account", element: <AccountPage /> },
 
       { path: "promotions", element: <PromotionPage /> },
+      { path: "shop/:id", element: <ShopPage /> },
     ],
   },
         { path: "login", element: <LoginPage /> },
@@ -50,7 +50,7 @@ export const router = createBrowserRouter([
     element: <SellerRegistrationView />,
   },
   {
-    path: "/dashboard",
+    path: "/seller/dashboard",
     element: <SellerDashboardPage />,
   },
 ]);

@@ -1,63 +1,72 @@
-from fastapi import APIRouter
-from src.modules.follower.follower_schema import FollowerCreate, FollowerOut
+from fastapi import HTTPException
 from src.core.database import prisma
 
-class FollowerService:
+
+class ShopFollowerService:
     @staticmethod
-    async def create_follower(follower_data: FollowerCreate):
-        new_follower = await prisma.follower.create(data=follower_data.dict())
-        return new_follower
+    async def follow_shop(user_id: int, shop_id: int):
+
+        existing = await prisma.shopfollower.find_unique(
+            where={
+                "userId_shopId": {
+                    "userId": user_id,
+                    "shopId": shop_id
+                }
+            }
+        )
+
+        if existing:
+            raise HTTPException(400, "Already followed")
+
+        return await prisma.shopfollower.create(
+            data={
+                "userId": user_id,
+                "shopId": shop_id
+            }
+        )
     @staticmethod
-    async def get_followers_by_user(user_id: int):
-        followers = await prisma.follower.find_many(where={"userId": user_id})
-        return followers
+    async def unfollow_shop(user_id: int, shop_id: int):
+        return await prisma.shopfollower.delete(
+            where={
+                "userId_shopId": {
+                    "userId": user_id,
+                    "shopId": shop_id
+                }
+            }
+        )
+
     @staticmethod
-    async def get_following_by_user(user_id: int):
-        following = await prisma.follower.find_many(where={"followerId": user_id})
-        return following
-    @staticmethod
-    async def delete_follower(follower_id: int):
-        await prisma.follower.delete(where={"id": follower_id})
-    @staticmethod
-    async def get_follower(follower_id: int):
-        follower = await prisma.follower.find_unique(where={"id": follower_id})
-        return follower
-    @staticmethod
-    async def is_following(follower_id: int, user_id: int):
-        follow = await prisma.follower.find_first(where={"followerId": follower_id, "userId": user_id})
+    async def is_following(user_id: int, shop_id: int):
+        follow = await prisma.shopfollower.find_unique(
+            where={
+                "userId_shopId": {
+                    "userId": user_id,
+                    "shopId": shop_id
+                }
+            }
+        )
         return follow is not None
     @staticmethod
-    async def get_followers_count(user_id: int):
-        count = await prisma.follower.count(where={"userId": user_id})
-        return count
-    @staticmethod
-    async def get_following_count(user_id: int):
-        count = await prisma.follower.count(where={"followerId": user_id})
-        return count
-    @staticmethod
-    async def get_followers_with_details(user_id: int):
-        followers = await prisma.follower.find_many(
+    async def get_followed_shops(user_id: int):
+        return await prisma.shopfollower.find_many(
             where={"userId": user_id},
-            include={"follower": True}
+            include={"shop": True}
         )
-        return followers
     @staticmethod
-    async def get_following_with_details(user_id: int):
-        following = await prisma.follower.find_many(
-            where={"followerId": user_id},
+    async def get_shop_followers(shop_id: int):
+        return await prisma.shopfollower.find_many(
+            where={"shopId": shop_id},
             include={"user": True}
         )
-        return following
+
     @staticmethod
-    async def get_mutual_followers(user_id: int):
-        followers = await prisma.follower.find_many(where={"userId": user_id})
-        following = await prisma.follower.find_many(where={"followerId": user_id})
-        follower_ids = {f.followerId for f in followers}
-        mutual_followers = [f for f in following if f.userId in follower_ids]
-        return mutual_followers
+    async def get_shop_follower_count(shop_id: int):
+        return await prisma.shopfollower.count(
+            where={"shopId": shop_id}
+        )
+
     @staticmethod
-    async def unfolow(user_id: int, follower_id: int):
-        await prisma.follower.delete_many(where={"userId": user_id, "followerId": follower_id})
-    @staticmethod
-    async def unfollow_all(user_id: int):
-        await prisma.follower.delete_many(where={"userId": user_id})
+    async def get_user_follow_count(user_id: int):
+        return await prisma.shopfollower.count(
+            where={"userId": user_id}
+        )

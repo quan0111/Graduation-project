@@ -1,31 +1,52 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
+
 class ShopBase(BaseModel):
     name: str
-    slug: str
+    slug: Optional[str] = None
+    avatarUrl: Optional[str] = None
     description: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
 
 class ShopCreate(ShopBase):
-    owner_id: int
+    ownerId: int
+
 
 class ShopUpdate(BaseModel):
     name: Optional[str] = None
     slug: Optional[str] = None
+    avatarUrl: Optional[str] = None
     description: Optional[str] = None
+    ownerId: Optional[int] = None
 
-class ShopInDB(ShopBase):
+class OwnerOut(BaseModel):
     id: int
-    owner_id: int
+    fullName: Optional[str] = None
+    email: str
 
     class Config:
         from_attributes = True
+
+
+class ShopInDB(ShopBase):
+    id: int
+    ownerId: int
+
+    class Config:
+        from_attributes = True
+
+
 class ShopOut(ShopBase):
     id: int
-    owner_id: int
+    ownerId: int
+
+    owner: Optional[OwnerOut] = None
+    productCount: int = 0
+
+    createdAt: Optional[datetime] = None
+    updatedAt: Optional[datetime] = None
 
     class Config:
         from_attributes = True

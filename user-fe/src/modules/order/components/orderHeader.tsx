@@ -34,7 +34,7 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
 
         {/* Tổng tiền */}
         <div className="text-primary font-bold">
-          {order.total_amount.toLocaleString()}đ
+          {order.total_amount?.toLocaleString()}đ
         </div>
 
         {/* Status */}

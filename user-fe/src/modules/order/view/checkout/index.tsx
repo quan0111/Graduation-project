@@ -1,13 +1,12 @@
-import { useGetCart } from "@/modules/cart/api/get-cart";
-import { useGetAddresses } from "@/modules/address/api/address";
-import { useCreateOrder } from "@/modules/order/api/add-order";
-import { useNavigate } from "react-router-dom";
+'use client';
+
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { Truck, Zap, Archive } from "lucide-react";
+
+import { useCreateOrder } from "@/modules/order/api/add-order";
+import { useGetAddresses } from "@/modules/address/api/get-address";
 import { useCheckout } from "../../hook/useCheckout";
-import type {
-  IOrderItem,
-  PaymentMethodType,
-} from "../../types";
 
 import { Stepper } from "../../components/checkout/stepper";
 import { ShippingForm } from "../../components/checkout/shippingForm";
@@ -16,106 +15,135 @@ import { PaymentMethod } from "../../components/checkout/paymentMethod";
 import { Confirmation } from "../../components/checkout/confirmation";
 import { OrderSummary } from "../../components/checkout/orderSumary";
 
-/* ---------- shipping ---------- */
-
-type ShippingMethodType = "STANDARD" | "EXPRESS" | "SAME_DAY";
-
-const shippingMethods: {
-  id: ShippingMethodType;
-  name: string;
-  time: string;
-}[] = [
-  { id: "STANDARD", name: "Tiêu chuẩn", time: "3-5 ngày" },
-  { id: "EXPRESS", name: "Nhanh", time: "1-2 ngày" },
-  { id: "SAME_DAY", name: "Trong ngày", time: "2-6h" },
-];
-
-/* ---------- payment ---------- */
-
-const paymentMethods: {
-  id: PaymentMethodType;
-  name: string;
-}[] = [
-  { id: "COD", name: "Thanh toán khi nhận hàng" },
-  { id: "VNPAY", name: "VNPay" },
-  { id: "STRIPE", name: "Stripe" },
-];
-
-/* ---------- page ---------- */
-
 export default function CheckOutPage() {
   const navigate = useNavigate();
-  
-  // API hooks
-  const { data: cartData, isLoading: cartLoading } = useGetCart();
+  const location = useLocation();
+
   const { data: addresses } = useGetAddresses();
   const createOrderMutation = useCreateOrder();
 
-  // Transform cart data to order items
-  const checkoutItems: IOrderItem[] = (cartData?.data?.data?.[0]?.items || []).map((item: any) => ({
-    id: item.id,
-    order_id: 0, // Will be set when order is created
-    product_id: Number(item.product_id),
-    quantity: item.quantity,
-    price: item.variant?.price || item.product?.price || 0,
-    product_name: item.product?.name || "Sản phẩm",
-    product_image: item.product?.Images?.[0]?.url || "/placeholder.png",
-    created_at: "",
+  // 🔥 DATA TỪ CART
+  const cartItems = location.state?.items || [];
+
+  const state = useCheckout(cartItems as any);
+
+  /* ================= SHIPPING ================= */
+  const shippingMethods = [
+    {
+      id: "STANDARD",
+      name: "Giao hàng tiêu chuẩn",
+      time: "2-3 ngày",
+      fee: 30000,
+      icon: <Truck size={18} />,
+    },
+    {
+      id: "EXPRESS",
+      name: "Hỏa tốc",
+      time: "2-4 giờ",
+      fee: 50000,
+      icon: <Zap size={18} />,
+    },
+    {
+      id: "SAME_DAY",
+      name: "Trong ngày",
+      time: "Hôm nay",
+      fee: 99000,
+      icon: <Archive size={18} />,
+    },
+  ];
+
+  /* ================= TRANSFORM (FIX CHÍNH) ================= */
+  const checkoutItems = cartItems.map((item: any) => ({
+    productId: Number(item.productId || 0),  
+    variantId: item.variantId || null,       
+    shopId: Number(item.shopId || 0),        
+    quantity: Number(item.quantity || 0),
+    price: Number(item.price || 0),
   }));
 
-  const state = useCheckout(checkoutItems);
+  /* ================= SUBTOTAL ================= */
+  const subtotal = checkoutItems.reduce(
+    (sum: number, i: any) => sum + i.price * i.quantity,
+    0
+  );
 
-  // Handle place order
+  /* ================= SHIPPING CHANGE ================= */
+  const handleShippingChange = (id: string) => {
+    state.setShipping(id as any);
+  };
+
+  /* ================= ORDER ================= */
   const handlePlaceOrder = async () => {
+    if (!state.shippingAddress) {
+      toast.error("Chọn địa chỉ trước");
+      return;
+    }
+
     try {
-      const orderData = {
-        items: checkoutItems.map(item => ({
-          product_id: item.product_id,
-          quantity: item.quantity,
-        })),
-        shipping_address: state.shippingAddress,
-        shipping_method: state.shipping,
-        payment_method: state.payment,
-        total_amount: state.total,
+      const raw = localStorage.getItem("auth-storage");
+      const user = raw ? JSON.parse(raw)?.state?.user : null;
+
+      if (!user) {
+        toast.error("Chưa đăng nhập");
+        return;
+      }
+
+      // 🔥 VALIDATE ITEMS (TRÁNH BUG NGẦM)
+      const validItems = checkoutItems.filter(
+        (i: { productId: number; shopId: number; }) => i.productId > 0 && i.shopId > 0
+      );
+
+      if (!validItems.length) {
+        toast.error("Dữ liệu sản phẩm lỗi");
+        return;
+      }
+
+      const payload = {
+        userId: user.id,
+        subtotal,
+        shippingFee: state.shippingPrice,
+        discountAmount: 0,
+        totalAmount: subtotal + state.shippingPrice + state.tax,
+
+        items: validItems,
+
+        payment: {
+          method: state.payment,
+          status: "PENDING",
+        },
       };
 
-      await createOrderMutation.mutateAsync(orderData);
-      toast.success("Đặt hàng thành công!");
+      console.log("🚀 ORDER PAYLOAD FIXED", payload);
+
+      await createOrderMutation.mutateAsync(payload);
+
+      toast.success("Đặt hàng thành công");
       navigate("/orders");
-    } catch (error) {
-      toast.error("Đặt hàng thất bại. Vui lòng thử lại.");
-      console.error("Order error:", error);
+
+    } catch (err) {
+      console.error(err);
+      toast.error("Lỗi tạo đơn");
     }
   };
 
-  if (cartLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Đang tải thông tin thanh toán...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (checkoutItems.length === 0) {
-    navigate("/cart");
-    return null;
+  if (!cartItems.length) {
+    return <div className="p-6">Không có sản phẩm để thanh toán</div>;
   }
 
   return (
     <div className="grid lg:grid-cols-3 gap-8 p-6">
+
       {/* LEFT */}
       <div className="lg:col-span-2 space-y-6">
+
         <Stepper step={state.step} />
 
         {/* STEP 1 */}
         {state.step === 1 && (
           <ShippingForm
             addresses={addresses || []}
-            onNext={(data) => {
-              console.log("shipping info:", data);
+            onNext={(a) => {
+              state.setShippingAddress(a);
               state.setStep(2);
             }}
           />
@@ -126,13 +154,13 @@ export default function CheckOutPage() {
           <>
             <ShippingMethod
               value={state.shipping}
-              onChange={(value) => state.setShipping(value as ShippingMethodType)}
+              onChange={handleShippingChange}
               methods={shippingMethods}
             />
 
             <button
               onClick={() => state.setStep(3)}
-              className="btn-primary w-full"
+              className="w-full py-3 rounded-xl font-semibold bg-red-500 text-white hover:bg-red-600 shadow-md"
             >
               Tiếp tục
             </button>
@@ -145,32 +173,38 @@ export default function CheckOutPage() {
             <PaymentMethod
               value={state.payment}
               onChange={state.setPayment}
-              methods={paymentMethods}
+              methods={[
+                { id: "COD", name: "Thanh toán khi nhận hàng" },
+                { id: "VNPAY", name: "VNPAY" },
+              ]}
             />
 
             <button
               onClick={() => state.setStep(4)}
-              className="btn-primary w-full"
-              disabled={createOrderMutation.isPending}
+              className="w-full py-3 rounded-xl font-semibold bg-red-500 text-white hover:bg-red-600 shadow-md"
             >
-              {createOrderMutation.isPending ? "Đang xử lý..." : "Xác nhận"}
+              Tiếp tục
             </button>
           </>
         )}
 
         {/* STEP 4 */}
         {state.step === 4 && (
-          <Confirmation total={state.total} />
+          <Confirmation
+            total={state.total}
+            onSubmit={handlePlaceOrder}
+            loading={createOrderMutation.isPending}
+          />
         )}
       </div>
 
       {/* RIGHT */}
       <OrderSummary
-        items={checkoutItems}
-        total={state.total}
+        items={cartItems}
         subtotal={state.subtotal}
-        tax={state.tax}
+        total={state.total}
         shipping={state.shippingPrice}
+        tax={state.tax}
       />
     </div>
   );

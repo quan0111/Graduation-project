@@ -7,23 +7,27 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
+  // ================= IMAGE =================
   const image =
-    product.Images?.find((img) => img.is_primary)?.url ||
-    product.Images?.[0]?.url ||
+    product.images?.find((img) => img.is_primary)?.url ||
+    product.images?.[0]?.url ||
     "/placeholder.png";
 
+  // ================= RATING =================
+  const reviews = product.reviews || [];
+
   const rating =
-    product.Review && product.Review.length > 0
-      ? product.Review.reduce((acc, r) => acc + (r.rating || 0), 0) /
-        product.Review.length
+    reviews.length > 0
+      ? reviews.reduce((acc, r) => acc + (r.rating || 0), 0) /
+        reviews.length
       : 0;
 
-  const reviewsCount = product.Review?.length || 0;
+  const reviewsCount = reviews.length;
 
-  const discount = 0; // 👉 nếu chưa có originalPrice
+  const discount = 0;
 
   return (
-    <Link to={`/products/${product.id}`}>
+    <Link to={`/product/${product.id}`}>
       <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition border border-border h-full flex flex-col">
 
         {/* IMAGE */}
@@ -43,11 +47,11 @@ export function ProductCard({ product }: ProductCardProps) {
 
         {/* CONTENT */}
         <div className="p-3 flex-1 flex flex-col justify-between">
-          
+
           {/* NAME */}
           <div>
             <p className="text-xs text-gray-500 mb-1">
-              {product.Category?.name}
+              {product.category?.name || "Chưa phân loại"}
             </p>
 
             <h3 className="text-sm font-medium text-foreground line-clamp-2 mb-2">
@@ -78,7 +82,7 @@ export function ProductCard({ product }: ProductCardProps) {
           {/* PRICE */}
           <div className="flex items-baseline gap-2">
             <span className="text-lg font-bold text-primary">
-              {product.price.toLocaleString("vi-VN")}đ
+              {(product.price || 0).toLocaleString("vi-VN")}đ
             </span>
           </div>
 

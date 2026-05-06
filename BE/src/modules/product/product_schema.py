@@ -1,104 +1,119 @@
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel
+from typing import Optional, List
 from datetime import datetime
+from src.modules.category.category_schema import CategoryBase
+from src.modules.shop.shop_schema import ShopOut
+
 
 class ProductBase(BaseModel):
     name: str
+    slug: Optional[str] = None
+    categoryId: int
     description: Optional[str] = None
     price: float
-    stock: int
     shopId: int
-    createdAt: datetime = Field(default_factory=datetime.utcnow)
-    updatedAt: datetime = Field(default_factory=datetime.utcnow)
+
 class ProductCreate(ProductBase):
-    pass
+    variants: Optional[List["VariantCreate"]] = []
+    images: Optional[List["ProductImageCreate"]] = []
+    attributes: Optional[List["ProductAttributeCreate"]] = []
+    tags: Optional[List[int]] = [] 
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
+    slug: Optional[str] = None
+    categoryId: Optional[int] = None
     description: Optional[str] = None
     price: Optional[float] = None
-    stock: Optional[int] = None
     shopId: Optional[int] = None
-    updatedAt: datetime = Field(default_factory=datetime.utcnow)
-
 class ProductOut(ProductBase):
     id: int
-    status:str
+    status: str
     createdAt: datetime
+    shop: Optional["ShopOut"] = None
+    category: Optional["CategoryBase"] = None
+    variants: Optional[List["VariantOut"]] = []
+    images: Optional[List["ProductImageOut"]] = []
+    attributes: Optional[List["ProductAttributeOut"]] = []
+    tags: Optional[List["ProductTagOut"]] = []
+    totalStock: Optional[int] = 0
     class Config:
         from_attributes = True
 
-
 class VariantBase(BaseModel):
-    productId: int
+    sku: Optional[str] = None
     name: str
     price: float
+    weight: Optional[float] = None
     stock: int
-    createdAt: datetime = Field(default_factory=datetime.utcnow)
-    updatedAt: datetime = Field(default_factory=datetime.utcnow)
+
 class VariantCreate(VariantBase):
-    pass
+    images: Optional[List["VariantImageCreate"]] = []  
+
 class VariantUpdate(BaseModel):
+    sku: Optional[str] = None
     name: Optional[str] = None
     price: Optional[float] = None
+    weight: Optional[float] = None
     stock: Optional[int] = None
-    updatedAt: datetime = Field(default_factory=datetime.utcnow)
+    images: Optional[List["VariantImageCreate"]] = None  
 class VariantOut(VariantBase):
     id: int
     createdAt: datetime
-
+    images: Optional[List["VariantImageOut"]] = []
     class Config:
         from_attributes = True
+
+
 class ProductImageBase(BaseModel):
-    productId: int
     url: str
-    createdAt: datetime = Field(default_factory=datetime.utcnow)
-    updatedAt: datetime = Field(default_factory=datetime.utcnow)
+    position: int
+    isPrimary: Optional[bool] = False  
 class ProductImageCreate(ProductImageBase):
     pass
+
 class ProductImageOut(ProductImageBase):
     id: int
     createdAt: datetime
-
     class Config:
         from_attributes = True
-class ProduuctAttributeBase(BaseModel):
-    productId: int
+
+
+
+class ProductAttributeBase(BaseModel):
     key: str
     value: str
-    createdAt: datetime = Field(default_factory=datetime.utcnow)
-    updatedAt: datetime = Field(default_factory=datetime.utcnow)
-class ProductAttributeCreate(ProduuctAttributeBase):
+
+class ProductAttributeCreate(ProductAttributeBase):
     pass
-class ProductAttributeOut(ProduuctAttributeBase):
+
+class ProductAttributeOut(ProductAttributeBase):
     id: int
     createdAt: datetime
-
     class Config:
         from_attributes = True
+
 class VariantImageBase(BaseModel):
-    variantId: int
     url: str
-    createdAt: datetime = Field(default_factory=datetime.utcnow)
-    updatedAt: datetime = Field(default_factory=datetime.utcnow)
+    position: int
+
 class VariantImageCreate(VariantImageBase):
     pass
+
 class VariantImageOut(VariantImageBase):
     id: int
     createdAt: datetime
-
     class Config:
         from_attributes = True
 class ProductTagBase(BaseModel):
-    productId: int
-    tagId: int
-    createdAt: datetime = Field(default_factory=datetime.utcnow)
-    updatedAt: datetime = Field(default_factory=datetime.utcnow)
+    name: str
+
 class ProductTagCreate(ProductTagBase):
     pass
+
 class ProductTagOut(ProductTagBase):
     id: int
-    createdAt: datetime
 
     class Config:
         from_attributes = True
+

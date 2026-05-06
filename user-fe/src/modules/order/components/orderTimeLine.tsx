@@ -1,27 +1,26 @@
 import { CheckCircle, Truck, Package } from "lucide-react";
-import type { OrderStatusType } from "../types";
-
+import type { IOrder } from "../types";
 interface OrderTimelineProps {
-  status: OrderStatusType;
+  status: IOrder["status"];
 }
 
 const steps = [
   {
-    key: "CONFIRMED",
+    key: "confirmed" as const,
     label: "Xác nhận",
     icon: CheckCircle,
   },
   {
-    key: "PROCESSING",
+    key: "processing" as const,
     label: "Đóng gói",
     icon: Package,
   },
   {
-    key: "SHIPPED",
+    key: "shipped" as const,
     label: "Giao hàng",
     icon: Truck,
   },
-] as const;
+];
 
 export const OrderTimeline: React.FC<OrderTimelineProps> = ({
   status,
@@ -50,7 +49,7 @@ export const OrderTimeline: React.FC<OrderTimelineProps> = ({
 
         {i < steps.length - 1 && (
           <div
-            className={`flex-1 h-[2px] mx-2 ${
+            className={`flex-1 h-0.5 mx-2 ${
               i < currentStepIndex
                 ? "bg-green-500"
                 : "bg-muted"

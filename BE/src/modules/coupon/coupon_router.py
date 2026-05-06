@@ -29,10 +29,6 @@ async def delete_coupon(coupon_id: int):
 async def get_coupon_by_code(code: str):
     coupon = await CouponService.get_coupon_by_code(code)
     return coupon
-@router.get("/active", response_model=List[CouponOut])
-async def get_active_coupons():
-    coupons = await CouponService.get_active_coupons()
-    return coupons
 @router.patch("/{coupon_id}/deactivate", response_model=CouponOut)
 async def deactivate_coupon(coupon_id: int):
     updated_coupon = await CouponService.deactivate_coupon(coupon_id)
@@ -41,15 +37,19 @@ async def deactivate_coupon(coupon_id: int):
 async def activate_coupon(coupon_id: int):
     updated_coupon = await CouponService.activate_coupon(coupon_id)
     return updated_coupon
-@router.get("/user/{user_id}", response_model=List[CouponOut])
-async def get_coupons_by_user(user_id: int):
-    coupons = await CouponService.get_coupons_by_user(user_id)
-    return coupons
-@router.patch("/{coupon_id}/assign/{user_id}", response_model=CouponOut)
-async def assign_coupon_to_user(coupon_id: int, user_id: int):
-    updated_coupon = await CouponService.assign_coupon_to_user(coupon_id, user_id)
-    return updated_coupon
-@router.patch("/{coupon_id}/remove")
-async def remove_coupon_from_user(coupon_id: int):
-    updated_coupon = await CouponService.remove_coupon_from_user(coupon_id)
-    return updated_coupon
+@router.get("/validate/{code}/{order_amount}")
+async def validate_coupon(code: str, order_amount: float):
+    validation_result = await CouponService.validate_coupon(code, order_amount)
+    return validation_result
+@router.get("/{coupon_id}/discount/{order_amount}")
+async def calculate_discount(coupon_id: int, order_amount: float):
+    coupon = await CouponService.get_coupon(coupon_id)
+    if not coupon:
+        return {"message": "Coupon not found"}
+    discount_amount = CouponService.calculate_discount(coupon, order_amount)
+    return {"discountAmount": discount_amount}
+@router.patch("/use/{coupon_id}")
+async def use_coupon(coupon_id: int):
+    used_coupon = await CouponService.use_coupon(coupon_id)
+    return used_coupon
+

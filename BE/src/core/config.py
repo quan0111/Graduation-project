@@ -5,10 +5,9 @@ from functools import lru_cache
 class Settings(BaseSettings):
     APP_NAME: str = "DATN E-commerce API"
     DEBUG: bool = True
+    DATABASE_URL: str 
 
-    DATABASE_URL: str   # required, phải có trong .env
-
-    SECRET_KEY: str = "super-secret-key"
+    SECRET_KEY: str 
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 

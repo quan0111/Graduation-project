@@ -1,25 +1,38 @@
-// OrdersContainer.tsx
 import { useState } from "react";
+import type { IOrder } from "../types";
 
-export const OrdersContainer = ({ orders }) => {
-  const [filter, setFilter] = useState('all');
-  const [expanded, setExpanded] = useState(null);
+import { OrdersFilterTabs } from "./filterTab";
+import { OrderCard } from "./orderCard";
 
-  const filtered = filter === 'all'
-    ? orders
-    : orders.filter(o => o.status === filter);
+type OrderFilterType = "ALL" | IOrder["status"];
+
+type Props = {
+  orders: IOrder[];
+};
+
+export const OrdersContainer: React.FC<Props> = ({ orders }) => {
+  const [filter, setFilter] = useState<OrderFilterType>("ALL");
+  const [expanded, setExpanded] = useState<number | null>(null);
+
+  const filtered =
+    filter === "ALL"
+      ? orders
+      : orders.filter((o) => o.status === filter);
 
   return (
     <>
-      <OrderFilterTabs selected={filter} onChange={setFilter} />
+      <OrdersFilterTabs
+        filter={filter}
+        setFilter={(value) => setFilter(value as OrderFilterType)}
+      />
 
-      {filtered.map(o => (
+      {filtered.map((o) => (
         <OrderCard
           key={o.id}
           order={o}
           expanded={expanded === o.id}
-          onToggle={(id) =>
-            setExpanded(expanded === id ? null : id)
+          onToggle={() =>
+            setExpanded(expanded === o.id ? null : o.id)
           }
         />
       ))}

@@ -1,15 +1,15 @@
-import { Input } from '@/components/ui/input';
-
 export function ProductShippingTab({
-  weight,
-  setWeight,
+  enableShipping,
+  setEnableShipping,
 }: any) {
   return (
     <div>
-      <label>Cân nặng *</label>
-      <Input
-        value={weight}
-        onChange={e => setWeight(e.target.value)}
+      <label>Bật vận chuyển</label>
+
+      <input
+        type="checkbox"
+        checked={enableShipping}
+        onChange={e => setEnableShipping(e.target.checked)}
       />
     </div>
   );

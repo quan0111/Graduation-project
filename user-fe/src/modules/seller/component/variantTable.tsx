@@ -1,19 +1,63 @@
-import { Trash2 } from 'lucide-react';
+export function VariantTable({
+  variants,
+  setVariants,
+  enableShipping
+}: any) {
 
-export function VariantTable({ variants, removeVariant }: any) {
+  const update = (i: number, field: string, value: any) => {
+    const copy = [...variants];
+    copy[i][field] = value;
+    setVariants(copy);
+  };
+
   return (
-    <table className="w-full">
+    <table className="w-full mt-4">
+      <thead>
+        <tr>
+          <th>Variant</th>
+          <th>Giá</th>
+          <th>Stock</th>
+          {enableShipping && <th>Weight</th>}
+          {enableShipping && <th>Size</th>}
+        </tr>
+      </thead>
+
       <tbody>
-        {variants.map((v: any) => (
-          <tr key={v.id}>
-            <td>{v.color}</td>
-            <td>{v.size}</td>
-            <td>{v.price}</td>
+        {variants.map((v: any, i: number) => (
+          <tr key={i}>
+            <td>{JSON.stringify(v.attributes)}</td>
+
             <td>
-              <button onClick={() => removeVariant(v.id)}>
-                <Trash2 size={16} />
-              </button>
+              <input
+                value={v.price}
+                onChange={e => update(i, "price", Number(e.target.value))}
+              />
             </td>
+
+            <td>
+              <input
+                value={v.stock}
+                onChange={e => update(i, "stock", Number(e.target.value))}
+              />
+            </td>
+
+            {enableShipping && (
+              <td>
+                <input
+                  value={v.weight}
+                  onChange={e => update(i, "weight", e.target.value)}
+                />
+              </td>
+            )}
+
+            {enableShipping && (
+              <td>
+                <input
+                  value={v.length}
+                  onChange={e => update(i, "length", e.target.value)}
+                />
+              </td>
+            )}
           </tr>
         ))}
       </tbody>

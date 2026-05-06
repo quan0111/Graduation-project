@@ -1,10 +1,12 @@
 from fastapi import WebSocket, WebSocketDisconnect
-from src.modules.notification.notification_manager import NotificationManager
+from src.modules.notification.notification_manager import notification_manager
 
-async def notification_ws(WebSocket: WebSocket, user_id: int, manager: NotificationManager):
-    await manager.connect(user_id, WebSocket)
+
+async def notification_ws(websocket: WebSocket, user_id: int):
+    await notification_manager.connect(user_id, websocket)
+
     try:
         while True:
-            await WebSocket.receive_text()  # Keep the connection alive
+            await websocket.receive_text()
     except WebSocketDisconnect:
-        manager.disconnect(user_id)
+        notification_manager.disconnect(user_id)

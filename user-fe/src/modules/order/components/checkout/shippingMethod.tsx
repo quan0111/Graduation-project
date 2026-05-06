@@ -1,8 +1,12 @@
+import { CheckCircle2, Truck } from "lucide-react";
+import clsx from "clsx";
+
 type ShippingMethodItem = {
   id: string;
   name: string;
   time: string;
   fee?: number;
+  icon?: React.ReactNode;
 };
 
 interface ShippingMethodProps {
@@ -18,23 +22,50 @@ export const ShippingMethod: React.FC<ShippingMethodProps> = ({
 }) => {
   return (
     <div className="space-y-3">
-      {methods.map((m) => (
-        <div
-          key={m.id}
-          onClick={() => onChange(m.id)}
-          className={`p-4 border rounded cursor-pointer
-          ${value === m.id ? "border-primary bg-primary/5" : ""}`}
-        >
-          <p>{m.name}</p>
-          <p className="text-sm text-muted">{m.time}</p>
+      {methods.map((m) => {
+        const active = value === m.id;
 
-          {m.fee !== undefined && (
-            <p className="text-sm font-medium">
-              {m.fee.toLocaleString()}₫
-            </p>
-          )}
-        </div>
-      ))}
+        return (
+          <div
+            key={m.id}
+            onClick={() => onChange(m.id)}
+            className={clsx(
+              "flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all",
+              "hover:border-primary hover:shadow-sm",
+              active
+                ? "border-primary bg-primary/5 shadow"
+                : "border-gray-200"
+            )}
+          >
+            {/* LEFT */}
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 flex items-center justify-center rounded bg-muted">
+                {m.icon || <Truck size={18} />}
+              </div>
+
+              <div>
+                <p className="font-medium">{m.name}</p>
+                <p className="text-xs text-muted-foreground">{m.time}</p>
+              </div>
+            </div>
+
+            {/* RIGHT */}
+            <div className="flex items-center gap-4">
+              {m.fee !== undefined && (
+                <p className="text-sm font-semibold text-primary">
+                  {m.fee.toLocaleString()}₫
+                </p>
+              )}
+
+              {active ? (
+                <CheckCircle2 className="text-primary" size={20} />
+              ) : (
+                <div className="w-5 h-5 rounded-full border border-gray-400" />
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };

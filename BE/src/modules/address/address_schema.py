@@ -1,22 +1,23 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
-
 class AddressBase(BaseModel):
     fullName: str
-    phone: str
+    phone: str = Field(min_length=9, max_length=15)
+
     addressLine: str
     ward: Optional[str] = None
     district: str
     province: str
+
     country: Optional[str] = "Vietnam"
     postalCode: Optional[str] = None
+
     isDefault: Optional[bool] = False
 
-
 class AddressCreate(AddressBase):
-    userId: int
+    pass  
 
 
 class AddressUpdate(BaseModel):
@@ -30,17 +31,24 @@ class AddressUpdate(BaseModel):
     isDefault: Optional[bool] = None
 
 
+class UserShort(BaseModel):
+    id: int
+    email: str
+
+    model_config = {"from_attributes": True}
+
 class AddressOut(AddressBase):
     id: int
     userId: int
     createdAt: datetime
 
-    class Config:
-        from_attributes = True
+    # 🔥 relationship
+    user: Optional[UserShort] = None
+
+    model_config = {"from_attributes": True}
 
 class AddressInDB(AddressOut):
     updatedAt: datetime
     deletedAt: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

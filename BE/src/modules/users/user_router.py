@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from typing import List
 from src.modules.users.user_schema import UserCreate, UserUpdate, UserOut
 from src.modules.users.user_service import UserService
