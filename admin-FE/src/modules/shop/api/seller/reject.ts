@@ -4,11 +4,8 @@ import type { MutationConfig } from "@/lib/react-query";
 
 export const rejectSeller = async (params: {
   id: number;
-  admin_id: number;
 }) => {
-  const res = await apiClient.patch(
-    `/seller/${params.id}/reject?admin_id=${params.admin_id}`
-  );
+  const res = await apiClient.patch(`/seller/${params.id}/reject`);
   return res.data;
 };
 

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   BadgeDollarSign,
   BarChart3,
@@ -28,34 +28,36 @@ const menuGroups = [
   {
     label: "Vận hành",
     items: [
-      { label: "Tổng quan", href: "#overview", icon: LayoutDashboard, active: true },
-      { label: "Đơn hàng", href: "#orders", icon: ClipboardList },
-      { label: "Sản phẩm", href: "#products", icon: Package },
-      { label: "Vận chuyển", href: "#shipping", icon: Truck },
+      { label: "Tổng quan", href: "/seller/dashboard", icon: LayoutDashboard, match: "/seller/dashboard" },
+      { label: "Đơn hàng", href: "/seller/orders", icon: ClipboardList, match: "/seller/orders" },
+      { label: "Sản phẩm", href: "/seller/products/new", icon: Package, match: "/seller/products" },
+      { label: "Vận chuyển", href: "/seller/orders", icon: Truck, match: "/seller/orders" },
     ],
   },
   {
     label: "Tăng trưởng",
     items: [
-      { label: "Marketing", href: "#campaigns", icon: Megaphone },
-      { label: "Phân tích", href: "#analytics", icon: BarChart3 },
-      { label: "Tài chính", href: "#finance", icon: BadgeDollarSign },
+      { label: "Marketing", href: "/seller/dashboard#campaigns", icon: Megaphone, match: "/seller/dashboard" },
+      { label: "Phân tích", href: "/seller/dashboard#analytics", icon: BarChart3, match: "/seller/dashboard" },
+      { label: "Tài chính", href: "/seller/dashboard#finance", icon: BadgeDollarSign, match: "/seller/dashboard" },
     ],
   },
   {
     label: "Hệ thống",
     items: [
-      { label: "Cài đặt shop", href: "#settings", icon: Settings },
-      { label: "Trợ giúp", href: "#support", icon: HelpCircle },
+      { label: "Cài đặt shop", href: "/seller/dashboard#settings", icon: Settings, match: "/seller/dashboard" },
+      { label: "Trợ giúp", href: "/seller/dashboard#support", icon: HelpCircle, match: "/seller/dashboard" },
     ],
   },
-];
+] as const;
 
 interface SellerDashboardLayoutProps {
   children: ReactNode;
 }
 
 export function SellerDashboardLayout({ children }: SellerDashboardLayoutProps) {
+  const location = useLocation();
+
   return (
     <div className="min-h-screen bg-[#f5f5f5] text-slate-900">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-orange-100 bg-white lg:flex">
@@ -79,18 +81,18 @@ export function SellerDashboardLayout({ children }: SellerDashboardLayoutProps) 
               </p>
               <div className="space-y-1">
                 {group.items.map((item) => (
-                  <a
+                  <Link
                     key={item.label}
-                    href={item.href}
+                    to={item.href}
                     className={cn(
                       "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-orange-50 hover:text-[#ee4d2d]",
-                      item.active &&
-                        "bg-orange-50 text-[#ee4d2d] shadow-[inset_3px_0_0_#ee4d2d]"
+                      location.pathname.startsWith(item.match) &&
+                        "bg-orange-50 text-[#ee4d2d] shadow-[inset_3px_0_0_#ee4d2d]",
                     )}
                   >
                     <item.icon className="size-4" />
                     {item.label}
-                  </a>
+                  </Link>
                 ))}
               </div>
             </div>

@@ -19,6 +19,17 @@ class ProductCreate(ProductBase):
     attributes: Optional[List["ProductAttributeCreate"]] = []
     tags: Optional[List[int]] = [] 
 
+
+class SellerProductCreate(BaseModel):
+    name: str
+    slug: Optional[str] = None
+    categoryId: int
+    description: Optional[str] = None
+    images: Optional[List["ProductImageCreate"]] = []
+    attributes: Optional[List["ProductAttributeCreate"]] = []
+    variants: Optional[List["VariantCreate"]] = []
+    tags: Optional[List[int]] = []
+
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
     slug: Optional[str] = None
@@ -26,6 +37,7 @@ class ProductUpdate(BaseModel):
     description: Optional[str] = None
     price: Optional[float] = None
     shopId: Optional[int] = None
+    status: Optional[str] = None
 class ProductOut(ProductBase):
     id: int
     status: str

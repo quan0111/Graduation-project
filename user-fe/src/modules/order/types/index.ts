@@ -1,128 +1,116 @@
-  import type { IProductVariant } from "@/modules/promotion/types"
-import type { IProduct } from "../../product/types"
-import type { IUser } from "../../user/types"
-import type { IShop } from "@/modules/shop/types"
-import type { OrderStatusType } from "@/constant"
+import type { OrderStatusType } from "@/constant";
 
-export interface IOrder {
-  id: number
-  user_id: number
+export type PaymentMethodType = "COD" | "VNPAY" | "STRIPE";
+export type PaymentStatusType = "pending" | "success" | "failed";
+export type ShipmentStatusType =
+  | "ready_to_ship"
+  | "shipped"
+  | "in_transit"
+  | "delivered"
+  | "completed";
 
-  status: OrderStatusType
-
-  subtotal: number
-  shipping_fee: number
-  discount_amount: number
-  total_amount: number
-
-  shipping_address_id?: number | null
-  coupon_id?: number | null
-
-  created_at: string
-  updated_at: string
-  deleted_at?: string | null
-
-  User?: IUser
-  Items?: IOrderItem[]
-  Payment?: IPayment
+export interface IOrderUser {
+  id: number;
+  email: string;
+  full_name?: string | null;
 }
+
+export interface IOrderAddress {
+  id: number;
+  user_id: number;
+  full_name: string;
+  phone: string;
+  address_line: string;
+  ward?: string | null;
+  district: string;
+  province: string;
+  country?: string | null;
+  postal_code?: string | null;
+  is_default: boolean;
+}
+
+export interface IOrderShop {
+  id: number;
+  name: string;
+}
+
 export interface IOrderItem {
-  id: number
-  order_id: number
-
-  quantity: number
-  price: number
-
-  created_at: string
-  deleted_at?: string | null
-
-  shop?: IShop
-  variant?: IProductVariant
-  Product?: IProduct
-}
-export type PaymentMethodType =
-  | "COD"
-  | "VNPAY"
-  | "STRIPE"
-
-export type PaymentStatusType =
-  | "PENDING"
-  | "SUCCESS"
-  | "FAILED"
-
-export interface IPayment {
-  id: number
-  order_id: number
-
-  method: PaymentMethodType
-  status: PaymentStatusType
-
-  created_at: string
-  deleted_at?: string | null
-}
-export interface ICreateOrderFormInputs {
-  userId: number;
-
-  shippingFee: number;
-  discountAmount: number;
-  totalAmount: number;
-
-  items: {
-    productId: number;
-    variantId?: number | null;
-    quantity: number;
-    price: number;
-  }[];
-
-  payment?: {
-    method: PaymentMethodType;
-  };
-}
-
-export interface IApiPayment {
   id: number;
-
-  orderId: number;
-
-  method: PaymentMethodType;
-  status: PaymentStatusType;
-
-  createdAt: string;
-}
-
-
-export interface IApiOrderItem {
-  id: number;
-
-  orderId: number;
-
-  productId: number;
-  variantId?: number | null;
-  shopId: number;
-
+  order_id: number;
+  product_id: number;
+  variant_id?: number | null;
+  shop_id: number;
   quantity: number;
   price: number;
-
-  productName?: string;
-  variantName?: string;
-  productImage?: string | null;
+  product_name: string;
+  variant_name?: string | null;
+  product_image?: string | null;
+  line_total: number;
+  shop?: IOrderShop;
 }
 
-export interface IApiOrder {
+export interface IPayment {
   id: number;
+  order_id: number;
+  method: PaymentMethodType;
+  status: PaymentStatusType;
+  created_at: string;
+}
 
-  userId: number;
+export interface IShipment {
+  id: number;
+  order_id: number;
+  carrier?: string | null;
+  tracking_number?: string | null;
+  status: ShipmentStatusType;
+  shipped_at?: string | null;
+  delivered_at?: string | null;
+  created_at: string;
+}
 
+export interface IOrder {
+  id: number;
+  user_id: number;
   status: OrderStatusType;
+  subtotal: number;
+  shipping_fee: number;
+  discount_amount: number;
+  total_amount: number;
+  shipping_address_id?: number | null;
+  coupon_id?: number | null;
+  created_at: string;
+  updated_at: string;
+  user?: IOrderUser | null;
+  shipping_address?: IOrderAddress | null;
+  shipment?: IShipment | null;
+  items: IOrderItem[];
+  payment?: IPayment | null;
+}
 
+export interface ICreateOrderFormInputs {
+  userId: number;
   subtotal: number;
   shippingFee: number;
   discountAmount: number;
   totalAmount: number;
+  shippingAddressId?: number | null;
+  couponId?: number | null;
+  items: {
+    productId: number;
+    variantId?: number | null;
+    shopId: number;
+    quantity: number;
+    price: number;
+  }[];
+  payment?: {
+    method: PaymentMethodType;
+    status?: string;
+  };
+}
 
-  createdAt: string;
-
-  items: IApiOrderItem[];
-
-  payment?: IApiPayment;
-  }
+export interface IShipmentMutationPayload {
+  orderId: number;
+  carrier?: string;
+  trackingNumber?: string;
+  status?: Uppercase<ShipmentStatusType>;
+}

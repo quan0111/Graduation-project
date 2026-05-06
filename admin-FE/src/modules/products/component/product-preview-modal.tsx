@@ -10,115 +10,98 @@ export function ProductPreviewModal({ open, onClose, product }: any) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{product.name}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-
-          {/* 🔹 Basic info */}
           <div>
             <p><b>Shop:</b> {product.shop?.name}</p>
-            <p><b>Danh mục:</b> {product.category?.name}</p>
-            <p><b>Giá:</b> {product.price?.toLocaleString()} đ</p>
-            <p><b>Trạng thái:</b> {mapStatus(product.status)}</p>
+            <p><b>Danh muc:</b> {product.category?.name}</p>
+            <p><b>Gia:</b> {product.price?.toLocaleString()} d</p>
+            <p><b>Trang thai:</b> {mapStatus(product.status)}</p>
           </div>
 
-          {/* 🔹 Product Images */}
           <div>
-            <h3 className="font-semibold mb-2">Ảnh sản phẩm</h3>
-            <div className="flex gap-2 flex-wrap">
+            <h3 className="mb-2 font-semibold">Anh san pham</h3>
+            <div className="flex flex-wrap gap-2">
               {product.images?.length ? (
-                product.images.map((img: any) => (
+                product.images.map((image: any) => (
                   <img
-                    key={img.id}
-                    src={img.url}
+                    key={image.id}
+                    src={image.url}
                     alt=""
-                    className="w-24 h-24 object-cover rounded border"
+                    className="h-24 w-24 rounded border object-cover"
                   />
                 ))
               ) : (
-                <p className="text-sm text-gray-400">Không có ảnh</p>
+                <p className="text-sm text-gray-400">Khong co anh</p>
               )}
             </div>
           </div>
 
-          {/* 🔹 Variants */}
           <div>
-            <h3 className="font-semibold mb-2">Variants</h3>
-
+            <h3 className="mb-2 font-semibold">Variants</h3>
             {product.variants?.length ? (
               <div className="space-y-3">
-                {product.variants.map((v: any) => (
-                  <div key={v.id} className="border p-3 rounded">
-
-                    <p><b>{v.name}</b></p>
-                    <p>SKU: {v.sku}</p>
-                    <p>Giá: {v.price?.toLocaleString()} đ</p>
-                    <p>Stock: {v.stock}</p>
-
-                    {/* Variant Images */}
-                    <div className="flex gap-2 mt-2">
-                      {v.images?.length ? (
-                        v.images.map((img: any, idx: number) => (
+                {product.variants.map((variant: any) => (
+                  <div key={variant.id} className="rounded border p-3">
+                    <p><b>{variant.name}</b></p>
+                    <p>SKU: {variant.sku}</p>
+                    <p>Gia: {variant.price?.toLocaleString()} d</p>
+                    <p>Stock: {variant.stock}</p>
+                    <div className="mt-2 flex gap-2">
+                      {variant.images?.length ? (
+                        variant.images.map((image: any, index: number) => (
                           <img
-                            key={idx}
-                            src={img.url}
+                            key={`${variant.id}-${index}`}
+                            src={image.url}
                             alt=""
-                            className="w-16 h-16 object-cover rounded border"
+                            className="h-16 w-16 rounded border object-cover"
                           />
                         ))
                       ) : (
                         <span className="text-sm text-gray-400">No image</span>
                       )}
                     </div>
-
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-400">Không có variant</p>
+              <p className="text-sm text-gray-400">Khong co variant</p>
             )}
           </div>
 
-          {/* 🔹 Attributes */}
           <div>
-            <h3 className="font-semibold mb-2">Thuộc tính</h3>
-
+            <h3 className="mb-2 font-semibold">Thuoc tinh</h3>
             {product.attributes?.length ? (
               <ul className="list-disc pl-5">
-                {product.attributes.map((attr: any) => (
-                  <li key={attr.id}>
-                    {attr.key}: {attr.value}
+                {product.attributes.map((attribute: any) => (
+                  <li key={attribute.id}>
+                    {attribute.key}: {attribute.value}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-gray-400">Không có thuộc tính</p>
+              <p className="text-sm text-gray-400">Khong co thuoc tinh</p>
             )}
           </div>
 
-          {/* 🔹 Tags */}
           <div>
-            <h3 className="font-semibold mb-2">Tags</h3>
-
-            <div className="flex gap-2 flex-wrap">
+            <h3 className="mb-2 font-semibold">Tags</h3>
+            <div className="flex flex-wrap gap-2">
               {product.tags?.length ? (
                 product.tags.map((tag: any) => (
-                  <span
-                    key={tag.id}
-                    className="px-2 py-1 bg-gray-200 rounded text-sm"
-                  >
+                  <span key={tag.id} className="rounded bg-gray-200 px-2 py-1 text-sm">
                     {tag.name}
                   </span>
                 ))
               ) : (
-                <p className="text-sm text-gray-400">Không có tag</p>
+                <p className="text-sm text-gray-400">Khong co tag</p>
               )}
             </div>
           </div>
-
         </div>
       </DialogContent>
     </Dialog>
@@ -128,11 +111,11 @@ export function ProductPreviewModal({ open, onClose, product }: any) {
 function mapStatus(status: string) {
   switch (status) {
     case "DRAFT":
-      return "Chờ duyệt";
-    case "PUBLISHED":
-      return "Đã duyệt";
-    case "REJECTED":
-      return "Từ chối";
+      return "Cho duyet";
+    case "ACTIVE":
+      return "Da duyet";
+    case "REJECT":
+      return "Tu choi";
     default:
       return status;
   }

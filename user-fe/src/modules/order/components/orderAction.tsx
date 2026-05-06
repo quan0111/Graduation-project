@@ -1,11 +1,10 @@
-'use client';
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
-import { useCancelOrder } from "../api/cancel-order";
 import { useAddItem } from "@/modules/cart/api/add-item";
-import { useCart } from "@/modules/cart/api/get-cart";
-import { toast } from "sonner";
+
+import { useCancelOrder } from "../api/cancel-order";
 import type { IOrder } from "../types";
 
 type Props = {
@@ -17,85 +16,69 @@ export const OrderActions = ({ order }: Props) => {
   const cancelMutation = useCancelOrder();
   const addCartMutation = useAddItem();
 
-  const { data: cartData } = useCart();
-
-  /* ---------- CANCEL ---------- */
   const handleCancel = async () => {
-    if (!confirm("Bạn có chắc muốn hủy đơn?")) return;
+    if (!window.confirm("Bạn chắc chắn muốn hủy đơn này?")) {
+      return;
+    }
 
     try {
       await cancelMutation.mutateAsync({
         orderId: order.id,
-        reason: "Khách muốn hủy",
+        reason: "Khách yêu cầu hủy đơn",
       });
 
-      toast.success("Đã hủy đơn hàng");
+      toast.success("Đơn hàng đã được hủy");
     } catch {
-      toast.error("Hủy đơn thất bại");
+      toast.error("Không thể hủy đơn hàng");
     }
   };
 
-  /* ---------- REBUY ---------- */
   const handleRebuy = async () => {
-    if (!order.Items?.length) {
-      toast.error("Không có sản phẩm");
+    if (!order.items.length) {
+      toast.error("Không có sản phẩm để mua lại");
       return;
     }
 
     try {
       await Promise.all(
-        order.Items.map((item) => {
-          if (!item.Product?.id || !item.shop?.id) {
-            throw new Error("Invalid order item");
-          }
-
-          return addCartMutation.mutateAsync({
-            productId: item.Product.id,
-            variantId: item.variant?.id ?? null,
-            shopId: item.shop.id,
+        order.items.map((item) =>
+          addCartMutation.mutateAsync({
+            productId: item.product_id,
+            variantId: item.variant_id ?? null,
+            shopId: item.shop_id,
             quantity: item.quantity,
-          });
-        })
+          }),
+        ),
       );
 
-      toast.success("Đã thêm lại vào giỏ");
+      toast.success("Đã thêm lại sản phẩm vào giỏ");
       navigate("/cart");
-    } catch (err) {
-      console.error(err);
-      toast.error("Mua lại thất bại");
+    } catch {
+      toast.error("Không thể thêm lại sản phẩm");
     }
   };
 
-  const canCancel = order.status === "pending";
-  const canRebuy = order.status !== "cancelled";
+  const canCancel = ["pending", "confirmed", "processing"].includes(order.status);
+  const canRebuy = !["cancelled"].includes(order.status);
 
   return (
-    <div className="grid md:grid-cols-3 gap-3">
+    <div className="flex flex-wrap gap-3">
       <Button variant="outline" onClick={() => window.print()}>
-        Tải hóa đơn
+        In hóa đơn
       </Button>
-
-      <Button variant="outline">
-        Liên hệ
+      <Button variant="outline" onClick={() => navigate(`/orders/${order.id}`)}>
+        Xem chi tiết
       </Button>
-
       {canCancel ? (
-        <Button
-          variant="destructive"
-          onClick={handleCancel}
-        >
+        <Button variant="destructive" onClick={handleCancel}>
           Hủy đơn
         </Button>
-      ) : (
-        canRebuy && (
-          <Button
-            className="bg-accent"
-            onClick={handleRebuy}
-          >
-            Mua lại
-          </Button>
-        )
-      )}
+      ) : null}
+      {canRebuy ? (
+        <Button className="bg-[#ee4d2d] hover:bg-[#d93f21]" onClick={handleRebuy}>
+          Mua lại
+        </Button>
+      ) : null}
     </div>
   );
 };

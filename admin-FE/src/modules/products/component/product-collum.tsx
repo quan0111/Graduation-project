@@ -40,8 +40,8 @@ export const productColumns = (
     render: (p: any) => {
       const statusMap: any = {
         DRAFT: "pending",
-        PUBLISHED: "approved",
-        REJECTED: "rejected",
+        ACTIVE: "approved",
+        REJECT: "rejected",
       };
 
       return (

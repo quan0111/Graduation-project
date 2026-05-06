@@ -22,6 +22,7 @@ class ShipmentOut(BaseModel):
     status: str
     shippedAt: Optional[datetime]
     deliveredAt: Optional[datetime]
+    createdAt: datetime
 
     class Config:
         from_attributes = True

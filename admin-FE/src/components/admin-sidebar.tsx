@@ -32,6 +32,8 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useLogout } from "@/modules/auth/api/logout"
+import { useMe } from "@/modules/auth/api/get-auth-me"
 
 const mainNavItems = [
   { title: "Tổng quan", icon: LayoutDashboard, href: "/" },
@@ -60,6 +62,8 @@ const systemNavItems = [
 
 export function AdminSidebar() {
   const { pathname } = useLocation()
+  const { data: user } = useMe()
+  const { mutate: logout, isPending: isLogoutPending } = useLogout()
 
   const renderMenu = (items: any[]) =>
     items.map((item) => (
@@ -123,19 +127,33 @@ export function AdminSidebar() {
 
       <SidebarFooter className="border-t p-4">
         <div className="flex items-center gap-3">
-          <Avatar className="size-9">
-            <AvatarImage src="/placeholder.svg" />
-            <AvatarFallback>AD</AvatarFallback>
-          </Avatar>
+          <NavLink to="/profile" className="flex flex-1 items-center gap-3 rounded-xl px-2 py-1.5 transition hover:bg-muted">
+            <Avatar className="size-9">
+              <AvatarImage src={user?.avatarUrl} />
+              <AvatarFallback>
+                {(user?.fullName || user?.email || "AD")
+                  .split(" ")
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((part) => part[0])
+                  .join("")
+                  .toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
 
-          <div className="flex flex-1 flex-col">
-            <span className="text-sm font-medium">Admin User</span>
-            <span className="text-xs text-muted-foreground">
-              admin@markethub.vn
-            </span>
-          </div>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate text-sm font-medium">{user?.fullName || "Admin"}</span>
+              <span className="truncate text-xs text-muted-foreground">
+                {user?.email || "admin@markethub.vn"}
+              </span>
+            </div>
+          </NavLink>
 
-          <button className="p-2 hover:bg-muted rounded-md">
+          <button
+            className="rounded-md p-2 hover:bg-muted disabled:opacity-60"
+            disabled={isLogoutPending}
+            onClick={() => logout(undefined)}
+          >
             <LogOut className="size-4" />
           </button>
         </div>

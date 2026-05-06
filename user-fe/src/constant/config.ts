@@ -12,6 +12,7 @@ export const API_URL_REVIEW = `${API_URL}reviews`
 export const API_URL_FOLLOW = `${API_URL}followers`
 export const API_URL_BEHAVIOR = `${API_URL}shops`
 export const API_URL_ORDER = `${API_URL}orders`
+export const API_URL_SHIPMENT = `${API_URL}shipments`
 
 
 

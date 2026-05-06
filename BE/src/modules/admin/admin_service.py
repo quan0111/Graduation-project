@@ -1,9 +1,44 @@
 from src.core.database import prisma
+from src.core.security import hash_password
 from fastapi import HTTPException
-from src.modules.admin.admin_schema import OrderFilter, SellerFilter, Pagination, DashboardStats
+from src.modules.admin.admin_schema import (
+    AdminAccountCreate,
+    DashboardStats,
+    OrderFilter,
+    Pagination,
+    SellerFilter,
+)
 
 
 class AdminService:
+
+    @staticmethod
+    async def list_admin_accounts():
+        return await prisma.user.find_many(
+            where={
+                "role": "ADMIN",
+                "deletedAt": None,
+            },
+            order={"createdAt": "desc"},
+        )
+
+    @staticmethod
+    async def create_admin_account(data: AdminAccountCreate):
+        existing = await prisma.user.find_unique(where={"email": data.email})
+
+        if existing:
+            raise HTTPException(400, "Email already exists")
+
+        return await prisma.user.create(
+            data={
+                "email": data.email,
+                "password": hash_password(data.password),
+                "fullName": data.fullName,
+                "phone": data.phone,
+                "avatarUrl": data.avatarUrl,
+                "role": "ADMIN",
+            }
+        )
 
     @staticmethod
     async def get_dashboard_stats() -> DashboardStats:

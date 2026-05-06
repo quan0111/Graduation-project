@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { PaymentMethodType } from "../../types";
 import { CheckCircle2 } from "lucide-react";
 import clsx from "clsx";
@@ -5,7 +6,7 @@ import clsx from "clsx";
 type PaymentMethodItem = {
   id: PaymentMethodType;
   name: string;
-  icon?: React.ReactNode;
+  icon?: ReactNode;
 };
 
 interface PaymentMethodProps {

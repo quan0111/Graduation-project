@@ -1,4 +1,5 @@
 import type { IOrderItem } from "../types";
+import { formatCurrency } from "../utils/order";
 
 interface OrderItemListProps {
   items: IOrderItem[];
@@ -9,32 +10,20 @@ export const OrderItemList: React.FC<OrderItemListProps> = ({ items }) => {
     <div className="space-y-3">
       {items.map((item) => (
         <div key={item.id} className="flex items-center gap-3">
-          {/* image */}
           <img
-            src={item.Product?.images?.[0]?.url ?? ""}
-            alt={item.Product?.name ?? "Product Image"}
-            className="w-12 h-12 object-cover rounded"
+            src={item.product_image || "/placeholder.png"}
+            alt={item.product_name}
+            className="size-12 rounded-2xl object-cover ring-1 ring-slate-200"
           />
 
-          {/* info */}
-          <div className="flex-1">
-            <p className="text-sm font-medium">
-              {item.Product?.name ?? "Unknown Product"}
-            </p>
-
-            {item.variant?.name && (
-              <p className="text-xs text-muted">
-                {item.variant.name}
-              </p>
-            )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-slate-900">{item.product_name}</p>
+            <p className="text-xs text-slate-500">{item.variant_name || "Mặc định"}</p>
           </div>
 
-          {/* quantity + price */}
           <div className="text-right text-sm">
             <p>x{item.quantity}</p>
-            <p className="font-semibold">
-              {item.price?.toLocaleString()}đ
-            </p>
+            <p className="font-semibold text-slate-900">{formatCurrency(item.line_total)}</p>
           </div>
         </div>
       ))}

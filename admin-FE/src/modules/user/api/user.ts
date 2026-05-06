@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_URL_USER } from "@/constant/config";
-import { clearAdminSession } from "@/lib/auth-storage";
+import { clearAdminSession, setStoredAdminUser } from "@/lib/auth-storage";
 import { apiClient } from "@/lib/api";
 import type { MutationConfig } from "@/lib/react-query";
 import type { UseQueryOptions } from "@tanstack/react-query";
@@ -46,7 +46,7 @@ export const useGetCurrentUser = (
 
 // Update user profile
 export const updateProfile = async (data: UpdateProfileRequest): Promise<User> => {
-    const response = await apiClient.put(`${API_URL_USER}/me`, data);
+    const response = await apiClient.patch(`${API_URL_USER}/me`, data);
     return response.data;
 };
 
@@ -54,8 +54,10 @@ export const useUpdateProfile = ({ config }: { config?: MutationConfig<typeof up
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: updateProfile,
-        onSuccess: async () => {
+        onSuccess: async (data) => {
+            setStoredAdminUser(data);
             await queryClient.invalidateQueries({ queryKey: ["user", "me"] });
+            await queryClient.invalidateQueries({ queryKey: ["auth"] });
         },
         ...config,
     });
@@ -63,7 +65,7 @@ export const useUpdateProfile = ({ config }: { config?: MutationConfig<typeof up
 
 // Update avatar
 export const updateAvatar = async (avatarUrl: string): Promise<User> => {
-    const response = await apiClient.put(`${API_URL_USER}/me/avatar`, { avatarUrl });
+    const response = await apiClient.patch(`${API_URL_USER}/me`, { avatarUrl });
     return response.data;
 };
 
@@ -71,8 +73,10 @@ export const useUpdateAvatar = ({ config }: { config?: MutationConfig<typeof upd
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: updateAvatar,
-        onSuccess: async () => {
+        onSuccess: async (data) => {
+            setStoredAdminUser(data);
             await queryClient.invalidateQueries({ queryKey: ["user", "me"] });
+            await queryClient.invalidateQueries({ queryKey: ["auth"] });
         },
         ...config,
     });

@@ -108,6 +108,12 @@ class ShopService:
         if "description" in update_data:
             data["description"] = update_data["description"]
 
+        if "slug" in update_data:
+            data["slug"] = update_data["slug"]
+
+        if "avatarUrl" in update_data:
+            data["avatarUrl"] = update_data["avatarUrl"]
+
         if "ownerId" in update_data:
             data["owner"] = {
                 "connect": {"id": update_data["ownerId"]}
@@ -118,6 +124,20 @@ class ShopService:
             data=data,
             include={"owner": True}
         )
+
+    @staticmethod
+    async def update_my_shop(user_id: int, shop_data: shop_schema.ShopUpdate):
+        shop = await prisma.shop.find_first(
+            where={
+                "ownerId": user_id,
+                "deletedAt": None,
+            }
+        )
+
+        if not shop:
+            raise HTTPException(404, "Shop not found")
+
+        return await ShopService.update_shop(shop.id, shop_data)
     @staticmethod
     async def delete_shop(shop_id: int):
         existing = await prisma.shop.find_unique(where={"id": shop_id})

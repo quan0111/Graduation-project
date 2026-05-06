@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { CheckCircle2, Truck } from "lucide-react";
 import clsx from "clsx";
 
@@ -6,7 +7,7 @@ type ShippingMethodItem = {
   name: string;
   time: string;
   fee?: number;
-  icon?: React.ReactNode;
+  icon?: ReactNode;
 };
 
 interface ShippingMethodProps {

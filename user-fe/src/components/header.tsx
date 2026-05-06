@@ -169,7 +169,7 @@ export default function Header() {
                       </Link>
                     ) : (
                       <Link
-                        to="/seller/dashboard"
+                        to="/seller"
                         onClick={() => setIsDropdownOpen(false)}
                         className="block px-4 py-2 hover:bg-muted"
                       >

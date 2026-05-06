@@ -18,6 +18,9 @@ import PromotionPage from "@/modules/promotion/view";
 
 import { SellerRegistrationView } from "@/modules/seller/view/create";
 import SellerDashboardPage from "@/modules/seller/view/dashboard";
+import AddProductPage from "@/modules/seller/view/new-product";
+import SellerOrdersPage from "@/modules/seller/view/orders";
+import SellerOrderDetailPage from "@/modules/seller/view/order-detail";
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -37,6 +40,7 @@ export const router = createBrowserRouter([
       { path: "orders/:id", element: <OrderDetailPage /> },
 
       { path: "account", element: <AccountPage /> },
+      { path: "profile", element: <AccountPage /> },
 
       { path: "promotions", element: <PromotionPage /> },
       { path: "shop/:id", element: <ShopPage /> },
@@ -52,5 +56,17 @@ export const router = createBrowserRouter([
   {
     path: "/seller/dashboard",
     element: <SellerDashboardPage />,
+  },
+  {
+    path: "/seller/orders",
+    element: <SellerOrdersPage />,
+  },
+  {
+    path: "/seller/orders/:id",
+    element: <SellerOrderDetailPage />,
+  },
+  {
+    path: "/seller/products/new",
+    element: <AddProductPage />,
   },
 ]);

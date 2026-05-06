@@ -11,57 +11,53 @@ import { useRejectSeller } from "@/modules/shop/api/seller/reject";
 const columns = (onApprove: any, onReject: any) => [
   {
     key: "shopName",
-    label: "Tên Shop",
-    render: (s: any) => (
+    label: "Ten Shop",
+    render: (seller: any) => (
       <div>
-        <p className="font-medium">{s.shopName}</p>
-        <p className="text-xs text-muted-foreground">{s.description}</p>
+        <p className="font-medium">{seller.shopName}</p>
+        <p className="text-xs text-muted-foreground">{seller.description}</p>
       </div>
     ),
   },
   {
     key: "user",
-    label: "Người đăng ký",
-    render: (s: any) => (
+    label: "Nguoi dang ky",
+    render: (seller: any) => (
       <div>
-        <p>{s.user?.fullName}</p>
-        <p className="text-xs text-muted-foreground">{s.user?.email}</p>
+        <p>{seller.user?.fullName}</p>
+        <p className="text-xs text-muted-foreground">{seller.user?.email}</p>
       </div>
     ),
   },
   {
     key: "status",
-    label: "Trạng thái",
-    render: (s: any) => (
+    label: "Trang thai",
+    render: (seller: any) => (
       <span
-        className={`px-2 py-1 rounded text-xs ${
-          s.status === "PENDING"
+        className={`rounded px-2 py-1 text-xs ${
+          seller.status === "PENDING"
             ? "bg-yellow-100 text-yellow-700"
-            : s.status === "APPROVED"
-            ? "bg-green-100 text-green-700"
-            : "bg-red-100 text-red-700"
+            : seller.status === "APPROVED"
+              ? "bg-green-100 text-green-700"
+              : "bg-red-100 text-red-700"
         }`}
       >
-        {s.status}
+        {seller.status}
       </span>
     ),
   },
   {
     key: "actions",
-    label: "Thao tác",
-    render: (s: any) => (
+    label: "Thao tac",
+    render: (seller: any) => (
       <div className="flex gap-2">
-        {s.status === "PENDING" && (
+        {seller.status === "PENDING" && (
           <>
-            <Button size="sm" onClick={() => onApprove(s)}>
-              Duyệt
+            <Button size="sm" onClick={() => onApprove(seller)}>
+              Duyet
             </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => onReject(s)}
-            >
-              Từ chối
+            <Button size="sm" variant="destructive" onClick={() => onReject(seller)}>
+              Tu choi
             </Button>
           </>
         )}
@@ -77,30 +73,23 @@ export default function SellerApplicationsPage() {
   const approveMutation = useApproveSeller();
   const rejectMutation = useRejectSeller();
 
-
   const handleApprove = (item: any) => {
     approveMutation.mutate(
+      { id: item.id },
       {
-          id: item.id,
-          admin_id: 0
+        onSuccess: () => toast.success("Duyet thanh cong"),
+        onError: () => toast.error("Duyet that bai"),
       },
-      {
-        onSuccess: () => toast.success("Duyệt thành công"),
-        onError: () => toast.error("Duyệt thất bại"),
-      }
     );
   };
 
   const handleReject = (item: any) => {
     rejectMutation.mutate(
+      { id: item.id },
       {
-          id: item.id,
-          admin_id: 0
+        onSuccess: () => toast.success("Tu choi thanh cong"),
+        onError: () => toast.error("Tu choi that bai"),
       },
-      {
-        onSuccess: () => toast.success("Từ chối thành công"),
-        onError: () => toast.error("Từ chối thất bại"),
-      }
     );
   };
 
@@ -109,44 +98,37 @@ export default function SellerApplicationsPage() {
     return item.status === filter;
   });
 
-  const tableColumns = columns(handleApprove, handleReject);
-
   if (isLoading) {
-    return <div className="p-6">Đang tải...</div>;
+    return <div className="p-6">Dang tai...</div>;
   }
 
   if (isError) {
-    return <div className="p-6 text-red-500">Lỗi tải dữ liệu</div>;
+    return <div className="p-6 text-red-500">Loi tai du lieu</div>;
   }
 
   return (
     <div className="p-8">
-
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Duyệt Seller</h1>
-        <p className="text-muted-foreground">
-          Quản lý yêu cầu đăng ký bán hàng
-        </p>
+        <h1 className="text-3xl font-bold">Duyet Seller</h1>
+        <p className="text-muted-foreground">Quan ly yeu cau dang ky ban hang</p>
       </div>
 
-      {/* FILTER */}
-      <div className="flex gap-2 mb-4">
-        {["ALL", "PENDING", "APPROVED", "REJECTED"].map((s) => (
+      <div className="mb-4 flex gap-2">
+        {["ALL", "PENDING", "APPROVED", "REJECTED"].map((item) => (
           <Button
-            key={s}
-            variant={filter === s ? "default" : "outline"}
-            onClick={() => setFilter(s)}
+            key={item}
+            variant={filter === item ? "default" : "outline"}
+            onClick={() => setFilter(item)}
           >
-            {s}
+            {item}
           </Button>
         ))}
       </div>
 
-      {/* TABLE */}
       <DataTable
         data={filtered}
-        columns={tableColumns}
-        title="Danh sách đăng ký seller"
+        columns={columns(handleApprove, handleReject)}
+        title="Danh sach dang ky seller"
       />
     </div>
   );

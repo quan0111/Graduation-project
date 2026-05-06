@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
-import type { IOrder, OrderStatusType } from "../types";
+import type { OrderStatusType } from "@/constant";
+import type { IOrder } from "../types";
 
 
 export type OrderFilterType = "ALL" | OrderStatusType;

@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
-import { OrderHeader } from "./orderHeader";
+
 import { OrderDetails } from "./orderDetail";
+import { OrderHeader } from "./orderHeader";
 import type { IOrder } from "../types";
 
 interface OrderCardProps {
@@ -15,15 +16,13 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   onToggle,
 }) => {
   return (
-    <Card className="overflow-hidden transition hover:shadow-md">
-      <OrderHeader order={order} onClick={onToggle} />
-
-      {/* content */}
+    <Card className="overflow-hidden border-0 bg-white shadow-sm ring-1 ring-slate-200/80">
+      <OrderHeader order={order} expanded={expanded} onClick={onToggle} />
       <div
-        className={`
-          transition-all duration-300 overflow-hidden
-          ${expanded ? "max-h-screen opacity-100" : "max-h-0 opacity-0"}
-        `}
+        className={[
+          "overflow-hidden transition-all duration-300",
+          expanded ? "max-h-[1200px] opacity-100" : "max-h-0 opacity-0",
+        ].join(" ")}
       >
         <OrderDetails order={order} />
       </div>

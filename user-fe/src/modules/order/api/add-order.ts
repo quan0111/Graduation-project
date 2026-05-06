@@ -1,14 +1,17 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { API_URL_ORDER } from "@/constant/config";
 import { apiClient } from "@/lib/api";
 import type { MutationConfig } from "@/lib/react-query";
-import type { ICreateOrderFormInputs } from "../types";
+
+import { mapOrder } from "./mapper";
+import type { ICreateOrderFormInputs, IOrder } from "../types";
 
 export const createOrder = async (
-  data: ICreateOrderFormInputs
-): Promise<any> => {
+  data: ICreateOrderFormInputs,
+): Promise<IOrder> => {
   const response = await apiClient.post(API_URL_ORDER, data);
-  return response.data;
+  return mapOrder(response.data);
 };
 
 type UseCreateOrderOptions = {
@@ -22,9 +25,9 @@ export const useCreateOrder = ({
 
   return useMutation({
     mutationFn: createOrder,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["Orders"],
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["orders", "me"],
       });
     },
     ...config,

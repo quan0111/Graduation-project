@@ -25,8 +25,8 @@ export interface CreateShopRequest {
 }
 
 export interface UpdateShopRequest {
-    id: number;
     name?: string;
+    slug?: string;
     description?: string;
     avatarUrl?: string;
 }
@@ -41,6 +41,23 @@ export const useGetShopByOwnerId = (
   return useQuery<Shop, Error>({
     queryKey: ["shop", "my-shop"],
     queryFn: getShopByOwnerId,
+    ...config,
+  });
+};
+
+export const updateMyShop = async (data: UpdateShopRequest): Promise<Shop> => {
+  const response = await apiClient.patch(`${API_URL_SHOP}/me`, data);
+  return response.data;
+};
+
+export const useUpdateMyShop = ({ config }: { config?: MutationConfig<typeof updateMyShop> } = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateMyShop,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["shop", "my-shop"] });
+    },
     ...config,
   });
 };

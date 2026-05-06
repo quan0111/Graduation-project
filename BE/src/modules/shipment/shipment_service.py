@@ -1,70 +1,153 @@
-from fastapi import HTTPException
 from datetime import datetime
+
+from fastapi import HTTPException
+
 from src.core.database import prisma
 
 
-class ShipmentService:
+TRACKING_ORDER_STATUSES = {
+    "READY_TO_SHIP",
+    "SHIPPED",
+    "IN_TRANSIT",
+    "DELIVERED",
+    "COMPLETED",
+}
 
+
+class ShipmentService:
+    @staticmethod
+    async def _get_seller_shop(user_id: int):
+        shop = await prisma.shop.find_first(
+            where={
+                "ownerId": user_id,
+                "deletedAt": None,
+            }
+        )
+
+        if not shop:
+            raise HTTPException(404, "Shop not found")
+
+        return shop
 
     @staticmethod
-    async def create_shipment(data):
-
-        existing = await prisma.shipment.find_unique(
-            where={"orderId": data.orderId}
+    async def _get_order_with_items(order_id: int):
+        order = await prisma.order.find_first(
+            where={
+                "id": order_id,
+                "deletedAt": None,
+            },
+            include={
+                "items": {
+                    "where": {"deletedAt": None},
+                }
+            },
         )
 
-        if existing:
-            raise HTTPException(400, "Shipment already exists")
-
-        order = await prisma.order.find_unique(
-            where={"id": data.orderId}
-        )
         if not order:
             raise HTTPException(404, "Order not found")
 
-        return await prisma.shipment.create(
+        return order
+
+    @staticmethod
+    async def _assert_view_access(order_id: int, current_user):
+        order = await ShipmentService._get_order_with_items(order_id)
+
+        if order.userId == current_user.id:
+            return order
+
+        if current_user.role != "SELLER":
+            raise HTTPException(403, "Forbidden")
+
+        shop = await ShipmentService._get_seller_shop(current_user.id)
+        if not any(item.shopId == shop.id for item in order.items):
+            raise HTTPException(403, "Forbidden")
+
+        return order
+
+    @staticmethod
+    async def _assert_mutation_access(order_id: int, current_user):
+        if current_user.role != "SELLER":
+            raise HTTPException(403, "Only sellers can update tracking")
+
+        shop = await ShipmentService._get_seller_shop(current_user.id)
+        order = await ShipmentService._get_order_with_items(order_id)
+
+        visible_items = [item for item in order.items if item.shopId == shop.id]
+        if not visible_items:
+            raise HTTPException(403, "Forbidden")
+
+        distinct_shop_ids = {item.shopId for item in order.items}
+        if len(distinct_shop_ids) > 1:
+            raise HTTPException(
+                409,
+                "Order has items from multiple shops. Split shipment by shop before editing tracking.",
+            )
+
+        return order
+
+    @staticmethod
+    async def create_shipment(current_user, data):
+        await ShipmentService._assert_mutation_access(data.orderId, current_user)
+
+        existing = await prisma.shipment.find_unique(where={"orderId": data.orderId})
+        if existing:
+            raise HTTPException(400, "Shipment already exists")
+
+        shipment = await prisma.shipment.create(
             data={
                 "orderId": data.orderId,
                 "carrier": data.carrier,
                 "trackingNumber": data.trackingNumber,
-                "status": "READY_TO_SHIP"
+                "status": "READY_TO_SHIP",
             }
         )
 
-    @staticmethod
-    async def get_shipment(order_id: int):
-        shipment = await prisma.shipment.find_unique(
-            where={"orderId": order_id}
+        await prisma.order.update(
+            where={"id": data.orderId},
+            data={"status": "READY_TO_SHIP"},
         )
 
+        return shipment
+
+    @staticmethod
+    async def get_shipment(order_id: int, current_user):
+        await ShipmentService._assert_view_access(order_id, current_user)
+
+        shipment = await prisma.shipment.find_unique(where={"orderId": order_id})
         if not shipment:
             raise HTTPException(404, "Shipment not found")
 
         return shipment
 
     @staticmethod
-    async def update_shipment(order_id: int, data):
+    async def update_shipment(order_id: int, current_user, data):
+        await ShipmentService._assert_mutation_access(order_id, current_user)
 
-        shipment = await prisma.shipment.find_unique(
-            where={"orderId": order_id}
-        )
-
+        shipment = await prisma.shipment.find_unique(where={"orderId": order_id})
         if not shipment:
             raise HTTPException(404, "Shipment not found")
 
-        update_data = data.dict(exclude_unset=True)
+        update_data = data.model_dump(exclude_unset=True)
+        status = update_data.get("status")
 
-        # auto set timestamps
-        if update_data.get("status") == "SHIPPED":
+        if status == "SHIPPED":
             update_data["shippedAt"] = datetime.utcnow()
 
-        if update_data.get("status") == "DELIVERED":
+        if status == "DELIVERED":
             update_data["deliveredAt"] = datetime.utcnow()
 
-        return await prisma.shipment.update(
+        updated = await prisma.shipment.update(
             where={"orderId": order_id},
-            data=update_data
+            data=update_data,
         )
+
+        if status in TRACKING_ORDER_STATUSES:
+            await prisma.order.update(
+                where={"id": order_id},
+                data={"status": status},
+            )
+
+        return updated
 
     @staticmethod
     async def track_shipment(tracking_number: str):
@@ -76,8 +159,7 @@ class ShipmentService:
             raise HTTPException(404, "Tracking not found")
 
         return shipment
+
     @staticmethod
     async def get_all_shipments():
-        return await prisma.shipment.find_many(
-            include={"order": True}
-        )
+        return await prisma.shipment.find_many(include={"order": True})

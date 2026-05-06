@@ -29,6 +29,14 @@ async def get_my_shop(
     return await ShopService.get_shop_by_user(user.id)
 
 
+@router.patch("/me", response_model=ShopOut)
+async def update_my_shop(
+    shop_data: ShopUpdate,
+    user=Depends(get_current_user),
+):
+    return await ShopService.update_my_shop(user.id, shop_data)
+
+
 @router.get("/{shop_id}", response_model=ShopOut)
 async def get_shop_by_id(shop_id: int):
     shop = await ShopService.get_shop(shop_id)

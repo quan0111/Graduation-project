@@ -10,7 +10,7 @@ export function ProductActions({
   return (
     <div className="flex gap-2">
 
-      {product.status === "pending" && (
+      {product.status === "DRAFT" && (
         <>
           <Button size="sm" onClick={() => onApprove(product)}>
             <CheckCircle2 className="w-4 h-4" />

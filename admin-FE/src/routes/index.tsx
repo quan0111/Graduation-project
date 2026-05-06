@@ -15,6 +15,7 @@ import AnalyticsPage from "@/modules/analytics/view"
 import AdminLoginPage from "@/modules/auth/view/LoginPage"
 import ProtectedRoute from "./protectedGuard"
 import SellerApplicationsPage from "@/modules/shop/view/sellerAplication"
+import AdminProfilePage from "@/modules/auth/view/me"
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -73,6 +74,10 @@ export const router = createBrowserRouter([
         element: <AnalyticsPage />,
       }
         ,
+      {
+        path: "profile",
+        element: <AdminProfilePage />,
+      },
       {
         path: "seller-applications",
         element: <SellerApplicationsPage />,

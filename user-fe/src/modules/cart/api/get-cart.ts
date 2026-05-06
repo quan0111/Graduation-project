@@ -21,7 +21,7 @@ export const getCart = async (userId: number): Promise<ICart> => {
 };
 
 export const useCart = () => {
-  const { data: user, isLoading: userLoading } = useMe();
+  const { data: user } = useMe();
 
   return useQuery({
     queryKey: ["cart", user?.id],

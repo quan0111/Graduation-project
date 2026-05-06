@@ -1,6 +1,6 @@
-
 import React from "react";
 import { Trash2 } from "lucide-react";
+
 import { QuantityControl } from "./quantityControl";
 
 type CartItemType = {
@@ -20,6 +20,13 @@ type CartItemProps = {
   onRemove: (id: string) => void;
 };
 
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(value || 0);
+
 export const CartItem: React.FC<CartItemProps> = ({
   item,
   selected,
@@ -28,42 +35,41 @@ export const CartItem: React.FC<CartItemProps> = ({
   onRemove,
 }) => {
   return (
-    <div className="flex gap-4 p-4 hover:bg-muted transition rounded-lg">
-      
-      <input
-        type="checkbox"
-        checked={selected}
-        onChange={() => onSelect(item.id)}
-      />
+    <div className="grid gap-4 rounded-[1.5rem] border border-slate-100 bg-white p-4 transition hover:border-orange-200 hover:bg-orange-50/40 md:grid-cols-[auto_88px_minmax(0,1fr)_auto_auto] md:items-center">
+      <label className="flex items-center justify-center">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onSelect(item.id)}
+          className="size-4 rounded border-slate-300 text-[#ee4d2d] focus:ring-[#ee4d2d]"
+        />
+      </label>
 
       <img
-        src={item.image}
+        src={item.image || "/placeholder.png"}
         alt={item.name}
-        className="w-16 h-16 rounded object-cover"
+        className="size-[88px] rounded-[1.25rem] object-cover ring-1 ring-slate-200"
       />
 
-      <div className="flex-1">
-        <p className="line-clamp-2 text-sm font-medium">{item.name}</p>
-
-        {item.variant && (
-          <p className="text-xs text-muted">{item.variant}</p>
-        )}
-
-        <p className="text-red-500 font-bold mt-1">
-          {item.price.toLocaleString("vi-VN")}đ
-        </p>
+      <div className="min-w-0">
+        <p className="line-clamp-2 text-base font-semibold text-slate-950">{item.name}</p>
+        <p className="mt-1 text-sm text-slate-500">{item.variant || "Phân loại mặc định"}</p>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <span className="text-lg font-semibold text-[#ee4d2d]">{formatCurrency(item.price)}</span>
+          <span className="text-sm text-slate-400">
+            Thành tiền {formatCurrency(item.price * item.quantity)}
+          </span>
+        </div>
       </div>
 
-      <QuantityControl
-        value={item.quantity}
-        onChange={(v) => onQty(item.id, v)}
-      />
+      <QuantityControl value={item.quantity} onChange={(value) => onQty(item.id, value)} />
 
       <button
+        type="button"
         onClick={() => onRemove(item.id)}
-        className="p-1 hover:bg-red-100 rounded"
+        className="inline-flex size-10 items-center justify-center rounded-full bg-rose-50 text-rose-600 transition hover:bg-rose-100"
       >
-        <Trash2 className="text-red-500" />
+        <Trash2 className="size-4" />
       </button>
     </div>
   );

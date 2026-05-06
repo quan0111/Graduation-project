@@ -1,5 +1,5 @@
-
 import React from "react";
+
 import { ShopGroup } from "./shopGroup";
 
 type CartItemType = {
@@ -30,7 +30,7 @@ export const CartList: React.FC<CartListProps> = ({
   onRemove,
 }) => {
   return (
-    <>
+    <div className="space-y-4">
       {Object.entries(grouped).map(([shopId, items]) => {
         if (!items.length) return null;
 
@@ -46,6 +46,6 @@ export const CartList: React.FC<CartListProps> = ({
           />
         );
       })}
-    </>
+    </div>
   );
 };

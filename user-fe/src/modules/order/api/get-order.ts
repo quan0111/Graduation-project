@@ -1,29 +1,25 @@
-import { API_URL_ORDER } from "@/constant/config";
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
-import type { IOrder } from "../types";
+
+import { API_URL_ORDER } from "@/constant/config";
 import { apiClient } from "@/lib/api";
 
-interface OrderResponse {
-  data: IOrder;
-  error: boolean;
-  message: string;
-  timestamp: string;
-}
+import { mapOrder } from "./mapper";
+import type { IOrder } from "../types";
 
-const getOrderById = async (id: number): Promise<OrderResponse> => {
+const getOrderById = async (id: number): Promise<IOrder> => {
   const res = await apiClient.get(`${API_URL_ORDER}/${id}`);
-  return res.data;
+  return mapOrder(res.data);
 };
 
 export const useGetOrderById = (
   id: number,
   config?: Omit<
-    UseQueryOptions<OrderResponse, Error, OrderResponse, ["order", number]>,
+    UseQueryOptions<IOrder, Error, IOrder, [string, string, number]>,
     "queryKey" | "queryFn"
-  >
+  >,
 ) => {
-  return useQuery({
-    queryKey: ["order", id],
+  return useQuery<IOrder, Error, IOrder, [string, string, number]>({
+    queryKey: ["orders", "detail", id],
     queryFn: () => getOrderById(id),
     enabled: !!id,
     ...config,

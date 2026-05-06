@@ -16,6 +16,21 @@ async def dashboard(user=Depends(get_current_user)):
     require_admin(user)
     return await AdminService.get_dashboard_stats()
 
+
+@router.get("/admin-users", response_model=list[AdminAccountOut])
+async def list_admin_users(user=Depends(get_current_user)):
+    require_admin(user)
+    return await AdminService.list_admin_accounts()
+
+
+@router.post("/admin-users", response_model=AdminAccountOut)
+async def create_admin_user(
+    data: AdminAccountCreate,
+    user=Depends(get_current_user)
+):
+    require_admin(user)
+    return await AdminService.create_admin_account(data)
+
 @router.post("/orders")
 async def get_orders(
     filter_data: OrderFilter,

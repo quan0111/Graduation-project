@@ -1,21 +1,36 @@
-from fastapi import HTTPException
 from datetime import datetime
+
+from fastapi import HTTPException
+
 from src.core.database import prisma
 
 
 class SellerService:
-
     @staticmethod
     async def apply(user_id: int, data):
-
         if not data.shopName:
             raise HTTPException(400, "Shop name is required")
 
-        # ❗ chỉ chặn khi còn PENDING (cho phép apply lại nếu bị reject)
+        user = await prisma.user.find_unique(where={"id": user_id})
+        if not user or user.deletedAt:
+            raise HTTPException(404, "User not found")
+
+        if user.role == "SELLER":
+            raise HTTPException(400, "User is already a seller")
+
+        existing_shop = await prisma.shop.find_first(
+            where={
+                "ownerId": user_id,
+                "deletedAt": None,
+            }
+        )
+        if existing_shop:
+            raise HTTPException(400, "User already has a shop")
+
         existing = await prisma.sellerapplication.find_first(
             where={
                 "userId": user_id,
-                "status": "PENDING"
+                "status": "PENDING",
             }
         )
         if existing:
@@ -23,91 +38,66 @@ class SellerService:
 
         return await prisma.sellerapplication.create(
             data={
-                **data.model_dump(),  # 🔥 lấy toàn bộ field từ schema
-
+                **data.model_dump(),
                 "status": "PENDING",
-
                 "user": {
                     "connect": {"id": user_id}
-                }
+                },
             }
         )
 
     @staticmethod
     async def approve(application_id: int, admin_id: int):
+        application = await prisma.sellerapplication.find_unique(where={"id": application_id})
 
-        app = await prisma.sellerapplication.find_unique(
-            where={"id": application_id}
-        )
-
-        if not app:
+        if not application:
             raise HTTPException(404, "Application not found")
 
-        if app.status != "PENDING":
+        if application.status != "PENDING":
             raise HTTPException(400, "Already processed")
 
-        existing_shop = await prisma.shop.find_first(
-            where={"ownerId": app.userId}
-        )
-
+        existing_shop = await prisma.shop.find_first(where={"ownerId": application.userId})
         if existing_shop:
             raise HTTPException(400, "User already has a shop")
 
         try:
-
-            async with prisma.tx() as tx:
-
-                # ✅ CREATE SHOP
-                await tx.shop.create(
+            async with prisma.tx() as transaction:
+                await transaction.shop.create(
                     data={
-                        "name": app.shopName,
-                        "slug": app.shopSlug,
-                        "description": app.description,
-
-                        "avatarUrl": app.logoUrl,
-
-                        "ownerId": app.userId,
+                        "name": application.shopName,
+                        "slug": application.shopSlug,
+                        "description": application.description,
+                        "avatarUrl": application.logoUrl,
+                        "ownerId": application.userId,
                     }
                 )
 
-                # ✅ UPDATE USER ROLE
-                await tx.user.update(
-                    where={"id": app.userId},
-                    data={
-                        "role": "SELLER"
-                    }
+                await transaction.user.update(
+                    where={"id": application.userId},
+                    data={"role": "SELLER"},
                 )
 
-                # ✅ UPDATE APPLICATION
-                updated = await tx.sellerapplication.update(
+                return await transaction.sellerapplication.update(
                     where={"id": application_id},
                     data={
                         "status": "APPROVED",
                         "reviewedAt": datetime.utcnow(),
-
                         "reviewedBy": {
                             "connect": {"id": admin_id}
-                        }
-                    }
+                        },
+                    },
                 )
+        except Exception as exc:
+            raise HTTPException(500, str(exc)) from exc
 
-                return updated
-
-        except Exception as e:
-            print(e)
-            raise HTTPException(500, str(e))
-        
     @staticmethod
     async def reject(application_id: int, admin_id: int, note: str | None = None):
+        application = await prisma.sellerapplication.find_unique(where={"id": application_id})
 
-        app = await prisma.sellerapplication.find_unique(
-            where={"id": application_id}
-        )
-
-        if not app:
+        if not application:
             raise HTTPException(404, "Application not found")
 
-        if app.status != "PENDING":
+        if application.status != "PENDING":
             raise HTTPException(400, "Already processed")
 
         return await prisma.sellerapplication.update(
@@ -115,18 +105,15 @@ class SellerService:
             data={
                 "status": "REJECTED",
                 "note": note,
-
                 "reviewedAt": datetime.utcnow(),
-
                 "reviewedBy": {
                     "connect": {"id": admin_id}
-                }
+                },
             }
         )
 
     @staticmethod
     async def get_detail(application_id: int):
-
         data = await prisma.sellerapplication.find_unique(
             where={"id": application_id},
             include={
@@ -142,9 +129,7 @@ class SellerService:
 
     @staticmethod
     async def get_my_application(user_id: int):
-        return await prisma.sellerapplication.find_first(
-            where={"userId": user_id},
-        )
+        return await prisma.sellerapplication.find_first(where={"userId": user_id})
 
     @staticmethod
     async def get_all():
@@ -153,5 +138,5 @@ class SellerService:
                 "user": True,
                 "reviewedBy": True,
             },
-            order={"createdAt": "desc"}
+            order={"createdAt": "desc"},
         )

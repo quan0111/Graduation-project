@@ -1,5 +1,7 @@
 import type { OrderStatusType } from "@/constant";
 
+import { getStatusMeta } from "../utils/order";
+
 type OrderFilterType = "ALL" | OrderStatusType;
 
 interface OrdersFilterTabsProps {
@@ -9,9 +11,11 @@ interface OrdersFilterTabsProps {
 
 const tabs: { label: string; value: OrderFilterType }[] = [
   { label: "Tất cả", value: "ALL" },
-  { label: "Đang xử lý", value: "processing" },
-  { label: "Đang giao", value: "shipped" },
-  { label: "Đã giao", value: "delivered" },
+  { label: getStatusMeta("pending").label, value: "pending" },
+  { label: getStatusMeta("processing").label, value: "processing" },
+  { label: getStatusMeta("shipped").label, value: "shipped" },
+  { label: getStatusMeta("delivered").label, value: "delivered" },
+  { label: getStatusMeta("cancelled").label, value: "cancelled" },
 ];
 
 export const OrdersFilterTabs: React.FC<OrdersFilterTabsProps> = ({
@@ -20,20 +24,19 @@ export const OrdersFilterTabs: React.FC<OrdersFilterTabsProps> = ({
 }) => {
   return (
     <div className="flex gap-2 overflow-x-auto pb-2">
-      {tabs.map((t) => (
+      {tabs.map((tab) => (
         <button
-          key={t.value}
-          onClick={() => setFilter(t.value)}
-          className={`
-            px-4 py-2 rounded-lg text-sm font-medium transition
-            ${
-              filter === t.value
-                ? "bg-primary text-white shadow"
-                : "bg-muted hover:bg-muted/70"
-            }
-          `}
+          key={tab.value}
+          type="button"
+          onClick={() => setFilter(tab.value)}
+          className={[
+            "rounded-full px-4 py-2 text-sm font-medium transition",
+            filter === tab.value
+              ? "bg-[#ee4d2d] text-white shadow-sm"
+              : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50",
+          ].join(" ")}
         >
-          {t.label}
+          {tab.label}
         </button>
       ))}
     </div>

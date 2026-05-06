@@ -4,6 +4,7 @@ from datetime import datetime
 class UserBase(BaseModel):
     email: EmailStr
     fullName: Optional[str] = None
+    phone: Optional[str] = None
     avatarUrl: Optional[str] = None
 
 class UserCreate(UserBase):
@@ -12,10 +13,23 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     fullName: Optional[str] = None
+    phone: Optional[str] = None
     avatarUrl: Optional[str] = None
     password: Optional[str] = None
     role: Optional[str] = None
     isActive: Optional[bool] = None
+
+
+class UserProfileUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    fullName: Optional[str] = None
+    phone: Optional[str] = None
+    avatarUrl: Optional[str] = None
+
+
+class UserPasswordChange(BaseModel):
+    currentPassword: str
+    newPassword: str = Field(min_length=6)
 
 class AddressShort(BaseModel):
     id: int

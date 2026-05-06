@@ -1,129 +1,518 @@
-'use client';
+import { type ReactNode, useEffect, useState } from "react";
+import {
+  Camera,
+  Crown,
+  LogOut,
+  Save,
+  Shield,
+  Sparkles,
+  UserPlus,
+  Users,
+} from "lucide-react";
+import { toast } from "sonner";
 
-import { useState } from "react";
-import { LogOut, Pencil, Save } from "lucide-react";
-
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import {
-  clearAdminSession,
-  getStoredAdminUser,
-  setStoredAdminUser,
-} from "@/lib/auth-storage";
+import { useCreateAdminAccount, useAdminAccounts } from "@/modules/admin/api/admin-users";
+import { useLogout } from "@/modules/auth/api/logout";
+import { useUploadImage } from "@/modules/upload/api/upload-image";
+import { useChangePassword, useGetCurrentUser, useUpdateProfile } from "@/modules/user/api/user";
 
-type AdminProfile = {
-  id: number | string;
-  fullName?: string;
+type PasswordForm = {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+};
+
+type CreateAdminForm = {
+  fullName: string;
   email: string;
-  role: string;
+  phone: string;
+  password: string;
+  avatarUrl: string;
 };
 
 export default function AdminProfilePage() {
-  const [isEdit, setIsEdit] = useState(false);
-  const [user, setUser] = useState<AdminProfile | null>(() => getStoredAdminUser<AdminProfile>());
-  const [form, setForm] = useState(() => ({
-    name: getStoredAdminUser<AdminProfile>()?.fullName || "",
-    email: getStoredAdminUser<AdminProfile>()?.email || "",
-  }));
+  const { data: user, isLoading } = useGetCurrentUser();
+  const { data: adminAccounts = [] } = useAdminAccounts();
 
-  const handleSave = () => {
+  const { mutateAsync: updateProfile, isPending: isSavingProfile } = useUpdateProfile();
+  const { mutateAsync: changePassword, isPending: isChangingPassword } = useChangePassword();
+  const { mutateAsync: uploadImage, isPending: isUploadingImage } = useUploadImage();
+  const { mutateAsync: createAdminAccount, isPending: isCreatingAdmin } = useCreateAdminAccount();
+  const { mutateAsync: logout, isPending: isLoggingOut } = useLogout();
+
+  const [profileForm, setProfileForm] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    avatarUrl: "",
+  });
+  const [passwordForm, setPasswordForm] = useState<PasswordForm>({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [createAdminForm, setCreateAdminForm] = useState<CreateAdminForm>({
+    fullName: "",
+    email: "",
+    phone: "",
+    password: "",
+    avatarUrl: "",
+  });
+
+  useEffect(() => {
     if (!user) {
       return;
     }
 
-    const updated = { ...user, fullName: form.name, email: form.email };
-    setStoredAdminUser(updated);
-    setUser(updated);
-    setIsEdit(false);
+    setProfileForm({
+      fullName: user.fullName || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      avatarUrl: user.avatarUrl || "",
+    });
+  }, [user]);
+
+  const handleProfileAvatar = async (file?: File) => {
+    if (!file) {
+      return;
+    }
+
+    try {
+      const result = await uploadImage({ file, folder: "datn/admins" });
+      setProfileForm((current) => ({ ...current, avatarUrl: result.url }));
+      toast.success("Da tai avatar admin len Cloudinary");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Khong tai duoc avatar";
+      toast.error(message);
+    }
   };
 
-  const handleLogout = () => {
-    clearAdminSession();
-    window.location.href = "/admin/login";
+  const handleNewAdminAvatar = async (file?: File) => {
+    if (!file) {
+      return;
+    }
+
+    try {
+      const result = await uploadImage({ file, folder: "datn/admins" });
+      setCreateAdminForm((current) => ({ ...current, avatarUrl: result.url }));
+      toast.success("Da tai avatar admin moi");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Khong tai duoc avatar";
+      toast.error(message);
+    }
   };
 
-  if (!user) {
-    return <div className="p-10">Loading...</div>;
+  const handleSaveProfile = async () => {
+    try {
+      await updateProfile(profileForm);
+      toast.success("Cap nhat profile admin thanh cong");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Khong cap nhat duoc profile";
+      toast.error(message);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+      toast.error("Nhap day du mat khau hien tai va mat khau moi");
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error("Mat khau xac nhan khong khop");
+      return;
+    }
+
+    try {
+      await changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      toast.success("Doi mat khau admin thanh cong");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Khong doi duoc mat khau";
+      toast.error(message);
+    }
+  };
+
+  const handleCreateAdmin = async () => {
+    if (!createAdminForm.email || !createAdminForm.password) {
+      toast.error("Email va mat khau la bat buoc");
+      return;
+    }
+
+    try {
+      await createAdminAccount(createAdminForm);
+      setCreateAdminForm({
+        fullName: "",
+        email: "",
+        phone: "",
+        password: "",
+        avatarUrl: "",
+      });
+      toast.success("Da tao tai khoan admin moi");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Khong tao duoc admin moi";
+      toast.error(message);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="h-48 animate-pulse rounded-3xl bg-muted" />
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_420px]">
+          <div className="h-96 animate-pulse rounded-3xl bg-muted" />
+          <div className="h-96 animate-pulse rounded-3xl bg-muted" />
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Thong tin tai khoan</h1>
+    <div className="space-y-6 p-6">
+      <section className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#111827_0%,#1d4ed8_45%,#06b6d4_100%)] p-8 text-white shadow-[0_26px_80px_rgba(29,78,216,0.25)]">
+        <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.18),transparent_58%)]" />
+        <div className="relative flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
+          <div className="flex items-center gap-5">
+            <AdminAvatar imageUrl={profileForm.avatarUrl} label={profileForm.fullName || profileForm.email || "Admin"} large />
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white/80">
+                <Sparkles className="size-3.5" />
+                control room
+              </div>
+              <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
+                {profileForm.fullName || "Admin profile"}
+              </h1>
+              <p className="max-w-2xl text-sm leading-6 text-white/80">
+                Quan ly thong tin admin, bao mat dang nhap va tao them tai khoan admin moi ngay trong bang dieu khien.
+              </p>
+            </div>
+          </div>
 
-        <Button variant="destructive" onClick={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          Dang xuat
-        </Button>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <HeroMetric label="Role" value={user?.role || "ADMIN"} />
+            <HeroMetric label="Status" value={user?.isActive ? "ACTIVE" : "LOCKED"} />
+            <HeroMetric label="Admins" value={`${adminAccounts.length} accounts`} />
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_420px]">
+        <div className="space-y-6">
+          <Card className="rounded-[28px] border-0 bg-card shadow-sm ring-1 ring-border/70">
+            <CardHeader>
+              <div>
+                <CardTitle>Thong tin admin</CardTitle>
+                <CardDescription>Cap nhat ten, email, so dien thoai va avatar cua tai khoan quan tri.</CardDescription>
+              </div>
+              <CardAction>
+                <FilePicker
+                  label={isUploadingImage ? "Dang tai..." : "Sua avatar"}
+                  disabled={isUploadingImage}
+                  onPick={handleProfileAvatar}
+                />
+              </CardAction>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-6 lg:grid-cols-[180px_minmax(0,1fr)]">
+                <div className="space-y-4">
+                  <AdminAvatar imageUrl={profileForm.avatarUrl} label={profileForm.fullName || profileForm.email || "Admin"} />
+                  <p className="text-center text-xs leading-5 text-muted-foreground">
+                    Nen dung avatar ro rang de de phan biet khi xu ly bao cao va duyet seller.
+                  </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Ho ten">
+                    <Input
+                      value={profileForm.fullName}
+                      onChange={(event) => setProfileForm((current) => ({ ...current, fullName: event.target.value }))}
+                      placeholder="Admin name"
+                    />
+                  </Field>
+                  <Field label="Email">
+                    <Input
+                      value={profileForm.email}
+                      onChange={(event) => setProfileForm((current) => ({ ...current, email: event.target.value }))}
+                      placeholder="admin@example.com"
+                    />
+                  </Field>
+                  <Field label="So dien thoai">
+                    <Input
+                      value={profileForm.phone}
+                      onChange={(event) => setProfileForm((current) => ({ ...current, phone: event.target.value }))}
+                      placeholder="09xxxxxxxx"
+                    />
+                  </Field>
+                  <Field label="Avatar URL">
+                    <Input
+                      value={profileForm.avatarUrl}
+                      onChange={(event) => setProfileForm((current) => ({ ...current, avatarUrl: event.target.value }))}
+                      placeholder="https://..."
+                    />
+                  </Field>
+                </div>
+              </div>
+            </CardContent>
+            <div className="px-4 pb-4">
+              <Button disabled={isSavingProfile || isUploadingImage} onClick={handleSaveProfile}>
+                <Save className="size-4" />
+                Luu profile
+              </Button>
+            </div>
+          </Card>
+
+          <Card className="rounded-[28px] border-0 bg-card shadow-sm ring-1 ring-border/70">
+            <CardHeader>
+              <CardTitle>Mat khau va bao mat</CardTitle>
+              <CardDescription>Doi mat khau cho admin hien tai.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-3">
+              <Field label="Mat khau hien tai">
+                <Input
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={(event) => setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))}
+                  placeholder="Current password"
+                />
+              </Field>
+              <Field label="Mat khau moi">
+                <Input
+                  type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(event) => setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))}
+                  placeholder="At least 6 characters"
+                />
+              </Field>
+              <Field label="Xac nhan mat khau">
+                <Input
+                  type="password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(event) => setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))}
+                  placeholder="Repeat new password"
+                />
+              </Field>
+            </CardContent>
+            <div className="px-4 pb-4">
+              <Button disabled={isChangingPassword} onClick={handleChangePassword}>
+                <Shield className="size-4" />
+                Doi mat khau
+              </Button>
+            </div>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card className="rounded-[28px] border-0 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] shadow-sm ring-1 ring-sky-100">
+            <CardHeader>
+              <div>
+                <CardTitle>Tao admin moi</CardTitle>
+                <CardDescription>Admin hien tai co the tao them tai khoan admin tu backend.</CardDescription>
+              </div>
+              <CardAction>
+                <FilePicker
+                  label={isUploadingImage ? "Dang tai..." : "Avatar"}
+                  disabled={isUploadingImage}
+                  onPick={handleNewAdminAvatar}
+                />
+              </CardAction>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4 rounded-3xl bg-sky-50 p-4">
+                <AdminAvatar imageUrl={createAdminForm.avatarUrl} label={createAdminForm.fullName || createAdminForm.email || "New"} />
+                <div>
+                  <p className="font-medium text-slate-900">{createAdminForm.fullName || "Admin moi"}</p>
+                  <p className="text-sm text-slate-500">{createAdminForm.email || "Chua co email"}</p>
+                </div>
+              </div>
+
+              <Field label="Ho ten">
+                <Input
+                  value={createAdminForm.fullName}
+                  onChange={(event) => setCreateAdminForm((current) => ({ ...current, fullName: event.target.value }))}
+                  placeholder="Tran Van B"
+                />
+              </Field>
+              <Field label="Email">
+                <Input
+                  value={createAdminForm.email}
+                  onChange={(event) => setCreateAdminForm((current) => ({ ...current, email: event.target.value }))}
+                  placeholder="new-admin@example.com"
+                />
+              </Field>
+              <Field label="So dien thoai">
+                <Input
+                  value={createAdminForm.phone}
+                  onChange={(event) => setCreateAdminForm((current) => ({ ...current, phone: event.target.value }))}
+                  placeholder="09xxxxxxxx"
+                />
+              </Field>
+              <Field label="Mat khau">
+                <Input
+                  type="password"
+                  value={createAdminForm.password}
+                  onChange={(event) => setCreateAdminForm((current) => ({ ...current, password: event.target.value }))}
+                  placeholder="Nhap mat khau kho"
+                />
+              </Field>
+              <Field label="Avatar URL">
+                <Input
+                  value={createAdminForm.avatarUrl}
+                  onChange={(event) => setCreateAdminForm((current) => ({ ...current, avatarUrl: event.target.value }))}
+                  placeholder="https://..."
+                />
+              </Field>
+            </CardContent>
+            <div className="px-4 pb-4">
+              <Button disabled={isCreatingAdmin || isUploadingImage} onClick={handleCreateAdmin}>
+                <UserPlus className="size-4" />
+                Tao tai khoan admin
+              </Button>
+            </div>
+          </Card>
+
+          <Card className="rounded-[28px] border-0 bg-card shadow-sm ring-1 ring-border/70">
+            <CardHeader>
+              <CardTitle>Danh sach admin</CardTitle>
+              <CardDescription>Theo doi nhung tai khoan admin dang hoat dong trong he thong.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {adminAccounts.map((account) => (
+                <div
+                  key={account.id}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-muted/30 p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <AdminAvatar imageUrl={account.avatarUrl} label={account.fullName || account.email} small />
+                    <div>
+                      <p className="font-medium text-foreground">{account.fullName || account.email}</p>
+                      <p className="text-xs text-muted-foreground">{account.email}</p>
+                    </div>
+                  </div>
+                  <div className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                    {account.role}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[28px] border-0 bg-slate-950 text-white shadow-sm">
+            <CardContent className="space-y-4 pt-4">
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl bg-white/10 p-3">
+                  <Crown className="size-5" />
+                </div>
+                <div>
+                  <p className="font-semibold">Phien quan tri hien tai</p>
+                  <p className="text-sm text-white/60">Dang nhap bang token admin + refresh cookie rieng.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl bg-white/6 p-4 text-sm text-white/75">
+                <Users className="size-4" />
+                {adminAccounts.length} admin dang ton tai trong he thong
+              </div>
+              <Button
+                variant="outline"
+                className="w-full border-white/15 bg-white/10 text-white hover:bg-white/15"
+                disabled={isLoggingOut}
+                onClick={() => logout(undefined)}
+              >
+                <LogOut className="size-4" />
+                Dang xuat admin
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
+    </div>
+  );
+}
 
-      <Separator />
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      {children}
+    </div>
+  );
+}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Thong tin ca nhan</CardTitle>
-        </CardHeader>
+function FilePicker({
+  label,
+  disabled,
+  onPick,
+}: {
+  label: string;
+  disabled?: boolean;
+  onPick: (file?: File) => void;
+}) {
+  return (
+    <label className={`inline-flex cursor-pointer items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-medium text-sky-700 transition hover:bg-sky-100 ${disabled ? "pointer-events-none opacity-60" : ""}`}>
+      <Camera className="size-4" />
+      {label}
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => onPick(event.target.files?.[0])}
+      />
+    </label>
+  );
+}
 
-        <CardContent className="space-y-6">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarFallback>
-                {user.fullName?.charAt(0)?.toUpperCase() || "A"}
-              </AvatarFallback>
-            </Avatar>
+function AdminAvatar({
+  imageUrl,
+  label,
+  large,
+  small,
+}: {
+  imageUrl?: string;
+  label: string;
+  large?: boolean;
+  small?: boolean;
+}) {
+  const className = large ? "size-24" : small ? "size-10" : "size-28";
 
-            <div>
-              <p className="font-medium">{user.fullName}</p>
-              <p className="text-sm text-gray-500">{user.role}</p>
-            </div>
-          </div>
+  return (
+    <Avatar className={className}>
+      <AvatarImage src={imageUrl} />
+      <AvatarFallback>
+        {label
+          .split(" ")
+          .filter(Boolean)
+          .slice(0, 2)
+          .map((part) => part[0])
+          .join("")
+          .toUpperCase() || "AD"}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
 
-          <div className="grid gap-4">
-            <div>
-              <Label>Ho ten</Label>
-              <Input
-                disabled={!isEdit}
-                value={form.name}
-                onChange={(event) => setForm({ ...form, name: event.target.value })}
-              />
-            </div>
-
-            <div>
-              <Label>Email</Label>
-              <Input disabled value={form.email} />
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            {!isEdit ? (
-              <Button onClick={() => setIsEdit(true)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Chinh sua
-              </Button>
-            ) : (
-              <Button onClick={handleSave}>
-                <Save className="mr-2 h-4 w-4" />
-                Luu
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Bao mat</CardTitle>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          <Button variant="outline">Doi mat khau</Button>
-          <Button variant="outline">Bat 2FA (coming soon)</Button>
-        </CardContent>
-      </Card>
+function HeroMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[22px] border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
+      <p className="text-xs uppercase tracking-[0.16em] text-white/60">{label}</p>
+      <p className="mt-2 text-sm font-semibold text-white">{value}</p>
     </div>
   );
 }
