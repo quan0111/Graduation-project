@@ -3,30 +3,19 @@ import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import type { IOrder } from "../types";
 import { apiClient } from "@/lib/api";
 
-interface OrderApiResponse {
-    data: IOrder[];
-    count: number;
-}
 
-interface OrderResponse {
-    data: OrderApiResponse;
-    error: boolean;
-    message: string;
-    timestamp: string;
-}
-
-const getOrder = async (): Promise<OrderResponse> => {
+const getOrder = async (): Promise<IOrder[]> => {
     const res = await apiClient.get(API_URL_ORDER);
     return res.data;
 };
 
 export const useGetOrder = (
     config?: Omit<
-        UseQueryOptions<OrderResponse, Error, OrderResponse, [string]>,
+        UseQueryOptions<IOrder[], Error, IOrder[], [string]>,
         "queryKey" | "queryFn"
     >,
 ) => {
-    return useQuery<OrderResponse, Error, OrderResponse, [string]>({
+    return useQuery<IOrder[], Error, IOrder[], [string]>({
         queryKey: ["Orders"],
         queryFn: () => getOrder(),
         ...config,

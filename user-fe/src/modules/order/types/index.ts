@@ -1,18 +1,8 @@
+  import type { IProductVariant } from "@/modules/promotion/types"
 import type { IProduct } from "../../product/types"
 import type { IUser } from "../../user/types"
-export type OrderStatusType =
-  | "PENDING"
-  | "CONFIRMED"
-  | "PAID"
-  | "PROCESSING"
-  | "READY_TO_SHIP"
-  | "SHIPPED"
-  | "IN_TRANSIT"
-  | "DELIVERED"
-  | "COMPLETED"
-  | "CANCELLED"
-  | "RETURN_REQUESTED"
-  | "RETURNED"
+import type { IShop } from "@/modules/shop/types"
+import type { OrderStatusType } from "@/constant"
 
 export interface IOrder {
   id: number
@@ -39,18 +29,15 @@ export interface IOrder {
 export interface IOrderItem {
   id: number
   order_id: number
-  product_id: number
 
   quantity: number
   price: number
 
-  product_name: string
-  variant_name?: string | null
-  product_image?: string | null
-
   created_at: string
   deleted_at?: string | null
 
+  shop?: IShop
+  variant?: IProductVariant
   Product?: IProduct
 }
 export type PaymentMethodType =
@@ -91,3 +78,51 @@ export interface ICreateOrderFormInputs {
     method: PaymentMethodType;
   };
 }
+
+export interface IApiPayment {
+  id: number;
+
+  orderId: number;
+
+  method: PaymentMethodType;
+  status: PaymentStatusType;
+
+  createdAt: string;
+}
+
+
+export interface IApiOrderItem {
+  id: number;
+
+  orderId: number;
+
+  productId: number;
+  variantId?: number | null;
+  shopId: number;
+
+  quantity: number;
+  price: number;
+
+  productName?: string;
+  variantName?: string;
+  productImage?: string | null;
+}
+
+export interface IApiOrder {
+  id: number;
+
+  userId: number;
+
+  status: OrderStatusType;
+
+  subtotal: number;
+  shippingFee: number;
+  discountAmount: number;
+  totalAmount: number;
+
+  createdAt: string;
+
+  items: IApiOrderItem[];
+
+  payment?: IApiPayment;
+  }

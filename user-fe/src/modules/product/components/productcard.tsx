@@ -13,14 +13,19 @@ const getAvgRating = (reviews?: any[]) => {
 };
 
 export const ProductCard = ({ product }: { product: IProduct }) => {
-  const avgRating = getAvgRating(product.reviews);
   const addMutation = useAddItem();
 
   const handleAdd = async () => {
+    if (!product.shop?.id) {
+      toast.error("Thiếu shopId");
+      return;
+    }
+
     try {
       await addMutation.mutateAsync({
         productId: product.id,
-        variantId: product.variants?.[0]?.id ?? null, // 🔥 lấy variant đầu tiên nếu có
+        variantId: product.variants?.[0]?.id ?? null,
+        shopId: product.shop.id,
         quantity: 1,
       });
 
@@ -33,10 +38,10 @@ export const ProductCard = ({ product }: { product: IProduct }) => {
 
   return (
     <Card className="group hover:shadow-xl transition">
-      <div className="aspect-square overflow-hidden relative">
+      <div className="aspect-square overflow-hidden">
         <img
           src={product.images?.[0]?.url || "/placeholder.png"}
-          className="w-full h-full object-cover group-hover:scale-110 transition"
+          className="w-full h-full object-cover"
         />
       </div>
 
@@ -49,20 +54,13 @@ export const ProductCard = ({ product }: { product: IProduct }) => {
           {product.name}
         </h3>
 
-        <div className="text-sm text-yellow-500">
-          {avgRating.toFixed(1)} ({product.reviews?.length || 0})
-        </div>
-
-        <div className="flex gap-2 items-center mt-2 justify-center">
-          <span className="text-primary font-bold text-lg">
-            {product.price.toLocaleString()}đ
-          </span>
-        </div>
+        <span className="text-primary font-bold">
+          {product.price.toLocaleString()}đ
+        </span>
 
         <Button
           className="w-full mt-2"
           onClick={handleAdd}
-          disabled={addMutation.isPending}
         >
           {addMutation.isPending ? "Đang thêm..." : "Thêm"}
         </Button>

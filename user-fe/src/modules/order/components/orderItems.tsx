@@ -1,52 +1,74 @@
+// src/modules/order/components/orderItems.tsx
+
 import type { IOrderItem } from "../types";
 
 interface OrderItemsProps {
   items: IOrderItem[];
 }
 
-export const OrderItems: React.FC<OrderItemsProps> = ({ items }) => {
+export const OrderItems: React.FC<OrderItemsProps> = ({
+  items,
+}) => {
   return (
     <div className="space-y-4">
-      {items.map((i) => (
-        <div
-          key={i.id}
-          className="flex gap-4 p-3 rounded-lg hover:bg-muted transition"
-        >
-          {/* image */}
-          <img
-            src={i.product_image ?? "/placeholder.png"}
-            alt={i.product_name}
-            className="w-16 h-16 rounded object-cover"
-          />
+      {items.map((i) => {
+        // Extract product info from nested Product and variant objects
+        const productName = i.Product?.name;
+        // Get the first image URL or use placeholder
+        const productImage = i.Product?.images?.[0]?.url;
+        const variantName = i.variant?.name;
 
-          {/* content */}
-          <div className="flex-1">
-            <p className="font-medium">{i.product_name}</p>
+        return (
+          <div
+            key={i.id}
+            className="flex gap-4 p-4 rounded-xl border hover:bg-muted/40 transition"
+          >
+            {/* IMAGE */}
+            <img
+              src={productImage || "/placeholder.png"}
+              alt={productName || "Product"}
+              className="w-20 h-20 rounded-lg object-cover border"
+            />
 
-            {/* variant hoặc shop */}
-            <p className="text-sm text-muted">
-              {i.variant_name ??
-                i.Product?.name ??
-                "—"}
-            </p>
+            {/* CONTENT */}
+            <div className="flex-1">
+              {/* NAME */}
+              <p className="font-semibold text-base">
+                {productName || "Unknown Product"}
+              </p>
 
-            {/* quantity + price */}
-            <div className="flex justify-between mt-2">
-              <span>SL: {i.quantity}</span>
+              {/* VARIANT */}
+              <p className="text-sm text-muted-foreground mt-1">
+                {variantName || "Không có phân loại"}
+              </p>
 
-              <div className="text-right">
-                <p className="text-primary font-semibold">
-                  {i.price.toLocaleString("vi-VN")}đ
-                </p>
+              {/* BOTTOM */}
+              <div className="flex items-end justify-between mt-3">
+                <span className="text-sm">
+                  Số lượng:{" "}
+                  <span className="font-medium">
+                    {i.quantity}
+                  </span>
+                </span>
 
-                <p className="text-xs text-muted">
-                  {(i.price * i.quantity).toLocaleString("vi-VN")}đ
-                </p>
+                <div className="text-right">
+                  <p className="font-semibold text-primary">
+                    {Number(i.price).toLocaleString("vi-VN")}đ
+                  </p>
+
+                  <p className="text-xs text-muted-foreground">
+                    Tổng:{" "}
+                    {(
+                      Number(i.price) * Number(i.quantity)
+                    ).toLocaleString("vi-VN")}
+                    đ
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

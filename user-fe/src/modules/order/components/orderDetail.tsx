@@ -16,7 +16,7 @@ export const OrderDetails: React.FC<OrderDetailsProps> = ({ order }) => {
       {/* timeline */}
       <OrderTimeline status={order.status} />
 
-      <OrderActions  />
+      <OrderActions order={order} />
     </div>
   );
 };

@@ -46,50 +46,57 @@ class SellerService:
         if app.status != "PENDING":
             raise HTTPException(400, "Already processed")
 
-        # ❗ check user đã có shop chưa
         existing_shop = await prisma.shop.find_first(
             where={"ownerId": app.userId}
         )
+
         if existing_shop:
             raise HTTPException(400, "User already has a shop")
 
-        async with prisma.tx() as tx:
+        try:
 
-            # 🔥 CREATE SHOP (match DB)
-            shop = await tx.shop.create(
-                data={
-                    "name": app.shopName,
-                    "slug": app.shopSlug,
-                    "description": app.description,
+            async with prisma.tx() as tx:
 
-                    "avatarUrl": app.logoUrl,
-                    "coverUrl": app.coverUrl,
+                # ✅ CREATE SHOP
+                await tx.shop.create(
+                    data={
+                        "name": app.shopName,
+                        "slug": app.shopSlug,
+                        "description": app.description,
 
-                    "owner": {
-                        "connect": {"id": app.userId}
+                        "avatarUrl": app.logoUrl,
+
+                        "ownerId": app.userId,
                     }
-                }
-            )
+                )
 
-            updated = await tx.sellerapplication.update(
-                where={"id": application_id},
-                data={
-                    "status": "APPROVED",
-                    "reviewedAt": datetime.utcnow(),
-
-                    "reviewedBy": {
-                        "connect": {"id": admin_id}
-                    },
-
-                    # 🔥 LINK 2 chiều
-                    "shop": {
-                        "connect": {"id": shop.id}
+                # ✅ UPDATE USER ROLE
+                await tx.user.update(
+                    where={"id": app.userId},
+                    data={
+                        "role": "SELLER"
                     }
-                }
-            )
+                )
 
-        return updated
+                # ✅ UPDATE APPLICATION
+                updated = await tx.sellerapplication.update(
+                    where={"id": application_id},
+                    data={
+                        "status": "APPROVED",
+                        "reviewedAt": datetime.utcnow(),
 
+                        "reviewedBy": {
+                            "connect": {"id": admin_id}
+                        }
+                    }
+                )
+
+                return updated
+
+        except Exception as e:
+            print(e)
+            raise HTTPException(500, str(e))
+        
     @staticmethod
     async def reject(application_id: int, admin_id: int, note: str | None = None):
 
@@ -124,7 +131,6 @@ class SellerService:
             where={"id": application_id},
             include={
                 "user": True,
-                "shop": True,         # 🔥 thêm
                 "reviewedBy": True,
             }
         )
@@ -138,9 +144,6 @@ class SellerService:
     async def get_my_application(user_id: int):
         return await prisma.sellerapplication.find_first(
             where={"userId": user_id},
-            include={
-                "shop": True,   # 🔥 thêm để biết đã tạo shop chưa
-            }
         )
 
     @staticmethod
@@ -148,7 +151,6 @@ class SellerService:
         return await prisma.sellerapplication.find_many(
             include={
                 "user": True,
-                "shop": True,         # 🔥 thêm
                 "reviewedBy": True,
             },
             order={"createdAt": "desc"}

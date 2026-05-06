@@ -50,7 +50,7 @@ export const router = createBrowserRouter([
     element: <SellerRegistrationView />,
   },
   {
-    path: "/dashboard",
+    path: "/seller/dashboard",
     element: <SellerDashboardPage />,
   },
 ]);

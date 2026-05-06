@@ -6,11 +6,13 @@ import type { IMe } from "../types";
 
 // ===== API =====
 export const getMe = async (): Promise<IMe> => {
-  const response = await apiClient.get( `${API_URL_LOGIN}/me`);
+  const response = await apiClient.get( `${API_URL_LOGIN}/me`,{
+    withCredentials: true,
+  });
   return response.data;
 };
 
-// ===== HOOK =====
+
 type UseMeOptions = {
   config?: MutationConfig<typeof getMe>;
 };

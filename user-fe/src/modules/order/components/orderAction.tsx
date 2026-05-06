@@ -1,3 +1,5 @@
+'use client';
+
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useCancelOrder } from "../api/cancel-order";
@@ -15,15 +17,11 @@ export const OrderActions = ({ order }: Props) => {
   const cancelMutation = useCancelOrder();
   const addCartMutation = useAddItem();
 
-  // 🔥 Lấy cart thật từ API (KHÔNG dùng localStorage)
   const { data: cartData } = useCart();
-
-  const cartId = cartData?.id;
 
   /* ---------- CANCEL ---------- */
   const handleCancel = async () => {
-    const confirmCancel = confirm("Bạn có chắc muốn hủy đơn?");
-    if (!confirmCancel) return;
+    if (!confirm("Bạn có chắc muốn hủy đơn?")) return;
 
     try {
       await cancelMutation.mutateAsync({
@@ -32,8 +30,7 @@ export const OrderActions = ({ order }: Props) => {
       });
 
       toast.success("Đã hủy đơn hàng");
-    } catch (error) {
-      console.error(error);
+    } catch {
       toast.error("Hủy đơn thất bại");
     }
   };
@@ -41,28 +38,27 @@ export const OrderActions = ({ order }: Props) => {
   /* ---------- REBUY ---------- */
   const handleRebuy = async () => {
     if (!order.Items?.length) {
-      toast.error("Không có sản phẩm để mua lại");
-      return;
-    }
-
-    if (!cartId) {
-      toast.error("Không tìm thấy giỏ hàng");
+      toast.error("Không có sản phẩm");
       return;
     }
 
     try {
       await Promise.all(
-        order.Items.map((item) =>
-          addCartMutation.mutateAsync({
-            cart_id: cartId,
-            product_id: item.product_id,
+        order.Items.map((item) => {
+          if (!item.Product?.id || !item.shop?.id) {
+            throw new Error("Invalid order item");
+          }
+
+          return addCartMutation.mutateAsync({
+            productId: item.Product.id,
+            variantId: item.variant?.id ?? null,
+            shopId: item.shop.id,
             quantity: item.quantity,
-          })
-        )
+          });
+        })
       );
 
-      toast.success("Đã thêm vào giỏ hàng");
-
+      toast.success("Đã thêm lại vào giỏ");
       navigate("/cart");
     } catch (err) {
       console.error(err);
@@ -70,28 +66,16 @@ export const OrderActions = ({ order }: Props) => {
     }
   };
 
-  const handleContact = () => {
-    toast.info("Tính năng đang phát triển 🚀");
-  };
-
-  const handleInvoice = () => {
-    toast.info("Đang tải hóa đơn...");
-    window.print();
-  };
-
-  /* ---------- CONDITIONS ---------- */
-  const canCancel = order.status === "PENDING";
-  const canRebuy = order.status !== "CANCELLED";
-
-  /* ---------- UI ---------- */
+  const canCancel = order.status === "pending";
+  const canRebuy = order.status !== "cancelled";
 
   return (
     <div className="grid md:grid-cols-3 gap-3">
-      <Button variant="outline" onClick={handleInvoice}>
+      <Button variant="outline" onClick={() => window.print()}>
         Tải hóa đơn
       </Button>
 
-      <Button variant="outline" onClick={handleContact}>
+      <Button variant="outline">
         Liên hệ
       </Button>
 
@@ -99,18 +83,16 @@ export const OrderActions = ({ order }: Props) => {
         <Button
           variant="destructive"
           onClick={handleCancel}
-          disabled={cancelMutation.isPending}
         >
-          {cancelMutation.isPending ? "Đang hủy..." : "Hủy đơn"}
+          Hủy đơn
         </Button>
       ) : (
         canRebuy && (
           <Button
             className="bg-accent"
             onClick={handleRebuy}
-            disabled={addCartMutation.isPending}
           >
-            {addCartMutation.isPending ? "Đang thêm..." : "Mua lại"}
+            Mua lại
           </Button>
         )
       )}

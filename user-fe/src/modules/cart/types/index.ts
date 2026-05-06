@@ -1,3 +1,4 @@
+import type { IShop } from "@/modules/seller/types"
 import type { IProduct } from "../../product/types"
 import type { IProductVariant } from "../../product/types"
 
@@ -23,7 +24,7 @@ export interface ICartItem {
   id: number | string
   product_id: string
   quantity: number
-
+  shop: IShop
   product: IProduct
   variant?: IProductVariant
 

@@ -127,11 +127,13 @@ class AuthService:
 
         user_id = int(payload["sub"])
 
+        # revoke token cũ
         await prisma.refreshtoken.update(
             where={"token": hash_token(refresh_token)},
             data={"isRevoked": True}
         )
 
+        # tạo token mới
         new_access = create_access_token({"sub": str(user_id)})
         new_refresh = create_refresh_token({"sub": str(user_id)})
 
@@ -143,7 +145,7 @@ class AuthService:
             }
         )
 
-        # 🔥 update cookie
+        # set cookie mới
         response.set_cookie(
             key="refresh_token",
             value=new_refresh,
@@ -153,9 +155,8 @@ class AuthService:
         )
 
         return {
-            "access_token": new_access
+            "access_token": new_access  # 🔥 nhớ key này
         }
-
     # ===== LOGOUT =====
     @staticmethod
     async def logout(request: Request, response: Response):

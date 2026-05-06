@@ -1,34 +1,33 @@
-import { useMutation, type UseMutationOptions } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api";
 import { API_URL_ADDRESS } from "@/constant/config";
+import { apiClient } from "@/lib/api";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { IAddress } from "../types";
 
-export type UpdateAddressDto = Partial<IAddress>;
 
-interface UpdateAddressResponse {
-    data: IAddress;
-    error: boolean;
-    message: string;
-    timestamp: string;
-}
+const createAddress = async (data: Partial<IAddress>) => {
+  const res = await apiClient.post(`${API_URL_ADDRESS}`, {
+    fullName: data.full_name,
+    phone: data.phone,
+    addressLine: data.address_line,
+    ward: data.ward,
+    district: data.district,
+    province: data.province,
+    postalCode: data.postal_code,
+    isDefault: data.is_default,
+  });
 
-const updateAddress = async (
-    id: string,
-    data: UpdateAddressDto,
-): Promise<UpdateAddressResponse> => {
-    const res = await apiClient.patch(`${API_URL_ADDRESS}/${id}`, data);
-    return res.data;
+  return res.data;
 };
 
-export const useUpdateAddress = (
-    config?: UseMutationOptions<
-        UpdateAddressResponse,
-        Error,
-        { id: string; data: UpdateAddressDto }
-    >,
-) => {
-    return useMutation({
-        mutationFn: ({ id, data }) => updateAddress(id, data),
-        ...config,
-    });
+
+export const useCreateAddress = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createAddress,
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["addresses"] });
+    },
+  });
 };

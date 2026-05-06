@@ -8,7 +8,6 @@ import { useGetAllSeller } from "@/modules/shop/api/seller/get-all-seller";
 import { useApproveSeller } from "@/modules/shop/api/seller/approve";
 import { useRejectSeller } from "@/modules/shop/api/seller/reject";
 
-// ================= COLUMNS =================
 const columns = (onApprove: any, onReject: any) => [
   {
     key: "shopName",

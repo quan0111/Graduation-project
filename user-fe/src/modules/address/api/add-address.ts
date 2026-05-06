@@ -1,31 +1,35 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { API_URL_ADDRESS } from "@/constant/config";
 import { apiClient } from "@/lib/api";
-import type { MutationConfig } from "@/lib/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { IAddress } from "../types";
 
-export const createAddress = async (data: IAddress): Promise<any> => {
-    const response = await apiClient.post(`${API_URL_ADDRESS}`, data);
-    return response.data.data;
+
+// ===== API =====
+const createAddress = async (data: Partial<IAddress>) => {
+  const res = await apiClient.post(`${API_URL_ADDRESS}`, {
+    fullName: data.full_name,
+    phone: data.phone,
+    addressLine: data.address_line,
+    ward: data.ward,
+    district: data.district,
+    province: data.province,
+    postalCode: data.postal_code,
+    isDefault: data.is_default,
+  });
+
+  return res.data;
 };
 
-type UseCreateAddressOptions = {
-    config?: MutationConfig<typeof createAddress>;
-};
 
-export const useCreateAddress = ({
-    config,
-}: UseCreateAddressOptions = {}) => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: createAddress,
-        onMutate: () => {},
-        onError: () => {},
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: ["addresses"],
-            });
-        },
-        ...config,
-    });
+// ===== HOOK =====
+export const useCreateAddress = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createAddress,
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["addresses"] });
+    },
+  });
 };

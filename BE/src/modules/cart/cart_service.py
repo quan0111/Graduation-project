@@ -1,6 +1,5 @@
 from src.core.database import prisma
 from fastapi import HTTPException
-from datetime import datetime
 
 
 class CartService:
@@ -23,6 +22,7 @@ class CartService:
             include={
                 "items": {
                     "include": {
+                        "shop": True,
                         "product": True,
                         "variant": True
                     }
@@ -41,6 +41,7 @@ class CartService:
             include={
                 "items": {
                     "include": {
+                        "shop": True,
                         "product": True,
                         "variant": True
                     }
@@ -49,7 +50,18 @@ class CartService:
         )
 
         if not cart:
-            raise HTTPException(404, "Cart not found")
+            cart = await prisma.cart.create(
+                data={"userId": user_id},
+                include={
+                    "items": {
+                        "include": {
+                            "shop": True,
+                            "product": True,
+                            "variant": True
+                        }
+                    }
+                }
+            )
 
         return self._attach_total(cart)
 
@@ -62,30 +74,20 @@ class CartService:
         if not product:
             raise HTTPException(400, "Product not found")
 
-        variant = None
-        if data.variantId:
-            variant = await prisma.productvariant.find_unique(
-                where={"id": data.variantId}
-            )
-            if not variant:
-                raise HTTPException(400, "Variant not found")
-
-            if variant.productId != data.productId:
-                raise HTTPException(400, "Variant invalid")
-
-        if data.quantity <= 0:
-            raise HTTPException(400, "Quantity must be > 0")
+        variant_id = data.variantId if data.variantId else None
 
         return await prisma.cartitem.upsert(
             where={
-                "cartId_productId_variantId": {
+                "cartId_productId_variantId_shopId": {
                     "cartId": cart.id,
                     "productId": data.productId,
-                    "variantId": data.variantId
+                    "variantId": data.variantId,
+                    "shopId": data.shopId
                 }
             },
             data={
                 "create": {
+                    "shopId": data.shopId,
                     "cartId": cart.id,
                     "productId": data.productId,
                     "variantId": data.variantId,
@@ -101,10 +103,6 @@ class CartService:
         if quantity < 0:
             raise HTTPException(400, "Quantity must be >= 0")
 
-        item = await prisma.cartitem.find_unique(where={"id": item_id})
-        if not item:
-            raise HTTPException(404, "Item not found")
-
         if quantity == 0:
             await prisma.cartitem.delete(where={"id": item_id})
             return {"message": "Item removed"}
@@ -115,30 +113,15 @@ class CartService:
         )
 
     async def delete_item(self, item_id: int):
-        item = await prisma.cartitem.find_unique(where={"id": item_id})
-        if not item:
-            raise HTTPException(404, "Item not found")
-
         return await prisma.cartitem.delete(where={"id": item_id})
 
     async def clear_cart(self, cart_id: int):
-        cart = await prisma.cart.find_unique(where={"id": cart_id})
-        if not cart:
-            raise HTTPException(404, "Cart not found")
-
         await prisma.cartitem.delete_many(
             where={"cartId": cart_id}
         )
-
         return {"message": "Cart cleared"}
 
-    async def delete_cart(self, cart_id: int):
-        cart = await prisma.cart.find_unique(where={"id": cart_id})
-        if not cart:
-            raise HTTPException(404, "Cart not found")
-
-        return await prisma.cart.delete(where={"id": cart_id})
-
+    # 🔥 FIX QUAN TRỌNG
     def _attach_total(self, cart):
         total = 0
 
@@ -152,5 +135,9 @@ class CartService:
 
             total += price * item.quantity
 
-        cart.totalAmount = total
-        return cart
+
+
+        cart_dict = cart.model_dump()
+        cart_dict["totalAmount"] = total
+
+        return cart_dict

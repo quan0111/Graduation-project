@@ -1,19 +1,18 @@
 import { apiClient } from "../../../lib/api";
 import { useQuery } from "@tanstack/react-query";
+import { useMe } from "@/modules/auth/api/get-auth-me";
 
 export interface ICartItem {
   id: number;
-  product_id: number;
   quantity: number;
-  price?: number;
+  product?: any;
+  variant?: any;
 }
 
 export interface ICart {
   id: number;
-  user_id: number;
+  userId: number;
   items: ICartItem[];
-  total?: number;
-  discount?: number;
 }
 
 export const getCart = async (userId: number): Promise<ICart> => {
@@ -21,11 +20,13 @@ export const getCart = async (userId: number): Promise<ICart> => {
   return res.data;
 };
 
-export const useCart = (userId?: number) => {
+export const useCart = () => {
+  const { data: user, isLoading: userLoading } = useMe();
+
   return useQuery({
-    queryKey: ["cart", userId],
-    queryFn: () => getCart(userId as number),
-    enabled: !!userId,
+    queryKey: ["cart", user?.id],
+    queryFn: () => getCart(user!.id),
+    enabled: !!user?.id, 
     staleTime: 1000 * 60 * 2,
   });
 };

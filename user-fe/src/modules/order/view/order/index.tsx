@@ -1,54 +1,54 @@
+'use client';
+
 import { useGetOrder } from "../../api/get-orders";
 import { OrdersFilterTabs } from "../../components/filterTab";
 import { OrderCard } from "../../components/orderCard";
 import { EmptyState } from "@/modules/order/components/emptyState";
 import type { IOrder } from "../../types";
 import { useState, useMemo } from "react";
+import type { OrderStatusType } from "@/constant";
 
-/* ---------- PAGE ---------- */
+type OrderFilterType = "ALL" | OrderStatusType;
 
 export default function OrderPage() {
-  const { data: ordersData, isLoading } = useGetOrder();
-  
-  // Filter state
-  const [filter, setFilter] = useState<IOrder["status"] | "ALL">("ALL");
+  const { data: ordersData, isLoading, error } = useGetOrder();
+
+  const [filter, setFilter] = useState<OrderFilterType>("ALL");
   const [expanded, setExpanded] = useState<number | null>(null);
 
-  // Transform API data
-  const orders: IOrder[] = ordersData?.data?.data || [];
+  // ✅ API của bạn trả ARRAY trực tiếp
+  const orders: IOrder[] = ordersData || [];
 
-  // Filter orders
+  console.log("🚀 ORDERS:", orders);
+
   const filteredOrders = useMemo(() => {
     if (filter === "ALL") return orders;
-    return orders.filter((order) => order.status === filter);
+
+    return orders.filter(
+      (order) =>
+        order.status?.toUpperCase() === filter.toUpperCase()
+    );
   }, [orders, filter]);
 
-  // Toggle expand order details
   const toggleExpand = (orderId: number) => {
     setExpanded(expanded === orderId ? null : orderId);
   };
 
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Đang tải đơn hàng...</p>
-        </div>
-      </div>
-    );
+  if (isLoading) return <div className="p-6">Loading...</div>;
+
+  if (error) {
+    return <div className="p-6 text-red-500">Lỗi load đơn hàng</div>;
   }
 
+  if (!orders.length) return <EmptyState />;
+
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
-      {/* Filter tabs */}
+    <div className="max-w-5xl mx-auto p-6 space-y-6">
       <OrdersFilterTabs
-        filter={filter.toLocaleLowerCase() as any}
-        setFilter={(value) => setFilter(value.toUpperCase() as any)}
+        filter={filter}
+        setFilter={(value) => setFilter(value as any)}
       />
 
-      {/* Order list */}
       {filteredOrders.length === 0 ? (
         <EmptyState />
       ) : (

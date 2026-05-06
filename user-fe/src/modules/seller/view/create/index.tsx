@@ -1,19 +1,34 @@
 'use client'
 
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+
 import { StepIndicator } from '../../component/step-indicator'
 import { ShopInfoForm } from '../../component/shop-info'
 import { ShippingSettings } from '../../component/shipp-setting'
 import { IdentityForm } from '../../component/identify-form'
 import { TaxForm } from '../../component/tax-form'
+
 import { Button } from '@/components/ui/button'
 
 import { useApplySeller } from "@/modules/seller/api/apply"
+import { useMe } from "@/modules/auth/api/get-auth-me"
+
 import { toast } from "sonner"
 
-import type { ShopInfo, IdentityInfo, TaxInfo, SellerRegistration } from '../../types'
+import type {
+  ShopInfo,
+  IdentityInfo,
+  TaxInfo,
+  SellerRegistration
+} from '../../types'
 
-type RegistrationStep = 'shop-info' | 'shipping' | 'identity' | 'tax' | 'complete'
+type RegistrationStep =
+  | 'shop-info'
+  | 'shipping'
+  | 'identity'
+  | 'tax'
+  | 'complete'
 
 const STEPS: { id: RegistrationStep; label: string }[] = [
   { id: 'shop-info', label: 'Thông tin Shop' },
@@ -24,78 +39,135 @@ const STEPS: { id: RegistrationStep; label: string }[] = [
 ]
 
 export function SellerRegistrationView() {
-  const [currentStep, setCurrentStep] = useState<RegistrationStep>('shop-info')
-  const [completedSteps, setCompletedSteps] = useState<RegistrationStep[]>([])
+  const navigate = useNavigate()
+
+  const [currentStep, setCurrentStep] =
+    useState<RegistrationStep>('shop-info')
+
+  const [completedSteps, setCompletedSteps] =
+    useState<RegistrationStep[]>([])
+
   const [isLoading, setIsLoading] = useState(false)
 
   const applyMutation = useApplySeller()
 
-  const [registration, setRegistration] = useState<SellerRegistration>({
-    shopInfo: {
-      shopName: '',
-      pickupAddress: '',
-      city: '',
-      district: '',
-      ward: '',
-      email: '',
-      phone: '',
-    },
-    identityInfo: {
-      fullName: '',
-      cccdFrontImage: null,
-      cccdBackImage: null,
-      cccdNumber: '',
-    },
-    taxInfo: {
-      businessType: 'individual',
-      businessRegistrationPlace: '',
-      registeredEmail: '',
-      taxNumber: '',
-      codEnabled: true,
-      dailyDeliveryEnabled: true,
-      expressDeliveryEnabled: true,
-      instantDeliveryEnabled: false,
-      buyNowPayLaterEnabled: false,
-    },
-    currentStep: 'shop-info',
-  })
+  // 🔥 auth user
+  const { data: user } = useMe()
 
-  // ================= STEP HANDLERS =================
+  const [registration, setRegistration] =
+    useState<SellerRegistration>({
+      shopInfo: {
+        shopName: '',
+        pickupAddress: '',
+        city: '',
+        district: '',
+        ward: '',
+        email: '',
+        phone: '',
+      },
+
+      identityInfo: {
+        fullName: '',
+        cccdFrontImage: null,
+        cccdBackImage: null,
+        cccdNumber: '',
+      },
+
+      taxInfo: {
+        businessType: 'individual',
+        businessRegistrationPlace: '',
+        registeredEmail: '',
+        taxNumber: '',
+
+        codEnabled: true,
+        dailyDeliveryEnabled: true,
+        expressDeliveryEnabled: true,
+        instantDeliveryEnabled: false,
+        buyNowPayLaterEnabled: false,
+      },
+
+      currentStep: 'shop-info',
+    })
+
+  // ================= STEP =================
 
   const handleShopInfoSubmit = (data: ShopInfo) => {
-    setRegistration(prev => ({ ...prev, shopInfo: data }))
-    setCompletedSteps(prev => ([...new Set([...prev, 'shop-info'])] as RegistrationStep[]))
+    setRegistration(prev => ({
+      ...prev,
+      shopInfo: data,
+    }))
+
+    setCompletedSteps(prev => (
+      [...new Set([...prev, 'shop-info'])] as RegistrationStep[]
+    ))
+
     setCurrentStep('shipping')
   }
 
   const handleShippingNext = (data: TaxInfo) => {
-    setRegistration(prev => ({ ...prev, taxInfo: data }))
-    setCompletedSteps(prev => ([...new Set([...prev, 'shipping'])] as RegistrationStep[]))
+    setRegistration(prev => ({
+      ...prev,
+      taxInfo: data,
+    }))
+
+    setCompletedSteps(prev => (
+      [...new Set([...prev, 'shipping'])] as RegistrationStep[]
+    ))
+
     setCurrentStep('identity')
   }
 
   const handleIdentitySubmit = (data: IdentityInfo) => {
-    setRegistration(prev => ({ ...prev, identityInfo: data }))
-    setCompletedSteps(prev => ([...new Set([...prev, 'identity'])] as RegistrationStep[]))
+    setRegistration(prev => ({
+      ...prev,
+      identityInfo: data,
+    }))
+
+    setCompletedSteps(prev => (
+      [...new Set([...prev, 'identity'])] as RegistrationStep[]
+    ))
+
     setCurrentStep('tax')
   }
 
   const handleTaxSubmit = (data: TaxInfo) => {
-    setRegistration(prev => ({ ...prev, taxInfo: data }))
-    setCompletedSteps(prev => ([...new Set([...prev, 'tax'])] as RegistrationStep[]))
+    setRegistration(prev => ({
+      ...prev,
+      taxInfo: data,
+    }))
+
+    setCompletedSteps(prev => (
+      [...new Set([...prev, 'tax'])] as RegistrationStep[]
+    ))
+
     setCurrentStep('complete')
   }
 
   const handlePrevStep = () => {
-    if (currentStep === 'shipping') setCurrentStep('shop-info')
-    else if (currentStep === 'identity') setCurrentStep('shipping')
-    else if (currentStep === 'tax') setCurrentStep('identity')
+    if (currentStep === 'shipping') {
+      setCurrentStep('shop-info')
+    }
+
+    else if (currentStep === 'identity') {
+      setCurrentStep('shipping')
+    }
+
+    else if (currentStep === 'tax') {
+      setCurrentStep('identity')
+    }
   }
 
-  // ================= 🔥 CALL API (FIXED) =================
+  // ================= APPLY SELLER =================
 
   const handleComplete = async () => {
     try {
+      // 🔥 chưa login
+      if (!user) {
+        toast.error("Vui lòng đăng nhập")
+        navigate("/login")
+        return
+      }
+
       setIsLoading(true)
 
       const payload = {
@@ -118,23 +190,32 @@ export function SellerRegistrationView() {
 
       console.log("🚀 payload:", payload)
 
-      const userId = 1 // TODO: replace bằng auth user
-
       await applyMutation.mutateAsync({
         data: payload,
-        userId,
+        userId: user.id,
       })
 
-      toast.success("Đăng ký thành công 🎉")
+      toast.success("Gửi yêu cầu đăng ký seller thành công 🎉")
 
       setCompletedSteps(prev => (
         [...new Set([...prev, 'complete'])] as RegistrationStep[]
       ))
 
+      // 🔥 redirect
+      setTimeout(() => {
+        navigate("/")
+      }, 1500)
+
     } catch (err: any) {
       console.error(err)
-      toast.error(err?.response?.data?.detail || "Đăng ký thất bại ❌")
-    } finally {
+
+      toast.error(
+        err?.response?.data?.detail ||
+        "Đăng ký thất bại ❌"
+      )
+    }
+
+    finally {
       setIsLoading(false)
     }
   }
@@ -147,26 +228,34 @@ export function SellerRegistrationView() {
       <div className="container py-8">
         <div className="max-w-4xl mx-auto">
 
-          {/* Header */}
+          {/* HEADER */}
           <div className="text-center mb-12">
+
             <h1 className="text-3xl font-bold mb-2">
               Đăng ký trở thành Người bán ShopHub
             </h1>
+
             <p className="text-muted-foreground">
               Hoàn thành các bước dưới đây để bắt đầu kinh doanh
             </p>
+
           </div>
 
+          {/* STEP */}
           <StepIndicator
             steps={STEPS}
             currentStep={currentStep}
             completedSteps={completedSteps}
           />
 
+          {/* CONTENT */}
           <div className="bg-card rounded-lg border p-8">
 
             {currentStep === 'shop-info' && (
-              <ShopInfoForm data={registration.shopInfo} onNext={handleShopInfoSubmit} />
+              <ShopInfoForm
+                data={registration.shopInfo}
+                onNext={handleShopInfoSubmit}
+              />
             )}
 
             {currentStep === 'shipping' && (
@@ -208,7 +297,9 @@ export function SellerRegistrationView() {
                   onClick={handleComplete}
                   disabled={isLoading}
                 >
-                  {isLoading ? "Đang gửi..." : "Hoàn tất"}
+                  {isLoading
+                    ? "Đang gửi..."
+                    : "Hoàn tất"}
                 </Button>
 
               </div>

@@ -1,7 +1,7 @@
 import type { IOrderItem } from "../../types";
 
 interface Props {
-  items: IOrderItem[];
+  items: any[];
   subtotal: number;
   total: number;
   tax?: number;
@@ -16,19 +16,24 @@ export const OrderSummary: React.FC<Props> = ({
   shipping,
 }) => {
   const format = (n: number) =>
-    n.toLocaleString("vi-VN") + "đ";
+    (n || 0).toLocaleString("vi-VN") + "đ";
 
   return (
     <div className="sticky top-20 space-y-4">
+
       <div className="max-h-60 overflow-y-auto">
         {items.map((i) => (
           <div key={i.id} className="flex gap-2 mb-3">
+
+            {/* 🔥 FIX IMAGE */}
             <img
-              src={i.product_image || ""}
-              className="w-12 h-12 object-cover"
+              src={i.image || "/placeholder.png"}
+              className="w-12 h-12 object-cover rounded"
             />
+
             <div>
-              <p className="text-sm">{i.product_name}</p>
+              {/* 🔥 FIX NAME */}
+              <p className="text-sm">{i.name}</p>
               <p className="text-xs">x{i.quantity}</p>
             </div>
           </div>
@@ -41,7 +46,7 @@ export const OrderSummary: React.FC<Props> = ({
           <span>{format(subtotal)}</span>
         </div>
 
-        {shipping && (
+        {shipping !== undefined && (
           <div className="flex justify-between">
             <span>Phí ship</span>
             <span>{format(shipping)}</span>

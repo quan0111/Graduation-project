@@ -65,7 +65,7 @@ export default function ProductDetailPage() {
 
           <ShippingInfo />
 
-          <ProductActions stock={stock} productId={0} />
+          <ProductActions stock={stock} productId={product.id} variantId={selectedVariant?.id ?? null} />
 
           <VendorInfo product={product} />
         </div>
