@@ -1,11 +1,11 @@
 import { useState, useMemo } from "react";
-import type { IOrderItem, PaymentMethodType } from "../types";
+import type { PaymentMethodType } from "../types";
 
 /* ---------- types ---------- */
 
 type StepType = 1 | 2 | 3 | 4;
 
-type ShippingMethodType =
+export type ShippingMethodType =
   | "STANDARD"
   | "EXPRESS"
   | "SAME_DAY";
@@ -27,7 +27,12 @@ const SHIPPING_PRICE: Record<ShippingMethodType, number> = {
 
 /* ---------- hook ---------- */
 
-export const useCheckout = (items: IOrderItem[]) => {
+type CheckoutPricingItem = {
+  price: number;
+  quantity: number;
+};
+
+export const useCheckout = (items: CheckoutPricingItem[]) => {
   const [step, setStep] = useState<StepType>(1);
 
   const [shipping, setShipping] =

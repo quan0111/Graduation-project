@@ -1,50 +1,48 @@
 'use client';
 
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { LogOut, Pencil, Save } from "lucide-react";
+
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Pencil, Save, LogOut } from "lucide-react";
+import {
+  clearAdminSession,
+  getStoredAdminUser,
+  setStoredAdminUser,
+} from "@/lib/auth-storage";
+
+type AdminProfile = {
+  id: number | string;
+  fullName?: string;
+  email: string;
+  role: string;
+};
 
 export default function AdminProfilePage() {
   const [isEdit, setIsEdit] = useState(false);
-
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    const stored = localStorage.getItem("user");
-    if (stored) {
-      setUser(JSON.parse(stored));
-    }
-  }, []);
-
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-  });
-
-  useEffect(() => {
-    if (user) {
-      setForm({
-        name: user.name || "",
-        email: user.email || "",
-      });
-    }
-  }, [user]);
+  const [user, setUser] = useState<AdminProfile | null>(() => getStoredAdminUser<AdminProfile>());
+  const [form, setForm] = useState(() => ({
+    name: getStoredAdminUser<AdminProfile>()?.fullName || "",
+    email: getStoredAdminUser<AdminProfile>()?.email || "",
+  }));
 
   const handleSave = () => {
-    const updated = { ...user, ...form };
-    localStorage.setItem("user", JSON.stringify(updated));
+    if (!user) {
+      return;
+    }
+
+    const updated = { ...user, fullName: form.name, email: form.email };
+    setStoredAdminUser(updated);
     setUser(updated);
     setIsEdit(false);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    clearAdminSession();
     window.location.href = "/admin/login";
   };
 
@@ -54,100 +52,78 @@ export default function AdminProfilePage() {
 
   return (
     <div className="p-6 space-y-6">
-
-      {/* HEADER */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Thông tin tài khoản</h1>
+        <h1 className="text-2xl font-bold">Thong tin tai khoan</h1>
 
         <Button variant="destructive" onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
-          Đăng xuất
+          Dang xuat
         </Button>
       </div>
 
       <Separator />
 
-      {/* PROFILE CARD */}
       <Card>
         <CardHeader>
-          <CardTitle>Thông tin cá nhân</CardTitle>
+          <CardTitle>Thong tin ca nhan</CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-6">
-
-          {/* Avatar */}
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
               <AvatarFallback>
-                {user?.name?.charAt(0)?.toUpperCase() || "A"}
+                {user.fullName?.charAt(0)?.toUpperCase() || "A"}
               </AvatarFallback>
             </Avatar>
 
             <div>
-              <p className="font-medium">{user.name}</p>
+              <p className="font-medium">{user.fullName}</p>
               <p className="text-sm text-gray-500">{user.role}</p>
             </div>
           </div>
 
-          {/* FORM */}
           <div className="grid gap-4">
-
             <div>
-              <Label>Họ tên</Label>
+              <Label>Ho ten</Label>
               <Input
                 disabled={!isEdit}
                 value={form.name}
-                onChange={(e) =>
-                  setForm({ ...form, name: e.target.value })
-                }
+                onChange={(event) => setForm({ ...form, name: event.target.value })}
               />
             </div>
 
             <div>
               <Label>Email</Label>
-              <Input
-                disabled
-                value={form.email}
-              />
+              <Input disabled value={form.email} />
             </div>
-
           </div>
 
-          {/* ACTION */}
           <div className="flex gap-2">
             {!isEdit ? (
               <Button onClick={() => setIsEdit(true)}>
                 <Pencil className="mr-2 h-4 w-4" />
-                Chỉnh sửa
+                Chinh sua
               </Button>
             ) : (
               <Button onClick={handleSave}>
                 <Save className="mr-2 h-4 w-4" />
-                Lưu
+                Luu
               </Button>
             )}
           </div>
-
         </CardContent>
       </Card>
 
-      {/* SECURITY */}
       <Card>
         <CardHeader>
-          <CardTitle>Bảo mật</CardTitle>
+          <CardTitle>Bao mat</CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <Button variant="outline">
-            Đổi mật khẩu
-          </Button>
-
-          <Button variant="outline">
-            Bật 2FA (coming soon)
-          </Button>
+          <Button variant="outline">Doi mat khau</Button>
+          <Button variant="outline">Bat 2FA (coming soon)</Button>
         </CardContent>
       </Card>
-
     </div>
   );
 }

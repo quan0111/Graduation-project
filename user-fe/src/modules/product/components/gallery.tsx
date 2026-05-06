@@ -1,4 +1,5 @@
-// ProductGallery.tsx
+// components/gallery.tsx
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,13 +9,12 @@ interface ProductGalleryProps {
   name?: string;
 }
 
-export const ProductGallery: React.FC<ProductGalleryProps> = ({
+export const ProductGallery = ({
   images = [],
   name = "product",
-}) => {
-  const [main, setMain] = useState<string>("");
+}: ProductGalleryProps) => {
+  const [main, setMain] = useState("");
 
-  // 👉 sync khi images thay đổi
   useEffect(() => {
     if (images.length > 0) {
       setMain(images[0]);
@@ -23,7 +23,7 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
 
   if (!images.length) {
     return (
-      <div className="aspect-square bg-gray-100 rounded flex items-center justify-center text-gray-400">
+      <div className="aspect-square bg-gray-100 flex items-center justify-center">
         Không có ảnh
       </div>
     );
@@ -31,39 +31,42 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({
 
   return (
     <div>
-      {/* Main image */}
-      <div className="aspect-square bg-muted rounded mb-4 overflow-hidden group">
+
+      {/* MAIN */}
+      <div className="aspect-square border overflow-hidden">
         <img
           src={main}
           alt={name}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          className="w-full h-full object-cover"
         />
       </div>
 
-      {/* Thumbnails */}
-      <div className="grid grid-cols-4 gap-2">
+      {/* THUMB */}
+      <div className="flex gap-2 mt-4 overflow-x-auto">
+
         {images.map((img, i) => {
-          const isActive = main === img;
+          const active = img === main;
 
           return (
             <button
-              key={`${img}-${i}`}
+              key={i}
               onClick={() => setMain(img)}
-              className={`border-2 rounded overflow-hidden transition ${
-                isActive
-                  ? "border-primary"
-                  : "border-transparent hover:border-gray-300"
+              className={`w-20 h-20 border-2 overflow-hidden shrink-0 ${
+                active
+                  ? "border-[#ee4d2d]"
+                  : "border-gray-200"
               }`}
             >
               <img
                 src={img}
-                alt={`${name}-${i}`}
-                className="w-full h-20 object-cover"
+                className="w-full h-full object-cover"
               />
             </button>
           );
         })}
+
       </div>
+
     </div>
   );
 };

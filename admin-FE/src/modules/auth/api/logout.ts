@@ -1,25 +1,22 @@
-import { apiClient } from "../../../lib/api";
 import { useMutation } from "@tanstack/react-query";
+
+import { API_URL_LOGIN } from "@/constant/config";
+import { clearAdminSession } from "@/lib/auth-storage";
+import { apiClient } from "../../../lib/api";
 import type { MutationConfig } from "../../../lib/react-query";
 
-export const Logout = async () => {
-  const res = await apiClient.post("/auth/logout", {}, {
-    withCredentials: true,
-  });
-  return res.data;
+export const logout = async () => {
+  const response = await apiClient.post(`${API_URL_LOGIN}/admin/logout`, {});
+  return response.data;
 };
 
-export const useLogout = (config?: MutationConfig<typeof Logout>) => {
+export const useLogout = (config?: MutationConfig<typeof logout>) => {
   return useMutation({
-    mutationFn: Logout,
-
+    mutationFn: logout,
     onSuccess: () => {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("user");
-
-      window.location.href = "/login";
+      clearAdminSession();
+      window.location.href = "/admin/login";
     },
-
     ...config,
   });
 };

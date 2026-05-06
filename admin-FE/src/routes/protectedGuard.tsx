@@ -1,24 +1,19 @@
+import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 
-export default function ProtectedRoute({ children }: any) {
-  const token = localStorage.getItem("access_token");
-  const user = localStorage.getItem("user");
+import { getAdminAccessToken, getStoredAdminUser } from "@/lib/auth-storage";
 
-  if (!token || !user) {
+type ProtectedRouteProps = {
+  children: ReactNode;
+};
+
+export default function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const token = getAdminAccessToken();
+  const user = getStoredAdminUser<{ role?: string }>();
+
+  if (!token || !user || user.role !== "ADMIN") {
     return <Navigate to="/admin/login" replace />;
   }
 
-  let parsedUser;
-
-  try {
-    parsedUser = JSON.parse(user);
-  } catch {
-    return <Navigate to="/admin/login" replace />;
-  }
-
-  if (parsedUser?.role?.toLowerCase() !== "admin") {
-    return <Navigate to="/admin/login" replace />;
-  }
-
-  return children;
+  return <>{children}</>;
 }

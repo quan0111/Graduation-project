@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends
+
 from src.modules.cart.cart_service import CartService
 from src.modules.cart.cart_schema import (
     CartCreate,
@@ -8,9 +9,11 @@ from src.modules.cart.cart_schema import (
     CartItemUpdate,
     CartItemOut
 )
-from src.core.dependencies import get_current_user  # 🔥 thêm dòng này
+
+from src.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/cart", tags=["Cart"])
+
 service = CartService()
 
 
@@ -24,9 +27,12 @@ async def get_cart(cart_id: int):
     return await service.get_cart(cart_id)
 
 
-@router.get("/user/{user_id}", response_model=CartDetail)
-async def get_cart_by_user(user_id: int):
-    return await service.get_cart_by_user(user_id)
+# 🔥 NEW
+@router.get("/me", response_model=CartDetail)
+async def get_my_cart(
+    user=Depends(get_current_user)
+):
+    return await service.get_cart_by_user(user.id)
 
 
 @router.delete("/{cart_id}")
@@ -35,8 +41,6 @@ async def delete_cart(cart_id: int):
     return {"message": "Cart deleted"}
 
 
-# 🔥 FIX CHÍNH Ở ĐÂY
-
 @router.post("/items", response_model=CartItemOut)
 async def add_item(
     data: CartItemCreate,
@@ -44,9 +48,16 @@ async def add_item(
 ):
     return await service.add_item(user.id, data)
 
+
 @router.patch("/items/{item_id}", response_model=CartItemOut)
-async def update_item(item_id: int, data: CartItemUpdate):
-    return await service.update_item(item_id, data.quantity)
+async def update_item(
+    item_id: int,
+    data: CartItemUpdate
+):
+    return await service.update_item(
+        item_id,
+        data.quantity
+    )
 
 
 @router.delete("/items/{item_id}")

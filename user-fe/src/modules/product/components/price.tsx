@@ -1,48 +1,51 @@
-// ProductPrice.tsx
+// components/price.tsx
 
 interface ProductPriceProps {
   price?: number;
   originalPrice?: number;
 }
 
-export const ProductPrice: React.FC<ProductPriceProps> = ({
+export const ProductPrice = ({
   price = 0,
   originalPrice,
-}) => {
+}: ProductPriceProps) => {
+
+  const format = (v: number) =>
+    new Intl.NumberFormat("vi-VN").format(v);
+
   const hasDiscount =
-    originalPrice && originalPrice > price && originalPrice > 0;
+    originalPrice &&
+    originalPrice > price;
 
   const discount = hasDiscount
-    ? Math.round((1 - price / originalPrice) * 100)
+    ? Math.round(
+        (1 - price / originalPrice) * 100
+      )
     : 0;
 
-  const format = (value: number) =>
-    new Intl.NumberFormat("vi-VN").format(value);
-
   return (
-    <div className="bg-muted p-4 rounded-xl mb-6">
-      <div className="flex flex-wrap gap-3 items-center">
+    <div className="bg-[#fafafa] mt-6 p-5">
 
-        {/* Price */}
-        <span className="text-3xl font-bold text-primary">
-          {format(price)}đ
-        </span>
+      <div className="flex items-center gap-4 flex-wrap">
 
-        {/* Original price */}
         {hasDiscount && (
-          <span className="line-through text-gray-400">
-            {format(originalPrice!)}đ
+          <span className="text-[20px] text-gray-400 line-through">
+            ₫{format(originalPrice!)}
           </span>
         )}
 
-        {/* Discount */}
-        {hasDiscount && discount > 0 && (
-          <span className="bg-red-500 text-white px-2 py-1 rounded text-sm">
+        <span className="text-[34px] text-[#ee4d2d]">
+          ₫{format(price)}
+        </span>
+
+        {hasDiscount && (
+          <div className="bg-[#ee4d2d] text-white px-2 py-1 text-sm">
             -{discount}%
-          </span>
+          </div>
         )}
 
       </div>
+
     </div>
   );
 };

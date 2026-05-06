@@ -1,39 +1,29 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
 import { API_URL_LOGIN } from "../../../constant/config";
+import { saveStorefrontSession } from "@/lib/auth-storage";
 import { apiClient } from "../../../lib/api";
-import { useMutation,useQueryClient } from "@tanstack/react-query";
-import type { IAuth,AuthResponse } from "../types";
 import type { MutationConfig } from "../../../lib/react-query";
+import type { AuthResponse, IAuth } from "../types";
 
-
-export const Login = async (data: IAuth): Promise<AuthResponse> => {
-    const respone = await apiClient.post(`${API_URL_LOGIN}/login`, data)
-    return respone.data
-}; 
+export const login = async (data: IAuth): Promise<AuthResponse> => {
+  const response = await apiClient.post(`${API_URL_LOGIN}/login`, data);
+  return response.data;
+};
 
 type UseLoginOption = {
-    config?: MutationConfig<typeof Login>
-}
+  config?: MutationConfig<typeof login>;
+};
 
-export const useLogin =({ config }: UseLoginOption = {}) => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: Login,
-        onMutate:() => {},
-        onError:(error) =>{
-            throw(error);
-        },
-        onSuccess: async(data) => {
-            if (data?.access_token) {
-                localStorage.setItem("access_token", data.access_token);
-            }
-            if (data?.user) {
-                localStorage.setItem("user", JSON.stringify(data.user));
-            }
-            await queryClient.invalidateQueries({
-                queryKey: ["auth"],
-            });
-        },
-        ...config,
-    }
-    );
-}
+export const useLogin = ({ config }: UseLoginOption = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: login,
+    onSuccess: async (data) => {
+      saveStorefrontSession(data.access_token, data.user);
+      await queryClient.invalidateQueries({ queryKey: ["auth"] });
+    },
+    ...config,
+  });
+};

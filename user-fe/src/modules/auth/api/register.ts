@@ -1,38 +1,29 @@
-import { API_URL_LOGIN } from "../../../constant/config";
-import { apiClient } from "../../../lib/api";
-import { useMutation,useQueryClient } from "@tanstack/react-query";
-import type { RegisterRequest, AuthResponse } from "../types";
-import type { MutationConfig } from "../../../lib/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-export const Register = async (data: RegisterRequest): Promise<AuthResponse> => {
-    const response = await apiClient.post(`${API_URL_LOGIN}/register`, data)
-    return response.data;
+import { API_URL_LOGIN } from "../../../constant/config";
+import { saveStorefrontSession } from "@/lib/auth-storage";
+import { apiClient } from "../../../lib/api";
+import type { MutationConfig } from "../../../lib/react-query";
+import type { AuthResponse, RegisterRequest } from "../types";
+
+export const register = async (data: RegisterRequest): Promise<AuthResponse> => {
+  const response = await apiClient.post(`${API_URL_LOGIN}/register`, data);
+  return response.data;
 };
 
 type UseRegisterOption = {
-    config?: MutationConfig<typeof Register>
-}
+  config?: MutationConfig<typeof register>;
+};
 
-export const useRegister =({ config }: UseRegisterOption = {}) => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: Register,
-        onMutate:() => {},
-        onSuccess: async(data) => {
-            if (data?.access_token) {
-                localStorage.setItem("token", data.access_token);
-            }
-            if (data?.refresh_token) {
-                localStorage.setItem("refresh_token", data.refresh_token);
-            }
-            if (data?.user) {
-                localStorage.setItem("user", JSON.stringify(data.user));
-            }
-            await queryClient.invalidateQueries({
-                queryKey: ["auth"],
-            });
-        },
-        ...config,
-    }
-    );
-}
+export const useRegister = ({ config }: UseRegisterOption = {}) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: register,
+    onSuccess: async (data) => {
+      saveStorefrontSession(data.access_token, data.user);
+      await queryClient.invalidateQueries({ queryKey: ["auth"] });
+    },
+    ...config,
+  });
+};

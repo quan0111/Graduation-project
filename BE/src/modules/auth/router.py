@@ -1,50 +1,81 @@
-from fastapi import APIRouter, HTTPException, Depends, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.security import HTTPBearer
 
-from src.modules.auth.schema import (
-    RegisterRequest,
-    LoginRequest,
-    AuthResponse
-)
-from src.modules.auth.service import AuthService
-from src.core.dependencies import get_current_user as get_current_user_dep
 from src.core.database import prisma
+from src.core.dependencies import get_current_user as get_current_user_dep
+from src.core.security import AUTH_SCOPE_ADMIN, AUTH_SCOPE_STOREFRONT
+from src.modules.auth.schema import AuthResponse, LoginRequest, RegisterRequest
+from src.modules.auth.service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
-
 security = HTTPBearer()
 
 
-# ===== REGISTER =====
 @router.post("/register", response_model=AuthResponse)
 async def register(data: RegisterRequest, response: Response):
     return await AuthService.register(data, response)
 
 
-# ===== LOGIN =====
 @router.post("/login", response_model=AuthResponse)
 async def login(data: LoginRequest, response: Response):
-    return await AuthService.login(data, response)
+    return await AuthService.login(
+        data,
+        response,
+        scope=AUTH_SCOPE_STOREFRONT,
+        cookie_name=AuthService.STOREFRONT_COOKIE,
+    )
 
 
-# ===== REFRESH =====
+@router.post("/admin/login", response_model=AuthResponse)
+async def admin_login(data: LoginRequest, response: Response):
+    return await AuthService.login(
+        data,
+        response,
+        scope=AUTH_SCOPE_ADMIN,
+        cookie_name=AuthService.ADMIN_COOKIE,
+    )
+
+
 @router.post("/refresh")
 async def refresh(request: Request, response: Response):
-    return await AuthService.refresh(request, response)
+    return await AuthService.refresh(
+        request,
+        response,
+        scope=AUTH_SCOPE_STOREFRONT,
+        cookie_name=AuthService.STOREFRONT_COOKIE,
+    )
 
 
-# ===== LOGOUT =====
+@router.post("/admin/refresh")
+async def admin_refresh(request: Request, response: Response):
+    return await AuthService.refresh(
+        request,
+        response,
+        scope=AUTH_SCOPE_ADMIN,
+        cookie_name=AuthService.ADMIN_COOKIE,
+    )
+
+
 @router.post("/logout")
 async def logout(request: Request, response: Response):
-    return await AuthService.logout(request, response)
+    return await AuthService.logout(
+        request,
+        response,
+        cookie_name=AuthService.STOREFRONT_COOKIE,
+    )
 
 
-# ===== CHANGE PASSWORD =====
+@router.post("/admin/logout")
+async def admin_logout(request: Request, response: Response):
+    return await AuthService.logout(
+        request,
+        response,
+        cookie_name=AuthService.ADMIN_COOKIE,
+    )
+
+
 @router.post("/change-password")
-async def change_password(
-    body: dict,
-    user=Depends(get_current_user_dep)
-):
+async def change_password(body: dict, user=Depends(get_current_user_dep)):
     old_password = body.get("old_password")
     new_password = body.get("new_password")
 
@@ -54,16 +85,15 @@ async def change_password(
     return await AuthService.change_password(
         user.id,
         old_password,
-        new_password
+        new_password,
     )
 
 
-# ===== ME (🔥 FIX FULL: có cart) =====
 @router.get("/me")
 async def get_me(user=Depends(get_current_user_dep)):
     cart = await prisma.cart.find_first(
         where={"userId": user.id},
-        include={"items": True}
+        include={"items": True},
     )
 
     total_items = 0
@@ -79,6 +109,21 @@ async def get_me(user=Depends(get_current_user_dep)):
         "avatarUrl": user.avatarUrl,
         "cart": {
             "id": cart.id if cart else None,
-            "totalItems": total_items
-        }
+            "totalItems": total_items,
+        },
+    }
+
+
+@router.get("/admin/me")
+async def get_admin_me(user=Depends(get_current_user_dep)):
+    if user.role != "ADMIN":
+        raise HTTPException(403, "Admin access required")
+
+    return {
+        "id": user.id,
+        "email": user.email,
+        "fullName": user.fullName,
+        "role": user.role,
+        "isActive": user.isActive,
+        "avatarUrl": user.avatarUrl,
     }

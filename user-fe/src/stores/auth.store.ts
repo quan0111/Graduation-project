@@ -3,6 +3,10 @@ import { persist } from "zustand/middleware";
 import axios from "axios";
 import type { AuthUser } from "@/modules/auth/types";
 import { API_URL_LOGIN } from "@/constant/config";
+import {
+    STOREFRONT_AUTH_PERSIST_KEY,
+    clearStorefrontSession,
+} from "@/lib/auth-storage";
 
 type AuthState = {
     user: AuthUser | null;
@@ -14,7 +18,6 @@ type AuthState = {
 export const useAuthStore = create<AuthState>()(
     persist(
         (set) => ({
-            org: null,
             user: null,
 
 
@@ -36,11 +39,12 @@ export const useAuthStore = create<AuthState>()(
                 } catch (e) {
                     console.error("Logout failed:", e);
                 }
+                clearStorefrontSession();
                 set({ user: null });
             },
         }),
         {
-            name: "auth-storage",
+            name: STOREFRONT_AUTH_PERSIST_KEY,
             partialize: (state) => ({ user: state.user}),
         },
     ),

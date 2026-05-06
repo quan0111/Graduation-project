@@ -1,33 +1,28 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
-from jose import jwt
 
-from src.core.config import get_settings
 from src.core.database import prisma
+from src.core.security import decode_token, verify_token_type
 
 security = HTTPBearer()
-settings = get_settings()
 
 
 async def get_current_user(token=Depends(security)):
-    try:
-        payload = jwt.decode(
-            token.credentials,
-            settings.SECRET_KEY,
-            algorithms=["HS256"]
-        )
+    payload = decode_token(token.credentials)
 
-        user_id = payload.get("sub")
+    if not verify_token_type(payload, "access"):
+        raise HTTPException(status_code=401, detail="Invalid token")
 
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid token")
-
-    except Exception:
+    user_id = payload.get("sub")
+    if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token")
 
     user = await prisma.user.find_unique(where={"id": int(user_id)})
 
-    if not user:
+    if not user or user.deletedAt:
         raise HTTPException(status_code=404, detail="User not found")
+
+    if not user.isActive:
+        raise HTTPException(status_code=403, detail="User disabled")
 
     return user

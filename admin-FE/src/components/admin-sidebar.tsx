@@ -131,7 +131,7 @@ export function AdminSidebar() {
           <div className="flex flex-1 flex-col">
             <span className="text-sm font-medium">Admin User</span>
             <span className="text-xs text-muted-foreground">
-              admin@shophub.vn
+              admin@markethub.vn
             </span>
           </div>
 

@@ -13,7 +13,7 @@ interface UpdateProductResponse {
 }
 
 const updateProduct = async (
-    id: string,
+    id: number,
     data: UpdateProductDto,
 ): Promise<UpdateProductResponse> => {
     const res = await apiClient.patch(`${API_URL_PRODUCT}/${id}`, data);
@@ -24,7 +24,7 @@ export const useUpdateProduct = (
     config?: UseMutationOptions<
         UpdateProductResponse,
         Error,
-        { id: string; data: UpdateProductDto }
+        { id: number; data: UpdateProductDto }
     >,
 ) => {
     return useMutation({

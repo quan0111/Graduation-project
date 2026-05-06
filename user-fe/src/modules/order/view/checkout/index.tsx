@@ -3,10 +3,11 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Truck, Zap, Archive } from "lucide-react";
+import { getStoredStorefrontUser } from "@/lib/auth-storage";
 
 import { useCreateOrder } from "@/modules/order/api/add-order";
 import { useGetAddresses } from "@/modules/address/api/get-address";
-import { useCheckout } from "../../hook/useCheckout";
+import { useCheckout, type ShippingMethodType } from "../../hook/useCheckout";
 
 import { Stepper } from "../../components/checkout/stepper";
 import { ShippingForm } from "../../components/checkout/shippingForm";
@@ -14,6 +15,22 @@ import { ShippingMethod } from "../../components/checkout/shippingMethod";
 import { PaymentMethod } from "../../components/checkout/paymentMethod";
 import { Confirmation } from "../../components/checkout/confirmation";
 import { OrderSummary } from "../../components/checkout/orderSumary";
+
+type CheckoutLocationItem = {
+  productId?: number | string;
+  variantId?: number | string | null;
+  shopId?: number | string;
+  quantity?: number | string;
+  price?: number | string;
+};
+
+type CheckoutOrderItem = {
+  productId: number;
+  variantId: number | null;
+  shopId: number;
+  quantity: number;
+  price: number;
+};
 
 export default function CheckOutPage() {
   const navigate = useNavigate();
@@ -23,9 +40,7 @@ export default function CheckOutPage() {
   const createOrderMutation = useCreateOrder();
 
   // 🔥 DATA TỪ CART
-  const cartItems = location.state?.items || [];
-
-  const state = useCheckout(cartItems as any);
+  const cartItems = (location.state?.items as CheckoutLocationItem[] | undefined) || [];
 
   /* ================= SHIPPING ================= */
   const shippingMethods = [
@@ -53,23 +68,25 @@ export default function CheckOutPage() {
   ];
 
   /* ================= TRANSFORM (FIX CHÍNH) ================= */
-  const checkoutItems = cartItems.map((item: any) => ({
+  const checkoutItems: CheckoutOrderItem[] = cartItems.map((item) => ({
     productId: Number(item.productId || 0),  
-    variantId: item.variantId || null,       
+    variantId: item.variantId ? Number(item.variantId) : null,
     shopId: Number(item.shopId || 0),        
     quantity: Number(item.quantity || 0),
     price: Number(item.price || 0),
   }));
 
+  const state = useCheckout(checkoutItems);
+
   /* ================= SUBTOTAL ================= */
   const subtotal = checkoutItems.reduce(
-    (sum: number, i: any) => sum + i.price * i.quantity,
+    (sum, item) => sum + item.price * item.quantity,
     0
   );
 
   /* ================= SHIPPING CHANGE ================= */
   const handleShippingChange = (id: string) => {
-    state.setShipping(id as any);
+    state.setShipping(id as ShippingMethodType);
   };
 
   /* ================= ORDER ================= */
@@ -80,8 +97,7 @@ export default function CheckOutPage() {
     }
 
     try {
-      const raw = localStorage.getItem("auth-storage");
-      const user = raw ? JSON.parse(raw)?.state?.user : null;
+      const user = getStoredStorefrontUser<{ id: number }>();
 
       if (!user) {
         toast.error("Chưa đăng nhập");
@@ -90,7 +106,7 @@ export default function CheckOutPage() {
 
       // 🔥 VALIDATE ITEMS (TRÁNH BUG NGẦM)
       const validItems = checkoutItems.filter(
-        (i: { productId: number; shopId: number; }) => i.productId > 0 && i.shopId > 0
+        (item) => item.productId > 0 && item.shopId > 0
       );
 
       if (!validItems.length) {

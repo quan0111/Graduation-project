@@ -1,3 +1,5 @@
+// src/modules/product/view/detail/index.tsx
+
 'use client';
 
 import { useParams } from "react-router-dom";
@@ -34,54 +36,123 @@ export default function ProductDetailPage() {
     stock,
   } = useProductDetail(product as IProduct);
 
-  // 👉 xử lý UI sau
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
 
   if (error || !product) {
-    return <div>Lỗi load sản phẩm</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Lỗi load sản phẩm
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-10">
+    <div className="bg-[#f5f5f5] min-h-screen pb-10">
 
-      <div className="grid lg:grid-cols-3 gap-8">
-        <ProductGallery
-          images={product.images?.map((i) => i.url) ?? []}
-          name={product.name}
-        />
+      <div className="max-w-7xl mx-auto pt-5 space-y-5">
 
-        <div className="lg:col-span-2 space-y-4">
-          <ProductInfo product={product} />
+        {/* PRODUCT */}
+        <div className="bg-white p-5 grid grid-cols-12 gap-10">
 
-          <ProductTags tags={product.tags ?? []} />
+          {/* LEFT */}
+          <div className="col-span-5">
+            <ProductGallery
+              images={product.images?.map((i) => i.url) ?? []}
+              name={product.name}
+            />
+          </div>
 
-          <ProductPrice price={price} />
+          {/* RIGHT */}
+          <div className="col-span-7">
 
-          <ProductVariants
-            variants={product.variants ?? []}
-            selected={selectedVariant}
-            onSelect={setSelectedVariant}
-          />
+            <ProductInfo product={product} />
 
-          <ShippingInfo />
+            <ProductPrice
+              price={price}
+              originalPrice={product.price}
+            />
 
-          <ProductActions stock={stock} productId={product.id} variantId={selectedVariant?.id ?? null} />
+            <ShippingInfo />
 
-          <VendorInfo product={product} />
+            <div className="mt-6">
+              <ProductVariants
+                variants={product.variants ?? []}
+                selected={selectedVariant}
+                onSelect={setSelectedVariant}
+              />
+            </div>
+
+            <div className="mt-8">
+              <ProductActions
+                stock={stock}
+                productId={product.id}
+                variantId={selectedVariant?.id ?? null}
+                shopId={product.shop?.id ?? null}
+              />
+            </div>
+
+          </div>
+
         </div>
-      </div>
 
-      <div className="grid lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <ProductAttributes attrs={product.attributes ?? []} />
+        {/* SHOP */}
+        <VendorInfo product={product} />
+
+        {/* DETAIL */}
+        <div className="bg-white p-6">
+
+          <h2 className="bg-[#f5f5f5] p-4 text-[20px] font-medium uppercase">
+            Chi tiết sản phẩm
+          </h2>
+
+          <div className="mt-8">
+            <ProductAttributes attrs={product.attributes ?? []} />
+          </div>
+
         </div>
+
+        {/* DESCRIPTION */}
+        <div className="bg-white p-6">
+
+          <h2 className="bg-[#f5f5f5] p-4 text-[20px] font-medium uppercase">
+            Mô tả sản phẩm
+          </h2>
+
+          <div className="mt-8">
+            <ProductDescription text={product.description ?? ""} />
+          </div>
+
+        </div>
+
+        {/* REVIEW */}
+        <div className="bg-white p-6">
+
+          <h2 className="text-[24px] mb-6 uppercase">
+            Đánh giá sản phẩm
+          </h2>
+
+          <ProductReviews reviews={product.reviews ?? []} />
+
+        </div>
+
+        {/* RELATED */}
+        <div className="bg-white p-6">
+
+          <h2 className="text-[22px] uppercase mb-5">
+            Các sản phẩm khác của shop
+          </h2>
+
+          <RelatedProducts />
+
+        </div>
+
       </div>
-
-      <ProductDescription text={product.description ?? ""} />
-
-      <ProductReviews reviews={product.reviews ?? []} />
-
-      <RelatedProducts />
     </div>
   );
 }

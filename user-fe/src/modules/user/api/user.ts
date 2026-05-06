@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_URL_USER } from "@/constant/config";
+import { clearStorefrontSession } from "@/lib/auth-storage";
 import { apiClient } from "@/lib/api";
 import type { MutationConfig } from "@/lib/react-query";
 import type { UseQueryOptions } from "@tanstack/react-query";
@@ -117,8 +118,7 @@ export const useDeleteAccount = ({ config }: { config?: MutationConfig<typeof de
         mutationFn: deleteAccount,
         onSuccess: async () => {
             await queryClient.clear();
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
+            clearStorefrontSession();
         },
         ...config,
     });

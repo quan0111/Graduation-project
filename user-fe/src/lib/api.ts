@@ -1,39 +1,34 @@
 import axios from "axios";
-import { API_URL } from "../constant/config";
+
+import { API_URL_LOGIN } from "../constant/config";
+import {
+  clearStorefrontSession,
+  getStorefrontAccessToken,
+  setStorefrontAccessToken,
+} from "./auth-storage";
 
 export const apiClient = axios.create({
-  baseURL: API_URL,
-  withCredentials: true, // 🔥 QUAN TRỌNG
+  baseURL: import.meta.env.VITE_API_URL,
+  withCredentials: true,
 });
 
-// ===== ACCESS TOKEN =====
-const getAccessToken = () => localStorage.getItem("access_token");
-
-const setAccessToken = (token: string) => {
-  localStorage.setItem("access_token", token);
-};
-
-const clearAuth = () => {
-  localStorage.removeItem("access_token");
-};
-
-// ===== REQUEST =====
 apiClient.interceptors.request.use((config) => {
-  const token = getAccessToken();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  const token = getStorefrontAccessToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
-// ===== REFRESH =====
 let isRefreshing = false;
-let queue: any[] = [];
+let queue: Array<(token: string) => void> = [];
 
 apiClient.interceptors.response.use(
-  (res) => res,
+  (response) => response,
   async (error) => {
     const original = error.config;
 
-    if (error.response?.status === 401 && !original._retry) {
+    if (error.response?.status === 401 && original && !original._retry) {
       original._retry = true;
 
       if (isRefreshing) {
@@ -48,32 +43,29 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // 🔥 KHÔNG gửi refresh_token
-        const res = await axios.post(
-          `${API_URL}/auth/refresh/`,
+        const response = await axios.post(
+          `${API_URL_LOGIN}/refresh`,
           {},
-          { withCredentials: true }
+          { withCredentials: true },
         );
 
-        const newAccess = res.data.access_token;
+        const newAccessToken = response.data.access_token;
+        setStorefrontAccessToken(newAccessToken);
 
-        setAccessToken(newAccess);
-
-        queue.forEach((cb) => cb(newAccess));
+        queue.forEach((callback) => callback(newAccessToken));
         queue = [];
 
-        original.headers.Authorization = `Bearer ${newAccess}`;
+        original.headers.Authorization = `Bearer ${newAccessToken}`;
         return apiClient(original);
-
-      } catch (err) {
-        clearAuth();
+      } catch (refreshError) {
+        clearStorefrontSession();
         window.location.href = "/login";
-        return Promise.reject(err);
+        return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
     }
 
     return Promise.reject(error);
-  }
+  },
 );

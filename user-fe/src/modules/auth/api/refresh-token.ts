@@ -1,13 +1,13 @@
 import { useMutation } from "@tanstack/react-query";
+
+import { API_URL_LOGIN } from "@/constant/config";
+import { setStorefrontAccessToken } from "@/lib/auth-storage";
 import { apiClient } from "@/lib/api";
 import type { MutationConfig } from "@/lib/react-query";
-import type { AuthResponse } from "../types";
+import type { RefreshTokenResponse } from "../types";
 
-export const refreshToken = async (token: string): Promise<AuthResponse> => {
-  const response = await apiClient.post(`/auth/refresh`, {
-    refresh_token: token, // 🔥 đúng format backend
-  });
-
+export const refreshToken = async (): Promise<RefreshTokenResponse> => {
+  const response = await apiClient.post(`${API_URL_LOGIN}/refresh`, {});
   return response.data;
 };
 
@@ -18,17 +18,9 @@ type UseRefreshTokenOptions = {
 export const useRefreshToken = ({ config }: UseRefreshTokenOptions = {}) => {
   return useMutation({
     mutationFn: refreshToken,
-
     onSuccess: (data) => {
-      if (data?.access_token) {
-        localStorage.setItem("access_token", data.access_token);
-      }
-
-      if (data?.refresh_token) {
-        localStorage.setItem("refresh_token", data.refresh_token);
-      }
+      setStorefrontAccessToken(data.access_token);
     },
-
     ...config,
   });
 };

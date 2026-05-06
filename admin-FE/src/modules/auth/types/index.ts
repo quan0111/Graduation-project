@@ -1,5 +1,3 @@
-import type { UserRoleType } from "../../../constant";
-
 export interface IAuth {
   email: string;
   password: string;
@@ -9,10 +7,11 @@ export interface IAuth {
 
 
 export interface AuthUser {
-  id: string;
+  id: number;
   email: string;
-  fullname: string;
-  role: UserRoleType;
+  fullName?: string;
+  avatarUrl?: string;
+  role: string;
 }
 export interface RegisterRequest {
   email: string
@@ -25,5 +24,10 @@ export interface RegisterRequest {
 export interface AuthResponse {
   user: AuthUser;
   access_token: string;
-  refresh_token: string;
+  token_type?: string;
+}
+
+export interface RefreshTokenResponse {
+  access_token: string;
+  token_type?: string;
 }
