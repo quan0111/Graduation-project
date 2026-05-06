@@ -13,7 +13,7 @@ import {
   ArrowUpDown
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useGetShopByOwnerId } from '@/modules/shop/api/shop'
+import { useGetShopByOwnerId } from '@/modules/shop/api/myshop'
 import { useGetSellerProducts, useDeleteProduct } from '../api/product'
 import { useState } from 'react'
 import { toast } from 'sonner'

@@ -73,6 +73,32 @@ class ShopService:
         return shop_dict
 
     @staticmethod
+    async def get_my_shop(owner_id: int):
+
+        shop = await prisma.shop.find_first(
+            where={
+                "ownerId": owner_id,
+                "deletedAt": None
+            },
+            include={
+                "owner": True,
+                "products": True
+            }
+        )
+
+        if not shop:
+            raise HTTPException(404, "Shop not found")
+
+        shop_dict = dict(shop)
+
+        shop_dict["productCount"] = len(
+            shop_dict.get("products", [])
+        )
+
+        shop_dict.pop("products", None)
+
+        return shop_dict
+    @staticmethod
     async def update_shop(shop_id: int, shop_data: shop_schema.ShopUpdate):
         update_data = shop_data.dict(exclude_unset=True)
 
