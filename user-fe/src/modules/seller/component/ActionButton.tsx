@@ -1,7 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useCreateProduct } from "@/modules/product/api/add-product";
+<<<<<<< HEAD
 import { useGetShopByOwnerId } from "@/modules/shop/api/shop";
+=======
+import { useGetShopByOwnerId } from "@/modules/shop/api/myshop";
+>>>>>>> bdaf2f19bdd8c83af487c91a66ab608a0e798ba8
 import { toast } from "sonner";
 
 interface ProductActionsProps {

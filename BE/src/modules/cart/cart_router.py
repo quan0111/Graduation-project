@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter
+from typing import List
 from src.modules.cart.cart_service import CartService
 from src.modules.cart.cart_schema import (
     CartCreate,
@@ -8,25 +9,29 @@ from src.modules.cart.cart_schema import (
     CartItemUpdate,
     CartItemOut
 )
-from src.core.dependencies import get_current_user  # 🔥 thêm dòng này
+from src.modules.cart.cart_service import CartService
 
 router = APIRouter(prefix="/cart", tags=["Cart"])
 service = CartService()
 
 
-@router.post("/", response_model=CartOut)
-async def create_cart(data: CartCreate):
-    return await service.create_cart(data)
 
 
-@router.get("/{cart_id}", response_model=CartDetail)
-async def get_cart(cart_id: int):
-    return await service.get_cart(cart_id)
+@router.post("/", response_model=ShopOut)
+async def create_shop(shop_data: ShopCreate):
+    return await ShopService.create_shop(shop_data)
 
 
-@router.get("/user/{user_id}", response_model=CartDetail)
-async def get_cart_by_user(user_id: int):
-    return await service.get_cart_by_user(user_id)
+@router.get("/", response_model=List[ShopOut])
+async def get_all_shops():
+    return await ShopService.get_all_shops()
+
+
+@router.get("/me", response_model=ShopOut)
+async def get_my_shop(
+    user=Depends(get_current_user)
+):
+    return await ShopService.get_my_shop(user.id)
 
 
 @router.delete("/{cart_id}")
@@ -35,27 +40,21 @@ async def delete_cart(cart_id: int):
     return {"message": "Cart deleted"}
 
 
-# 🔥 FIX CHÍNH Ở ĐÂY
-
 @router.post("/items", response_model=CartItemOut)
-async def add_item(
-    data: CartItemCreate,
-    user=Depends(get_current_user)
-):
-    return await service.add_item(user.id, data)
+async def add_item(data: CartItemCreate):
+    return await service.add_item(data)
 
-@router.patch("/items/{item_id}", response_model=CartItemOut)
+
+@router.put("/items/{item_id}", response_model=CartItemOut)
 async def update_item(item_id: int, data: CartItemUpdate):
     return await service.update_item(item_id, data.quantity)
 
 
-@router.delete("/items/{item_id}")
-async def delete_item(item_id: int):
-    await service.delete_item(item_id)
-    return {"message": "Item deleted"}
+@router.patch("/{shop_id}/delete")
+async def delete_shop(shop_id: int):
 
+    await ShopService.delete_shop(shop_id)
 
-@router.delete("/{cart_id}/clear")
-async def clear_cart(cart_id: int):
-    await service.clear_cart(cart_id)
-    return {"message": "Cart cleared"}
+    return {
+        "message": "Shop deleted successfully"
+    }
