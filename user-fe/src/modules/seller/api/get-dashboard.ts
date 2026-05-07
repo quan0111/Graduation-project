@@ -86,6 +86,7 @@ interface ShopScopedOrder {
 
 interface ShopScopedProduct {
   id: number;
+  variantId?: number;
   name: string;
   price: number;
   status: string;
@@ -148,7 +149,7 @@ async function getShopProducts(shopId: number) {
 }
 
 async function getOrders() {
-  const response = await apiClient.get<OrderResponse[]>(API_URL_ORDER);
+  const response = await apiClient.get<OrderResponse[]>(`${API_URL_ORDER}/seller`);
   return response.data;
 }
 
@@ -175,6 +176,7 @@ function normalizeShop(data: ShopResponse): SellerDashboardShop {
 function normalizeProducts(products: ProductResponse[]): ShopScopedProduct[] {
   return products.map((product) => ({
     id: product.id,
+    variantId: (product.variants ?? [])[0]?.id,
     name: product.name,
     price: product.price,
     status: product.status,
@@ -187,14 +189,17 @@ function normalizeProducts(products: ProductResponse[]): ShopScopedProduct[] {
 function normalizeOrders(orders: OrderResponse[], shopId: number): ShopScopedOrder[] {
   return orders
     .map((order) => {
-      const shopItems = (order.items ?? []).filter((item) => item.shopId === shopId);
+      const shopItems = (order.items ?? []).filter((item) => {
+        const itemShopId = (item as unknown as { shop_id?: number }).shop_id ?? item.shopId;
+        return itemShopId === shopId;
+      });
       const revenue = shopItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
       const itemCount = shopItems.reduce((sum, item) => sum + item.quantity, 0);
 
       return {
         id: order.id,
         status: order.status,
-        createdAt: order.createdAt,
+        createdAt: (order as unknown as { created_at?: string }).created_at ?? order.createdAt,
         paymentStatus: order.payment?.status,
         itemCount,
         revenue,
@@ -300,10 +305,12 @@ function buildTopProducts(
 
       return {
         id: product.id,
+        variantId: product.variantId,
         name: product.name,
         sku: product.sku,
         sold: stats.sold,
         stock: product.totalStock,
+        price: product.price,
         revenue: stats.revenue,
         status: product.status,
       };
@@ -318,6 +325,7 @@ function buildInventory(products: ShopScopedProduct[]): SellerDashboardInventory
     .slice(0, 5)
     .map((product) => ({
       id: product.id,
+      variantId: product.variantId,
       name: product.name,
       stock: product.totalStock,
       price: product.price,

@@ -1,7 +1,7 @@
 import { apiClient } from "../../../lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { useMe } from "@/modules/auth/api/get-auth-me";
-
+import { API_URL_CART } from "@/constant/config";
 export interface ICartItem {
   id: number;
   quantity: number;
@@ -16,7 +16,7 @@ export interface ICart {
 }
 
 export const getCart = async (userId: number): Promise<ICart> => {
-  const res = await apiClient.get(`/cart/user/${userId}`);
+  const res = await apiClient.get(`${API_URL_CART}/user/${userId}`);
   return res.data;
 };
 

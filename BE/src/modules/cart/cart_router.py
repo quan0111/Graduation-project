@@ -22,17 +22,17 @@ async def create_cart(data: CartCreate):
     return await service.create_cart(data)
 
 
-@router.get("/{cart_id}", response_model=CartDetail)
-async def get_cart(cart_id: int):
-    return await service.get_cart(cart_id)
-
-
-# 🔥 NEW
+# 🔥 NEW - Must be defined before /{cart_id} to avoid path matching conflict
 @router.get("/me", response_model=CartDetail)
 async def get_my_cart(
     user=Depends(get_current_user)
 ):
     return await service.get_cart_by_user(user.id)
+
+
+@router.get("/{cart_id}", response_model=CartDetail)
+async def get_cart(cart_id: int):
+    return await service.get_cart(cart_id)
 
 
 @router.delete("/{cart_id}")

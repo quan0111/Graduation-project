@@ -54,16 +54,19 @@ export interface SellerDashboardWallet {
 
 export interface SellerDashboardTopProduct {
   id: number;
+  variantId?: number;
   name: string;
   sku: string;
   sold: number;
   stock: number;
+  price: number;
   revenue: number;
   status: string;
 }
 
 export interface SellerDashboardInventoryItem {
   id: number;
+  variantId?: number;
   name: string;
   stock: number;
   price: number;

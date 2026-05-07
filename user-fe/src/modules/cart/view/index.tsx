@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 
-import { useCart } from "../api/get-cart";
+import { useMyCart } from "../api/get-my-cart";
 import { useClearCart } from "../api/clear-cart";
 import { useDeleteCartItem } from "../api/delete-cart";
 import { useUpdateItem } from "../api/update-cart";
@@ -16,7 +16,7 @@ import { EmptyCart } from "../components/emptyCart";
 
 export default function CartPage() {
   const navigate = useNavigate();
-  const { data: cartData, isLoading } = useCart();
+  const { data: cartData, isLoading } = useMyCart();
   const deleteMutation = useDeleteCartItem();
   const updateMutation = useUpdateItem();
   const clearMutation = useClearCart();

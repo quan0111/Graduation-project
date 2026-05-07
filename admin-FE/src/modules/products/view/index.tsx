@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/common/data-table";
 import { toast } from "sonner";
+
+import { DataTable } from "@/components/common/data-table";
+import { Button } from "@/components/ui/button";
 
 import { useProducts } from "../api/get-all-product";
 import { useUpdateProduct } from "../api/update-product-id";
-import { ProductFilter } from "../component/filter-search-product";
 import { productColumns } from "../component/product-collum";
+import { ProductFilter } from "../component/filter-search-product";
 import { ProductPreviewModal } from "../component/product-preview-modal";
+
+type ProductStatus = "ACTIVE" | "REJECT" | "BANNED";
 
 export default function ProductsPage() {
   const { data: products = [] } = useProducts();
@@ -31,35 +34,30 @@ export default function ProductsPage() {
           status === "all" ||
           (status === "pending" && product.status === "DRAFT") ||
           (status === "approved" && product.status === "ACTIVE") ||
-          (status === "rejected" && product.status === "REJECT");
+          (status === "rejected" && product.status === "REJECT") ||
+          (status === "banned" && product.status === "BANNED");
 
         const matchCategory = category === "all" || product.category?.name === category;
-
         return matchSearch && matchStatus && matchCategory;
       }),
     [category, products, search, status],
   );
 
-  const patchStatus = async (id: number, nextStatus: "ACTIVE" | "REJECT") => {
+  const patchStatus = async (id: number, nextStatus: ProductStatus, successMessage: string) => {
     try {
       await updateProductMutation.mutateAsync({
         id,
         data: { status: nextStatus },
       });
-      toast.success(nextStatus === "ACTIVE" ? "Da duyet san pham" : "Da tu choi san pham");
+      toast.success(successMessage);
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || "Cap nhat trang thai that bai");
     }
   };
 
-  const handleApprove = (product: any) => {
-    patchStatus(product.id, "ACTIVE");
-  };
-
-  const handleReject = (product: any) => {
-    patchStatus(product.id, "REJECT");
-  };
-
+  const handleApprove = (product: any) => patchStatus(product.id, "ACTIVE", "Da duyet san pham");
+  const handleReject = (product: any) => patchStatus(product.id, "REJECT", "Da tu choi san pham");
+  const handleBan = (product: any) => patchStatus(product.id, "BANNED", "Da cam ban san pham vi pham");
   const handleView = (product: any) => {
     setSelected(product);
     setOpen(true);
@@ -82,14 +80,8 @@ export default function ProductsPage() {
   };
 
   return (
-    <main className="flex-1 overflow-auto p-6 w-full">
-      <ProductFilter
-        search={search}
-        setSearch={setSearch}
-        status={status}
-        setStatus={setStatus}
-        data={products}
-      />
+    <main className="w-full flex-1 overflow-auto p-6">
+      <ProductFilter search={search} setSearch={setSearch} status={status} setStatus={setStatus} data={products} />
 
       <div className="mb-4">
         <select
@@ -112,16 +104,12 @@ export default function ProductsPage() {
 
       <DataTable
         data={filtered}
-        columns={productColumns(handleApprove, handleReject, handleView)}
+        columns={productColumns(handleApprove, handleReject, handleBan, handleView)}
         title="Danh sach san pham"
         onSelectChange={setSelectedIds}
       />
 
-      <ProductPreviewModal
-        open={open}
-        onClose={() => setOpen(false)}
-        product={selected}
-      />
+      <ProductPreviewModal open={open} onClose={() => setOpen(false)} product={selected} />
     </main>
   );
 }

@@ -1,13 +1,23 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
+
+from src.core.dependencies import get_current_user, get_optional_current_user
+from src.modules.analytics.analytics_schema import BehaviorCreate, BehaviorTrackPayload
 from src.modules.analytics.analytics_service import AnalyticsService
-from src.modules.analytics.analytics_schema import BehaviorCreate
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
+
 
 @router.post("/track")
 async def track_event(data: BehaviorCreate):
     return await AnalyticsService.track_event(data)
 
+
+@router.post("/track/me")
+async def track_event_me(data: BehaviorTrackPayload, user=Depends(get_optional_current_user)):
+    if not user:
+        return {"tracked": False}
+    await AnalyticsService.track_event_for_user(user.id, data)
+    return {"tracked": True}
 
 
 @router.get("/product/{product_id}")
@@ -24,6 +34,27 @@ async def user_analytics(user_id: int):
 async def top_products(limit: int = 10):
     return await AnalyticsService.get_top_products(limit)
 
+
+@router.get("/recommend/me")
+async def recommend_me(
+    top_k: int = 10,
+    product_id: int | None = None,
+    user=Depends(get_optional_current_user),
+):
+    return await AnalyticsService.recommend_products_for_optional_user(
+        user_id=user.id if user else None,
+        top_k=top_k,
+        context_product_id=product_id,
+    )
+
+
+@router.post("/recommend/train")
+async def retrain_recommender(user=Depends(get_current_user)):
+    if user.role != "ADMIN":
+        raise HTTPException(status_code=403, detail="Only admin can retrain recommendation model")
+    return await AnalyticsService.retrain_model()
+
+
 @router.get("/recommend/{user_id}")
-async def recommend(user_id: int):
-    return await AnalyticsService.recommend_products(user_id)
+async def recommend(user_id: int, top_k: int = 10, product_id: int | None = None):
+    return await AnalyticsService.recommend_products(user_id, top_k=top_k, context_product_id=product_id)

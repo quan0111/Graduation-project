@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field
-from typing import Optional, Dict
 from datetime import datetime
 from enum import Enum
+from typing import Dict, Optional
+
+from pydantic import BaseModel
 
 
 class BehaviorType(str, Enum):
@@ -14,8 +15,15 @@ class BehaviorType(str, Enum):
 class BehaviorCreate(BaseModel):
     userId: int
     productId: int
-    action: BehaviorType   # 🔥 FIX
+    action: BehaviorType
+    sessionId: Optional[str] = None
+    duration: Optional[int] = None
+    metadata: Optional[Dict] = None
 
+
+class BehaviorTrackPayload(BaseModel):
+    productId: int
+    action: BehaviorType
     sessionId: Optional[str] = None
     duration: Optional[int] = None
     metadata: Optional[Dict] = None
@@ -41,10 +49,7 @@ class BehaviorOut(BaseModel):
     userId: int
     productId: int
     action: BehaviorType
-
     createdAt: datetime
-
-    # 🔥 relationship
     user: Optional[UserShort] = None
     product: Optional[ProductShort] = None
 

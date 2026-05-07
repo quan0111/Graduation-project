@@ -11,6 +11,21 @@ from src.modules.admin.admin_schema import (
 
 
 class AdminService:
+    @staticmethod
+    async def set_product_status(product_id: int, status: str):
+        allowed = {"ACTIVE", "DRAFT", "REJECT", "BANNED", "OUT_OF_STOCK", "APROVAL"}
+        if status not in allowed:
+            raise HTTPException(400, "Invalid product status")
+
+        product = await prisma.product.find_unique(where={"id": product_id})
+        if not product or product.deletedAt:
+            raise HTTPException(404, "Product not found")
+
+        return await prisma.product.update(
+            where={"id": product_id},
+            data={"status": status},
+        )
+
 
     @staticmethod
     async def list_admin_accounts():
@@ -48,9 +63,8 @@ class AdminService:
         total_products = await prisma.product.count()
         total_shops = await prisma.shop.count()
 
-        orders = await prisma.order.find_many()
-
-        total_revenue = sum(o.totalPrice for o in orders)
+        orders = await prisma.order.find_many(where={"deletedAt": None})
+        total_revenue = sum((order.totalAmount or 0) for order in orders)
 
         return DashboardStats(
             totalUsers=total_users,
@@ -71,7 +85,7 @@ class AdminService:
             where["userId"] = filter_data.userId
 
         if filter_data.shopId:
-            where["shopId"] = filter_data.shopId
+            where["items"] = {"some": {"shopId": filter_data.shopId, "deletedAt": None}}
 
         if pagination.search:
             where["OR"] = [
@@ -86,7 +100,6 @@ class AdminService:
             take=pagination.limit,
             include={
                 "user": True,
-                "shop": True,
                 "items": True
             },
             order={"createdAt": "desc"}
@@ -136,20 +149,29 @@ class AdminService:
             where={"shopId": shop_id}
         )
 
-        total_orders = await prisma.order.count(
-            where={"shopId": shop_id, "status": "DELIVERED"}
+        delivered_items = await prisma.orderitem.find_many(
+            where={
+                "shopId": shop_id,
+                "deletedAt": None,
+            },
+            include={"order": True},
         )
 
-        revenue = await prisma.order.aggregate(
-            where={"shopId": shop_id, "status": "DELIVERED"},
-            _sum={"totalPrice": True}
-        )
+        delivered_items = [
+            item
+            for item in delivered_items
+            if item.order and item.order.deletedAt is None and item.order.status in ["DELIVERED", "COMPLETED"]
+        ]
+
+        delivered_order_ids = {item.orderId for item in delivered_items}
+        total_orders = len(delivered_order_ids)
+        revenue_value = sum((item.price or 0) * (item.quantity or 0) for item in delivered_items)
 
         return {
             "shopId": shop_id,
             "totalProducts": total_products,
             "totalOrders": total_orders,
-            "revenue": revenue["_sum"]["totalPrice"] or 0.0
+            "revenue": revenue_value
         }
 
     @staticmethod

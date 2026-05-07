@@ -18,23 +18,10 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
   shops,
 }) => {
   return (
-    <aside className="sticky top-24 space-y-4 w-full">
-      <PriceFilter
-        ranges={priceRanges}
-        filters={filters}
-        setFilters={setFilters}
-      />
-
-      <RatingFilter
-        filters={filters}
-        setFilters={setFilters}
-      />
-
-      <ShopFilter
-        shops={shops}
-        filters={filters}
-        setFilters={setFilters}
-      />
+    <aside className="sticky top-24 w-full space-y-4 rounded-2xl border border-orange-100 bg-white p-4 shadow-sm">
+      <PriceFilter ranges={priceRanges} filters={filters} setFilters={setFilters} />
+      <RatingFilter filters={filters} setFilters={setFilters} />
+      <ShopFilter shops={shops} filters={filters} setFilters={setFilters} />
     </aside>
   );
 };

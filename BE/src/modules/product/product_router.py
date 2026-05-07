@@ -105,8 +105,8 @@ async def update_variant(variant_id: int, variant_data: VariantUpdate):
 
 
 @router.patch("/variants/{variant_id}/stock")
-async def update_variant_stock(variant_id: int, quantity: int):
-    return await VariantService.update_stock(variant_id, quantity)
+async def update_variant_stock(variant_id: int, quantity: int, user=Depends(get_current_user)):
+    return await VariantService.update_stock(variant_id, quantity, user)
 
 
 @router.post("/{product_id}/generate-variants")

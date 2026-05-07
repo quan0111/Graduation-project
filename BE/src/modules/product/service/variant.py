@@ -1,10 +1,29 @@
-from fastapi import HTTPException
-from src.core.database import prisma
-from src.modules.product.product_schema import VariantCreate, VariantUpdate, VariantOut
 from datetime import datetime
 from itertools import product
+from fastapi import HTTPException
+
+from src.core.database import prisma
+from src.modules.product.product_schema import VariantCreate, VariantOut, VariantUpdate
 
 class VariantService:
+    @staticmethod
+    async def _assert_variant_access(variant_id: int, viewer) -> tuple:
+        variant = await prisma.productvariant.find_unique(
+            where={"id": variant_id},
+            include={"product": {"include": {"shop": True}}},
+        )
+        if not variant:
+            raise HTTPException(404, "Variant not found")
+
+        if viewer.role == "ADMIN":
+            return variant, variant.product
+
+        is_owner = bool(variant.product and variant.product.shop and variant.product.shop.ownerId == viewer.id)
+        if not is_owner:
+            raise HTTPException(403, "Forbidden")
+
+        return variant, variant.product
+
     @staticmethod
     async def create_variant(data: VariantCreate) -> VariantOut:
         product = await prisma.product.find_unique(where={"id": data.productId})
@@ -50,13 +69,17 @@ class VariantService:
 
         return VariantOut.from_orm(updated)
     @staticmethod
-    async def update_stock(variant_id: int, quantity: int):
-        variant = await prisma.productvariant.find_unique(where={"id": variant_id})
+    async def update_stock(variant_id: int, quantity: int, viewer=None):
+        if viewer is not None:
+            variant, product = await VariantService._assert_variant_access(variant_id, viewer)
+        else:
+            variant = await prisma.productvariant.find_unique(where={"id": variant_id})
+            product = None
+
         if not variant:
             raise HTTPException(404, "Variant not found")
 
-        new_stock = variant.stock + quantity
-
+        new_stock = (variant.stock or 0) + quantity
         if new_stock < 0:
             raise HTTPException(400, "Not enough stock")
 
@@ -64,6 +87,21 @@ class VariantService:
             where={"id": variant_id},
             data={"stock": new_stock}
         )
+
+        if product:
+            variants = await prisma.productvariant.find_many(
+                where={"productId": product.id, "deletedAt": None}
+            )
+            total_stock = sum((item.stock or 0) for item in variants)
+            new_status = "ACTIVE" if total_stock > 0 and product.status == "OUT_OF_STOCK" else product.status
+            if total_stock <= 0 and product.status == "ACTIVE":
+                new_status = "OUT_OF_STOCK"
+
+            if new_status != product.status:
+                await prisma.product.update(
+                    where={"id": product.id},
+                    data={"status": new_status},
+                )
 
         return {"message": "Stock updated", "newStock": new_stock}
     @staticmethod

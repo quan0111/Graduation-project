@@ -1,30 +1,25 @@
-// components/Action.tsx
-
-'use client';
-
-import { useState } from "react";
 import { Minus, Plus, ShoppingCart } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { useAddItem } from "@/modules/cart/api/add-item";
 
-import { toast } from "sonner";
+interface ProductActionsProps {
+  productId: number;
+  variantId: number | null;
+  shopId: number | null;
+  stock: number;
+  onAddedToCart?: (quantity: number) => void;
+}
 
-export const ProductActions = ({
-  productId,
-  variantId,
-  shopId,
-  stock,
-}: any) => {
-
-  const [qty, setQty] = useState(1);
-
+export const ProductActions = ({ productId, variantId, shopId, stock, onAddedToCart }: ProductActionsProps) => {
+  const [quantity, setQuantity] = useState(1);
   const addMutation = useAddItem();
 
   const handleAddToCart = async () => {
-
     if (!shopId) {
-      toast.error("Thiếu shopId");
+      toast.error("Sản phẩm chưa có thông tin shop");
       return;
     }
 
@@ -33,74 +28,54 @@ export const ProductActions = ({
         productId,
         variantId,
         shopId,
-        quantity: qty,
+        quantity,
       });
-
-      toast.success("Đã thêm vào giỏ");
-
+      onAddedToCart?.(quantity);
+      toast.success("Đã thêm vào giỏ hàng");
     } catch {
-      toast.error("Thêm thất bại");
+      toast.error("Không thể thêm sản phẩm");
     }
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-4">
+        <span className="w-24 text-sm text-slate-500">Số lượng</span>
 
-      {/* QTY */}
-      <div className="flex items-center gap-8">
-
-        <span className="text-[#757575] w-24">
-          Số Lượng
-        </span>
-
-        <div className="flex items-center border">
-
+        <div className="flex items-center overflow-hidden rounded-lg border border-orange-200">
           <button
-            className="w-8 h-8 flex items-center justify-center border-r"
-            onClick={() =>
-              setQty(Math.max(1, qty - 1))
-            }
+            className="h-9 w-9 border-r border-orange-200 text-slate-700 transition hover:bg-orange-50"
+            onClick={() => setQuantity(Math.max(1, quantity - 1))}
           >
-            <Minus size={16} />
+            <Minus size={16} className="mx-auto" />
           </button>
 
-          <div className="w-12 text-center">
-            {qty}
-          </div>
+          <div className="w-12 text-center text-sm font-medium text-slate-900">{quantity}</div>
 
           <button
-            className="w-8 h-8 flex items-center justify-center border-l"
-            onClick={() => setQty(qty + 1)}
+            className="h-9 w-9 border-l border-orange-200 text-slate-700 transition hover:bg-orange-50"
+            onClick={() => setQuantity(quantity + 1)}
           >
-            <Plus size={16} />
+            <Plus size={16} className="mx-auto" />
           </button>
-
         </div>
 
-        <span className="text-sm text-[#757575]">
-          {stock} sản phẩm có sẵn
-        </span>
-
+        <span className="text-sm text-slate-500">{stock} sản phẩm có sẵn</span>
       </div>
 
-      {/* BUTTON */}
-      <div className="flex gap-4">
-
+      <div className="flex flex-wrap gap-3">
         <Button
           onClick={handleAddToCart}
-          className="h-12 px-8 bg-[#ffeee8] hover:bg-[#ffe2d5] text-[#ee4d2d] border border-[#ee4d2d]"
+          className="h-11 gap-2 rounded-xl border border-orange-500 bg-orange-50 px-6 text-orange-600 hover:bg-orange-100"
           variant="outline"
+          disabled={addMutation.isPending}
         >
           <ShoppingCart size={18} />
-          Thêm Vào Giỏ Hàng
+          {addMutation.isPending ? "Đang thêm..." : "Thêm vào giỏ hàng"}
         </Button>
 
-        <Button className="h-12 px-10 bg-[#ee4d2d] hover:bg-[#d73211] text-white">
-          Mua Ngay
-        </Button>
-
+        <Button className="h-11 rounded-xl bg-orange-600 px-8 text-white hover:bg-orange-700">Mua ngay</Button>
       </div>
-
     </div>
   );
 };

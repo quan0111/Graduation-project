@@ -12,11 +12,10 @@ export const useProducts = (products: IProduct[]) => {
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
-      // ❌ bỏ product bị xóa / banned
-      if (p.deleted_at) return false;
+      const deletedAt = p.deleted_at ?? (p as unknown as { deletedAt?: string | null }).deletedAt;
+      if (deletedAt) return false;
       if (p.status === "BANNED") return false;
 
-      // ✅ PRICE
       if (filters.price.length > 0) {
         const matchPrice = filters.price.some(
           (range) => p.price >= range.min && p.price <= range.max
@@ -24,7 +23,6 @@ export const useProducts = (products: IProduct[]) => {
         if (!matchPrice) return false;
       }
 
-      // ✅ RATING
       if (filters.rating !== undefined) {
         const avgRating =
           p.reviews && p.reviews.length > 0
@@ -35,10 +33,9 @@ export const useProducts = (products: IProduct[]) => {
         if (avgRating < filters.rating) return false;
       }
 
-      // ✅ SHOP (đổi sang shop_ids)
       if (filters.shop_ids.length > 0) {
-        const shopId = p.shop_id;
-        if (!filters.shop_ids.includes(shopId)) {
+        const shopId = p.shop_id || p.shop?.id || (p as unknown as { shopId?: number }).shopId;
+        if (!shopId || !filters.shop_ids.includes(shopId)) {
           return false;
         }
       }

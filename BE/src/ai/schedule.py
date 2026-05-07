@@ -1,17 +1,21 @@
-import asyncio
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from src.ai.train import train_model
+
+from src.ai.train import MODEL_PATH, train_model
 
 scheduler = AsyncIOScheduler()
 
+
 async def start_scheduler():
-    scheduler.add_job(train_model, 'interval', hours=6)  # 
+    if scheduler.running:
+        return
+
+    if not MODEL_PATH.exists():
+        await train_model()
+
+    scheduler.add_job(train_model, "interval", hours=6, id="recommendation_retrain", replace_existing=True)
     scheduler.start()
-    print("Scheduler started. Model will be retrained every 6 hours.")
+
+
 async def stop_scheduler():
-    scheduler.shutdown()
-    print("Scheduler stopped.")
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    start_scheduler()
-    loop.run_forever()
+    if scheduler.running:
+        scheduler.shutdown(wait=False)

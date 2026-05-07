@@ -1,70 +1,57 @@
-import { ProductStatusBadge } from "./product-badge";
 import { ProductActions } from "./product-action";
+import { ProductStatusBadge } from "./product-badge";
 
-export const productColumns = (
-  onApprove: any,
-  onReject: any,
-  onView: any
-) => [
+export const productColumns = (onApprove: any, onReject: any, onBan: any, onView: any) => [
   {
     key: "name",
-    label: "Sản phẩm",
-    render: (p: any) => (
+    label: "San pham",
+    render: (product: any) => (
       <div className="flex items-center gap-3">
         <span className="text-2xl">📦</span>
         <div>
-          <p className="font-medium">{p.name}</p>
-          <p className="text-xs text-muted-foreground">
-            {p.shop?.name}
-          </p>
+          <p className="font-medium">{product.name}</p>
+          <p className="text-xs text-muted-foreground">{product.shop?.name}</p>
         </div>
       </div>
     ),
   },
-
   {
     key: "category",
-    label: "Danh mục",
-    render: (p: any) => p.category?.name,
+    label: "Danh muc",
+    render: (product: any) => product.category?.name,
   },
-
   {
     key: "price",
-    label: "Giá",
-    render: (p: any) => `${(p.price / 1000).toFixed(0)}K`,
+    label: "Gia",
+    render: (product: any) => `${(product.price / 1000).toFixed(0)}K`,
   },
-
   {
     key: "status",
-    label: "Trạng thái",
-    render: (p: any) => {
-      const statusMap: any = {
+    label: "Trang thai",
+    render: (product: any) => {
+      const statusMap: Record<string, string> = {
         DRAFT: "pending",
         ACTIVE: "approved",
         REJECT: "rejected",
+        BANNED: "banned",
       };
-
-      return (
-        <ProductStatusBadge status={statusMap[p.status]} />
-      );
+      return <ProductStatusBadge status={statusMap[product.status] ?? "unknown"} />;
     },
   },
-
   {
     key: "submitDate",
-    label: "Ngày gửi",
-    render: (p: any) =>
-      new Date(p.createdAt).toLocaleDateString(),
+    label: "Ngay gui",
+    render: (product: any) => new Date(product.createdAt).toLocaleDateString(),
   },
-
   {
     key: "actions",
-    label: "Thao tác",
-    render: (p: any) => (
+    label: "Thao tac",
+    render: (product: any) => (
       <ProductActions
-        product={p}
+        product={product}
         onApprove={onApprove}
         onReject={onReject}
+        onBan={onBan}
         onView={onView}
       />
     ),

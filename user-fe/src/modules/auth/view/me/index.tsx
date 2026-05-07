@@ -106,9 +106,9 @@ export default function AccountPage() {
     try {
       const avatarUrl = await uploadAvatar(file, "datn/users");
       setProfileForm((current) => ({ ...current, avatarUrl }));
-      toast.success("Da tai avatar len Cloudinary");
+      toast.success("Đã tải avatar lên");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Khong tai duoc avatar";
+      const message = error instanceof Error ? error.message : "Không tải được avatar";
       toast.error(message);
     }
   };
@@ -121,9 +121,9 @@ export default function AccountPage() {
     try {
       const avatarUrl = await uploadAvatar(file, "datn/shops");
       setShopForm((current) => ({ ...current, avatarUrl }));
-      toast.success("Da tai anh shop len Cloudinary");
+      toast.success("Đã tải ảnh shop lên thành công");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Khong tai duoc anh shop";
+      const message = error instanceof Error ? error.message : "Không tải được ảnh shop";
       toast.error(message);
     }
   };
@@ -131,9 +131,9 @@ export default function AccountPage() {
   const handleSaveProfile = async () => {
     try {
       await updateProfile(profileForm);
-      toast.success("Cap nhat profile thanh cong");
+      toast.success("Cập nhật thành công");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Khong cap nhat duoc profile";
+      const message = error instanceof Error ? error.message : "Không cập nhật được profile";
       toast.error(message);
     }
   };
@@ -141,21 +141,21 @@ export default function AccountPage() {
   const handleSaveShop = async () => {
     try {
       await updateMyShop(shopForm);
-      toast.success("Cap nhat shop thanh cong");
+      toast.success("Cập nhật shop thành công");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Khong cap nhat duoc shop";
+      const message = error instanceof Error ? error.message : "Không cập nhật được shop";
       toast.error(message);
     }
   };
 
   const handleChangePassword = async () => {
     if (!passwordForm.currentPassword || !passwordForm.newPassword) {
-      toast.error("Nhap day du mat khau hien tai va mat khau moi");
+      toast.error("Nhập đầy đủ mật khẩu hiện tại và mật khẩu mới");
       return;
     }
 
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast.error("Mat khau xac nhan khong khop");
+      toast.error("Mật khẩu xác nhận không khớp");
       return;
     }
 
@@ -169,9 +169,9 @@ export default function AccountPage() {
         newPassword: "",
         confirmPassword: "",
       });
-      toast.success("Doi mat khau thanh cong");
+      toast.success("Đổi mật khẩu thành công");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Khong doi duoc mat khau";
+      const message = error instanceof Error ? error.message : "Không đổi được mật khẩu";
       toast.error(message);
     }
   };
@@ -180,7 +180,7 @@ export default function AccountPage() {
     return (
       <div className="min-h-[70vh] bg-[radial-gradient(circle_at_top,#ffe5d8,transparent_45%),linear-gradient(180deg,#fff7f3_0%,#ffffff_40%)] px-4 py-10">
         <div className="mx-auto max-w-6xl space-y-6">
-          <div className="h-56 animate-pulse rounded-[32px] bg-white/70 ring-1 ring-orange-100" />
+          <div className="h-56 animate-pulse rounded-4xl bg-white/70 ring-1 ring-orange-100" />
           <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
             <div className="h-96 animate-pulse rounded-[28px] bg-white/70 ring-1 ring-orange-100" />
             <div className="h-96 animate-pulse rounded-[28px] bg-white/70 ring-1 ring-orange-100" />
@@ -208,17 +208,17 @@ export default function AccountPage() {
                   profile center
                 </div>
                 <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                  {profileForm.fullName || "Tai khoan cua ban"}
+                  {profileForm.fullName || "Tài khoản của bạn"}
                 </h1>
                 <p className="max-w-2xl text-sm leading-6 text-white/78">
-                  Quan ly thong tin ca nhan, bao mat tai khoan va neu ban la seller thi co the cap nhat bo mat shop ngay tai day.
+                  Quản lý thông tin cá nhân, bảo mật tài khoản và nếu bạn là seller thì có thể cập nhật bảo mật shop ngay tại đây.
                 </p>
               </div>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
-              <HeroMetric label="Vai tro" value={user?.role || "CUSTOMER"} />
-              <HeroMetric label="Trang thai" value={user?.isActive ? "ACTIVE" : "LOCKED"} />
+              <HeroMetric label="Vai trò" value={user?.role || "CUSTOMER"} />
+              <HeroMetric label="Trạng thái" value={user?.isActive ? "ACTIVE" : "LOCKED"} />
               <HeroMetric label="Seller" value={isSeller ? "SHOP MODE" : "USER MODE"} />
             </div>
           </div>
@@ -234,15 +234,15 @@ export default function AccountPage() {
                     fallback={profileForm.fullName || user?.email || "User"}
                   />
                   <div>
-                    <p className="font-semibold text-slate-900">{profileForm.fullName || "Chua dat ten"}</p>
+                    <p className="font-semibold text-slate-900">{profileForm.fullName || "Chưa đặt tên"}</p>
                     <p className="text-sm text-slate-500">{profileForm.email}</p>
                   </div>
                 </div>
 
-                <div className="space-y-3 rounded-[24px] bg-orange-50/70 p-4">
-                  <InfoRow icon={<UserRound className="size-4" />} label="So dien thoai" value={profileForm.phone || "Chua cap nhat"} />
-                  <InfoRow icon={<Shield className="size-4" />} label="Bao mat" value="Mat khau tu quan ly" />
-                  <InfoRow icon={<Store className="size-4" />} label="Kenh ban" value={isSeller ? "Da kich hoat" : "Chua dang ky"} />
+                <div className="space-y-3 rounded-3xl bg-orange-50/70 p-4">
+                  <InfoRow icon={<UserRound className="size-4" />} label="Số điện thoại" value={profileForm.phone || "Chưa cập nhật"} />
+                  <InfoRow icon={<Shield className="size-4" />} label="Bảo mật" value="Mật khẩu do người dùng quản lý" />
+                  <InfoRow icon={<Store className="size-4" />} label="Kênh bán" value={isSeller ? "Đã kích hoạt" : "Chưa đăng ký"} />
                 </div>
 
                 <Button
@@ -252,7 +252,7 @@ export default function AccountPage() {
                   onClick={() => logout(undefined)}
                 >
                   <LogOut className="size-4" />
-                  Dang xuat
+                  Đăng xuất
                 </Button>
               </CardContent>
             </Card>
@@ -262,12 +262,12 @@ export default function AccountPage() {
                 <CardHeader>
                   <CardTitle>Seller controls</CardTitle>
                   <CardDescription>
-                    Chinh avatar va thong tin shop de gian hang trong, ro va dong bo hon.
+                    Chỉnh avatar và thông tin shop để gian hàng trong, rõ và đồng bộ hơn.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 text-sm text-slate-600">
-                  <p>Avatar shop va mo ta shop duoc cap nhat ngay tu profile seller.</p>
-                  <p>Slug shop cho phep tao URL gon gon hon de chia se gian hang.</p>
+                  <p>Avatar shop và mô tả shop được cập nhật ngay từ profile seller.</p>
+                  <p>Slug shop cho phép tạo URL gọn gàng hơn để chia sẻ gian hàng.</p>
                 </CardContent>
               </Card>
             )}
@@ -277,12 +277,12 @@ export default function AccountPage() {
             <Card className="rounded-[30px] border-0 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.07)] ring-1 ring-slate-200/70">
               <CardHeader>
                 <div>
-                  <CardTitle>Thong tin nguoi dung</CardTitle>
-                  <CardDescription>Chinh sua ten, email, so dien thoai va avatar ca nhan.</CardDescription>
+                  <CardTitle>Thông tin Người dùng</CardTitle>
+                  <CardDescription>Chỉnh sửa thông tin cá nhân</CardDescription>
                 </div>
                 <CardAction>
                   <FilePicker
-                    label={isUploadingImage ? "Dang tai..." : "Sua avatar"}
+                    label={isUploadingImage ? "Đang tải" : "Sửa avatar"}
                     disabled={isUploadingImage}
                     onPick={handleProfileAvatarChange}
                   />
@@ -297,12 +297,12 @@ export default function AccountPage() {
                       size="xl"
                     />
                     <p className="text-center text-xs leading-5 text-slate-500">
-                      Chon anh chan dung ro mat de profile gon gang hon.
+                      Chọn ảnh đại diện.
                     </p>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
-                    <Field label="Ho ten">
+                    <Field label="Họ tên">
                       <Input
                         value={profileForm.fullName}
                         onChange={(event) =>
@@ -320,7 +320,7 @@ export default function AccountPage() {
                         placeholder="name@example.com"
                       />
                     </Field>
-                    <Field label="So dien thoai">
+                    <Field label="Số điện thoại">
                       <Input
                         value={profileForm.phone}
                         onChange={(event) =>
@@ -344,7 +344,7 @@ export default function AccountPage() {
               <div className="px-6 pb-6">
                 <Button disabled={isSavingProfile || isUploadingImage} onClick={handleSaveProfile}>
                   <Save className="size-4" />
-                  Luu profile
+                  Lưu profile
                 </Button>
               </div>
             </Card>
@@ -353,8 +353,8 @@ export default function AccountPage() {
               <Card className="rounded-[30px] border-0 bg-[linear-gradient(180deg,#ffffff_0%,#fffaf6_100%)] shadow-[0_24px_60px_rgba(15,23,42,0.07)] ring-1 ring-orange-100/90">
                 <CardHeader>
                   <div>
-                    <CardTitle>Ho so shop</CardTitle>
-                    <CardDescription>Seller co the cap nhat ten shop, slug, mo ta va anh dai dien gian hang.</CardDescription>
+                    <CardTitle>Hồ sơ shop</CardTitle>
+                    <CardDescription>Cập nhật thông tin shop của bạn</CardDescription>
                   </div>
                   <CardAction>
                     <FilePicker
@@ -373,7 +373,7 @@ export default function AccountPage() {
                         size="xl"
                       />
                       <p className="text-center text-xs leading-5 text-slate-500">
-                        Anh shop se hien o trang gian hang va khu thong tin nguoi ban.
+                        Ảnh shop sẽ hiển thị trên trang shop và các trang sản phẩm, nên chọn ảnh có kích thước vuông và rõ nét để gian hàng chuyên nghiệp hơn.
                       </p>
                     </div>
 
@@ -407,13 +407,13 @@ export default function AccountPage() {
                           placeholder="https://..."
                         />
                       </Field>
-                      <Field label="Mo ta shop">
+                      <Field label="Mô tả shop">
                         <Textarea
                           value={shopForm.description}
                           onChange={(event) =>
                             setShopForm((current) => ({ ...current, description: event.target.value }))
                           }
-                          placeholder="Shop chuyen san pham cong nghe, linh kien, phu kien..."
+                          placeholder="Shop chuyên bán các sản phẩm công nghệ chính hãng với giá tốt và dịch vụ uy tín."
                           className="min-h-32"
                         />
                       </Field>
@@ -423,7 +423,7 @@ export default function AccountPage() {
                 <div className="px-6 pb-6">
                   <Button disabled={isSavingShop || isUploadingImage} onClick={handleSaveShop}>
                     <Store className="size-4" />
-                    Luu thong tin shop
+                    Lưu thông tin shop
                   </Button>
                 </div>
               </Card>
@@ -432,9 +432,9 @@ export default function AccountPage() {
             {isSeller && !shop && (
               <Card className="rounded-[30px] border-0 bg-[linear-gradient(180deg,#ffffff_0%,#fffaf6_100%)] shadow-[0_24px_60px_rgba(15,23,42,0.07)] ring-1 ring-orange-100/90">
                 <CardHeader>
-                  <CardTitle>Ho so shop</CardTitle>
+                  <CardTitle>Hồ sơ shop</CardTitle>
                   <CardDescription>
-                    Tai khoan dang la seller nhung hien chua tim thay shop de cap nhat.
+                    Tài khoản của bạn đã có quyền seller nhưng chưa có shop. Vui lòng liên hệ bộ phận hỗ trợ để được kích hoạt shop và bắt đầu bán hàng.
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -442,45 +442,45 @@ export default function AccountPage() {
 
             <Card className="rounded-[30px] border-0 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.07)] ring-1 ring-slate-200/70">
               <CardHeader>
-                <CardTitle>Bao mat tai khoan</CardTitle>
-                <CardDescription>Doi mat khau va giu session cua ban an toan hon.</CardDescription>
+                <CardTitle>Bảo mật </CardTitle>
+                <CardDescription>Đổi mật khẩu giúp tài khoản của bạn an toàn hơn.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-3">
-                <Field label="Mat khau hien tai">
+                <Field label="Mật khẩu hiện tại">
                   <Input
                     type="password"
                     value={passwordForm.currentPassword}
                     onChange={(event) =>
                       setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))
                     }
-                    placeholder="Nhap mat khau hien tai"
+                    placeholder="Nhập mật khẩu hiện tại"
                   />
                 </Field>
-                <Field label="Mat khau moi">
+                <Field label="Mật khẩu mới">
                   <Input
                     type="password"
                     value={passwordForm.newPassword}
                     onChange={(event) =>
                       setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))
                     }
-                    placeholder="Toi thieu 6 ky tu"
+                    placeholder="Tối thiểu 6 ký tự"
                   />
                 </Field>
-                <Field label="Xac nhan mat khau">
+                <Field label="Xác nhận mật khẩu mới">
                   <Input
                     type="password"
                     value={passwordForm.confirmPassword}
                     onChange={(event) =>
                       setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))
                     }
-                    placeholder="Nhap lai mat khau moi"
+                    placeholder="Xác nhận mật khẩu mới"
                   />
                 </Field>
               </CardContent>
               <div className="px-6 pb-6">
                 <Button disabled={isChangingPassword} onClick={handleChangePassword}>
                   <Shield className="size-4" />
-                  Doi mat khau
+                  Đổi mật khẩu
                 </Button>
               </div>
             </Card>
@@ -562,7 +562,7 @@ function ProfileImage({
 
 function HeroMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[24px] border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
+    <div className="rounded-3xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
       <p className="text-xs uppercase tracking-[0.18em] text-white/60">{label}</p>
       <p className="mt-2 text-sm font-semibold text-white">{value}</p>
     </div>

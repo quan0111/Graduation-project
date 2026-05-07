@@ -1,29 +1,36 @@
+import { Ban, CheckCircle2, Eye, XCircle } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { Eye, CheckCircle2, XCircle } from "lucide-react";
 
 export function ProductActions({
   product,
   onApprove,
   onReject,
+  onBan,
   onView,
 }: any) {
   return (
     <div className="flex gap-2">
-
       {product.status === "DRAFT" && (
         <>
           <Button size="sm" onClick={() => onApprove(product)}>
-            <CheckCircle2 className="w-4 h-4" />
+            <CheckCircle2 className="h-4 w-4" />
           </Button>
 
           <Button size="sm" variant="outline" onClick={() => onReject(product)}>
-            <XCircle className="w-4 h-4" />
+            <XCircle className="h-4 w-4" />
           </Button>
         </>
       )}
 
+      {product.status === "ACTIVE" && (
+        <Button size="sm" variant="destructive" onClick={() => onBan(product)}>
+          <Ban className="h-4 w-4" />
+        </Button>
+      )}
+
       <Button size="sm" variant="ghost" onClick={() => onView(product)}>
-        <Eye className="w-4 h-4" />
+        <Eye className="h-4 w-4" />
       </Button>
     </div>
   );

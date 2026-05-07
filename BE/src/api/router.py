@@ -10,6 +10,7 @@ from src.modules.coupon.coupon_router import router as coupon_router
 from src.modules.review.review_router import router as review_router
 from src.modules.follower.follower_router import router as follower_router
 from src.modules.cart.cart_router import router as cart_router
+from src.modules.chatbot.chatbot_router import router as chatbot_router
 from src.modules.order.order_router import router as order_router
 from src.modules.analytics.analytics_router import router as user_behavior_router
 from src.modules.shipment.shipment_router import router as shipment_router
@@ -34,6 +35,7 @@ api_router.include_router(coupon_router)
 api_router.include_router(review_router)
 api_router.include_router(follower_router)
 api_router.include_router(user_behavior_router)
+api_router.include_router(chatbot_router)
 api_router.include_router(shipment_router)
 api_router.include_router(cart_router)
 api_router.include_router(order_router)

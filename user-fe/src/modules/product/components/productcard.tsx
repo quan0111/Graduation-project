@@ -1,23 +1,30 @@
-import type { IProduct } from "../types";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useAddItem } from "@/modules/cart/api/add-item";
+import { ShoppingCart, Star } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
-const getAvgRating = (reviews?: any[]) => {
-  if (!reviews?.length) return 0;
-  return (
-    reviews.reduce((acc, r) => acc + (r.rating || 0), 0) /
-    reviews.length
-  );
+import { Button } from "@/components/ui/button";
+import { useAddItem } from "@/modules/cart/api/add-item";
+import type { IProduct } from "@/modules/product/types";
+import { useTrackProductBehavior } from "@/modules/recommendation/hooks/useTrackProductBehavior";
+
+const getAvgRating = (reviews?: Array<{ rating?: number }>) => {
+  if (!reviews?.length) {
+    return 0;
+  }
+  const total = reviews.reduce((sum, review) => sum + (review.rating ?? 0), 0);
+  return total / reviews.length;
 };
+
+const getImageUrl = (product: IProduct) =>
+  product.images?.find((image) => image.is_primary)?.url ?? product.images?.[0]?.url ?? "/placeholder.png";
 
 export const ProductCard = ({ product }: { product: IProduct }) => {
   const addMutation = useAddItem();
+  const { trackAddToCart, trackClick } = useTrackProductBehavior();
 
   const handleAdd = async () => {
     if (!product.shop?.id) {
-      toast.error("Thiếu shopId");
+      toast.error("Sản phẩm chưa có thông tin shop");
       return;
     }
 
@@ -29,42 +36,51 @@ export const ProductCard = ({ product }: { product: IProduct }) => {
         quantity: 1,
       });
 
+      trackAddToCart(product.id, { page: "products", source: "grid_card" });
       toast.success("Đã thêm vào giỏ hàng");
-    } catch (err) {
-      console.error(err);
-      toast.error("Thêm thất bại");
+    } catch (error) {
+      console.error(error);
+      toast.error("Không thể thêm vào giỏ hàng");
     }
   };
 
+  const rating = getAvgRating(product.reviews as Array<{ rating?: number }>);
+
   return (
-    <Card className="group hover:shadow-xl transition">
-      <div className="aspect-square overflow-hidden">
-        <img
-          src={product.images?.[0]?.url || "/placeholder.png"}
-          className="w-full h-full object-cover"
-        />
-      </div>
+    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+      <Link to={`/product/${product.id}`} onClick={() => trackClick(product.id, { page: "products", source: "grid_card" })}>
+        <div className="aspect-square overflow-hidden bg-orange-50">
+          <img
+            src={getImageUrl(product)}
+            alt={product.name}
+            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+          />
+        </div>
+      </Link>
 
-      <CardContent>
-        <p className="text-lg font-bold text-primary">
-          {product.shop?.name || "Unknown shop"}
-        </p>
+      <div className="flex flex-1 flex-col gap-2 p-3">
+        <p className="text-xs uppercase tracking-[0.14em] text-slate-500">{product.shop?.name ?? "Marketplace"}</p>
+        <Link to={`/product/${product.id}`} onClick={() => trackClick(product.id, { page: "products", source: "grid_card" })}>
+          <h3 className="line-clamp-2 min-h-10 text-sm font-semibold text-slate-900">{product.name}</h3>
+        </Link>
 
-        <h3 className="line-clamp-2 font-semibold">
-          {product.name}
-        </h3>
-
-        <span className="text-primary font-bold">
-          {product.price.toLocaleString()}đ
-        </span>
+        <div className="mt-auto flex items-center justify-between">
+          <span className="text-base font-bold text-orange-600">{product.price.toLocaleString("vi-VN")}đ</span>
+          <div className="flex items-center gap-1 text-xs text-amber-500">
+            <Star className="h-3.5 w-3.5 fill-current" />
+            <span>{rating > 0 ? rating.toFixed(1) : "Mới"}</span>
+          </div>
+        </div>
 
         <Button
-          className="w-full mt-2"
+          className="mt-1 h-9 w-full rounded-xl bg-orange-600 text-white hover:bg-orange-700"
           onClick={handleAdd}
+          disabled={addMutation.isPending}
         >
-          {addMutation.isPending ? "Đang thêm..." : "Thêm"}
+          <ShoppingCart className="h-4 w-4" />
+          {addMutation.isPending ? "Đang thêm..." : "Thêm vào giỏ"}
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </article>
   );
 };

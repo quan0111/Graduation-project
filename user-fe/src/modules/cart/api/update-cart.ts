@@ -1,6 +1,6 @@
 import { apiClient } from "../../../lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-
+import { API_URL_CART } from "@/constant/config";
 // 🔥 request thực
 const updateItemRequest = async ({
   itemId,
@@ -9,7 +9,7 @@ const updateItemRequest = async ({
   itemId: number;
   quantity: number;
 }) => {
-  const res = await apiClient.patch(`/cart/items/${itemId}`, {
+  const res = await apiClient.patch(`${API_URL_CART}/items/${itemId}`, {
     quantity,
   });
   return res.data;

@@ -78,3 +78,13 @@ async def bulk_update(
 ):
     require_admin(user)
     return await AdminService.bulk_update_sellers(ids, isActive)
+
+
+@router.patch("/products/{product_id}/status")
+async def update_product_status(
+    product_id: int,
+    status: str,
+    user=Depends(get_current_user),
+):
+    require_admin(user)
+    return await AdminService.set_product_status(product_id, status)

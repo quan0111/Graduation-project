@@ -29,11 +29,11 @@ type RegistrationStep =
   | 'complete'
 
 const STEPS: { id: RegistrationStep; label: string }[] = [
-  { id: 'shop-info', label: 'Thong tin Shop' },
-  { id: 'shipping', label: 'Cai dat van chuyen' },
-  { id: 'identity', label: 'Thong tin dinh danh' },
-  { id: 'tax', label: 'Thong tin thue' },
-  { id: 'complete', label: 'Hoan tat' },
+  { id: 'shop-info', label: 'Thông tin cửa hàng' },
+  { id: 'shipping', label: 'Cài đặt vận chuyển' },
+  { id: 'identity', label: 'Thông tin định danh' },
+  { id: 'tax', label: 'Thông tin thuế' },
+  { id: 'complete', label: 'Hoàn tất' },
 ]
 
 export function SellerRegistrationView() {
@@ -179,18 +179,18 @@ export function SellerRegistrationView() {
   if (application?.status === "PENDING") {
     return (
       <div className="min-h-screen bg-background px-4 py-16">
-        <div className="mx-auto max-w-3xl rounded-[32px] border bg-card p-10 shadow-sm">
+        <div className="mx-auto max-w-3xl rounded-4xl border bg-card p-10 shadow-sm">
           <div className="mb-5 flex size-16 items-center justify-center rounded-3xl bg-amber-100 text-amber-700">
             <Clock3 className="size-8" />
           </div>
-          <h1 className="text-3xl font-semibold">Yeu cau mo shop dang cho duyet</h1>
+          <h1 className="text-3xl font-semibold">Yêu cầu mở shop đang chờ duyệt</h1>
           <p className="mt-3 text-muted-foreground">
-            Shop <span className="font-medium text-foreground">{application.shopName}</span> da duoc gui len admin.
-            Khi duoc phe duyet, role cua ban se doi sang seller va ban se vao dashboard nguoi ban.
+            Shop <span className="font-medium text-foreground">{application.shopName}</span> đã được gửi lên admin.
+            Khi được phê duyệt, role của bạn sẽ được đổi sang seller và bạn sẽ vào dashboard người bán.
           </p>
           <div className="mt-8 flex gap-3">
             <Link to="/">
-              <Button variant="outline">Ve trang chu</Button>
+              <Button variant="outline">Về trang chủ</Button>
             </Link>
           </div>
         </div>
@@ -201,19 +201,19 @@ export function SellerRegistrationView() {
   if (application?.status === "APPROVED") {
     return (
       <div className="min-h-screen bg-background px-4 py-16">
-        <div className="mx-auto max-w-3xl rounded-[32px] border bg-card p-10 shadow-sm">
+        <div className="mx-auto max-w-3xl rounded-4xl border bg-card p-10 shadow-sm">
           <div className="mb-5 flex size-16 items-center justify-center rounded-3xl bg-emerald-100 text-emerald-700">
             <CheckCircle2 className="size-8" />
           </div>
-          <h1 className="text-3xl font-semibold">Shop da duoc phe duyet</h1>
+          <h1 className="text-3xl font-semibold">Shop đã được phê duyệt</h1>
           <p className="mt-3 text-muted-foreground">
-            Ban da co quyen seller. Neu chua duoc chuyen huong, hay vao dashboard de bat dau dang san pham.
+            Bạn đã có quyền seller. Nếu chưa được chuyển hướng, hãy vào dashboard để bắt đầu đăng sản phẩm.
           </p>
           <div className="mt-8">
             <Link to="/seller/dashboard">
               <Button>
                 <Store className="size-4" />
-                Vao seller dashboard
+                Đến seller dashboard
               </Button>
             </Link>
           </div>
@@ -227,9 +227,9 @@ export function SellerRegistrationView() {
       <div className="container py-8">
         <div className="mx-auto max-w-4xl">
           <div className="mb-12 text-center">
-            <h1 className="mb-2 text-3xl font-bold">Dang ky tro thanh Nguoi ban ShopHub</h1>
+            <h1 className="mb-2 text-3xl font-bold">Đăng ký mở gian hàng</h1>
             <p className="text-muted-foreground">
-              Hoan thanh cac buoc duoi day de gui yeu cau mo shop.
+              Hoàn thành các bước dưới đây để gửi yêu cầu mở shop.
             </p>
           </div>
 
@@ -273,12 +273,12 @@ export function SellerRegistrationView() {
 
             {currentStep === 'complete' && (
               <div className="py-12 text-center">
-                <h2 className="mb-4 text-2xl font-bold">Xac nhan dang ky</h2>
+                <h2 className="mb-4 text-2xl font-bold">Xác nhận đăng ký</h2>
                 <p className="mb-6 text-muted-foreground">
-                  Nhan hoan tat de gui yeu cau dang ky seller.
+                  Nhấn hoàn tất để gửi yêu cầu đăng ký seller.
                 </p>
                 <Button onClick={handleComplete} disabled={isLoading}>
-                  {isLoading ? "Dang gui..." : "Hoan tat"}
+                  {isLoading ? "Đang gửi..." : "Hoàn tất đăng ký"}
                 </Button>
               </div>
             )}

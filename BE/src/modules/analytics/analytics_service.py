@@ -1,141 +1,153 @@
+from typing import List, Optional
+
+from src.ai.recommendation_engine import RecommendationEngine
+from src.ai.train import train_model
 from src.core.database import prisma
-from fastapi import HTTPException
-from src.modules.analytics.analytics_schema import BehaviorType
+from src.modules.analytics.analytics_schema import BehaviorTrackPayload, BehaviorType
 
 
 class AnalyticsService:
+    PRODUCT_INCLUDE = {
+        "shop": True,
+        "category": True,
+        "images": True,
+        "variants": {"include": {"images": True}},
+        "tags": True,
+        "attributes": True,
+    }
 
     @staticmethod
     async def track_event(data):
-        return await prisma.userbehavior.create(
-            data={
-                "action": data.action,
-                "sessionId": data.sessionId,
-                "duration": data.duration,
-                "metadata": data.metadata,
+        create_data = {
+            "action": data.action,
+            "sessionId": data.sessionId,
+            "duration": data.duration,
+            "user": {"connect": {"id": data.userId}},
+            "product": {"connect": {"id": data.productId}},
+        }
+        if data.metadata is not None:
+            create_data["metadata"] = data.metadata
+        return await prisma.userbehavior.create(data=create_data)
 
-                # 🔥 RELATION CHUẨN
-                "user": {
-                    "connect": {"id": data.userId}
-                },
-                "product": {
-                    "connect": {"id": data.productId}
-                }
-            }
-        )
+    @staticmethod
+    async def track_event_for_user(user_id: int, payload: BehaviorTrackPayload):
+        create_data = {
+            "action": payload.action,
+            "sessionId": payload.sessionId,
+            "duration": payload.duration,
+            "user": {"connect": {"id": user_id}},
+            "product": {"connect": {"id": payload.productId}},
+        }
+        if payload.metadata is not None:
+            create_data["metadata"] = payload.metadata
+        return await prisma.userbehavior.create(data=create_data)
 
     @staticmethod
     async def get_product_analytics(product_id: int):
-
         return {
             "productId": product_id,
-            "views": await prisma.userbehavior.count(
-                where={
-                    "productId": product_id,
-                    "action": BehaviorType.VIEW
-                }
-            ),
-            "clicks": await prisma.userbehavior.count(
-                where={
-                    "productId": product_id,
-                    "action": BehaviorType.CLICK
-                }
-            ),
-            "addToCart": await prisma.userbehavior.count(
-                where={
-                    "productId": product_id,
-                    "action": BehaviorType.ADD_TO_CART
-                }
-            ),
-            "purchases": await prisma.userbehavior.count(
-                where={
-                    "productId": product_id,
-                    "action": BehaviorType.PURCHASE
-                }
-            )
+            "views": await prisma.userbehavior.count(where={"productId": product_id, "action": BehaviorType.VIEW.value}),
+            "clicks": await prisma.userbehavior.count(where={"productId": product_id, "action": BehaviorType.CLICK.value}),
+            "addToCart": await prisma.userbehavior.count(where={"productId": product_id, "action": BehaviorType.ADD_TO_CART.value}),
+            "purchases": await prisma.userbehavior.count(where={"productId": product_id, "action": BehaviorType.PURCHASE.value}),
         }
 
     @staticmethod
     async def get_user_analytics(user_id: int):
-
         return {
             "userId": user_id,
-            "totalViews": await prisma.userbehavior.count(
-                where={
-                    "userId": user_id,
-                    "action": BehaviorType.VIEW
-                }
-            ),
-            "totalClicks": await prisma.userbehavior.count(
-                where={
-                    "userId": user_id,
-                    "action": BehaviorType.CLICK
-                }
-            )
+            "totalViews": await prisma.userbehavior.count(where={"userId": user_id, "action": BehaviorType.VIEW.value}),
+            "totalClicks": await prisma.userbehavior.count(where={"userId": user_id, "action": BehaviorType.CLICK.value}),
         }
 
     @staticmethod
     async def get_top_products(limit: int = 10):
-
         grouped = await prisma.userbehavior.group_by(
             by=["productId"],
             _count={"productId": True},
             order={"_count": {"productId": "desc"}},
-            take=limit
+            take=limit,
         )
+        product_ids = [group["productId"] for group in grouped if group.get("productId") is not None]
+        products = await AnalyticsService._get_products_by_rank(product_ids)
 
-        product_ids = [g["productId"] for g in grouped]
+        return {"ranking": grouped, "products": products}
 
-        if not product_ids:
-            return []
-
-        products = await prisma.product.find_many(
-            where={"id": {"in": product_ids}}
-        )
-
-        return {
-            "ranking": grouped,
-            "products": products
-        }
     @staticmethod
-    async def recommend_products(user_id: int):
-
-        grouped = await prisma.userbehavior.group_by(
-            by=["productId"],
-            where={
-                "userId": user_id,
-                "action": BehaviorType.VIEW
-            },
-            _count={"productId": True},
-            order={"_count": {"productId": "desc"}},
-            take=5
+    async def recommend_products(user_id: int, top_k: int = 10, context_product_id: Optional[int] = None):
+        product_ids, algorithm = await RecommendationEngine.recommend_product_ids(
+            user_id=user_id,
+            top_k=top_k,
+            context_product_id=context_product_id,
         )
+        products = await AnalyticsService._get_products_by_rank(product_ids)
 
-        product_ids = [g["productId"] for g in grouped]
+        if product_ids:
+            await AnalyticsService._persist_recommendation(user_id=user_id, product_ids=product_ids, algorithm=algorithm)
 
-        if not product_ids:
-            return []
+        return products
 
-        return await prisma.product.find_many(
-            where={"id": {"in": product_ids}}
+    @staticmethod
+    async def recommend_products_for_optional_user(
+        user_id: Optional[int],
+        top_k: int = 10,
+        context_product_id: Optional[int] = None,
+    ):
+        product_ids, algorithm = await RecommendationEngine.recommend_product_ids(
+            user_id=user_id,
+            top_k=top_k,
+            context_product_id=context_product_id,
         )
+        products = await AnalyticsService._get_products_by_rank(product_ids)
+
+        if user_id is not None and product_ids:
+            await AnalyticsService._persist_recommendation(user_id=user_id, product_ids=product_ids, algorithm=algorithm)
+
+        return products
+
     @staticmethod
     async def get_user_behaviors(user_id: int):
         return await prisma.userbehavior.find_many(
             where={"userId": user_id},
-            include={
-                "product": True,
-                "user": True
-            },
-            order={"createdAt": "desc"}
+            include={"product": True, "user": True},
+            order={"createdAt": "desc"},
         )
 
     @staticmethod
     async def get_product_behaviors(product_id: int):
         return await prisma.userbehavior.find_many(
             where={"productId": product_id},
-            include={
-                "user": True
-            },
-            order={"createdAt": "desc"}
+            include={"user": True},
+            order={"createdAt": "desc"},
         )
+
+    @staticmethod
+    async def retrain_model():
+        return await train_model()
+
+    @staticmethod
+    async def _get_products_by_rank(product_ids: List[int]):
+        if not product_ids:
+            return []
+
+        products = await prisma.product.find_many(
+            where={"id": {"in": product_ids}, "status": "ACTIVE", "deletedAt": None},
+            include=AnalyticsService.PRODUCT_INCLUDE,
+        )
+
+        product_map = {product.id: product for product in products}
+        ranked_products = [product_map[product_id] for product_id in product_ids if product_id in product_map]
+        return ranked_products
+
+    @staticmethod
+    async def _persist_recommendation(user_id: int, product_ids: List[int], algorithm: str):
+        try:
+            await prisma.recommendation.create(
+                data={
+                    "userId": user_id,
+                    "recommended": {"productIds": product_ids},
+                    "algorithm": algorithm,
+                }
+            )
+        except Exception:
+            return

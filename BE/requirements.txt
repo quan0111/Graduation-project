@@ -4,3 +4,6 @@ prisma
 python-dotenv
 cloudinary
 python-multipart
+numpy
+joblib
+apscheduler

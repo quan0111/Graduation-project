@@ -1,83 +1,60 @@
-from src.core.database import prisma
-from typing import List, Tuple
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
+from typing import Dict, List, Tuple
+
+from src.core.database import prisma
+
 
 class FeatureBuilder:
+    ACTION_WEIGHTS = {
+        "VIEW": 1.0,
+        "CLICK": 2.0,
+        "ADD_TO_CART": 3.5,
+        "PURCHASE": 5.0,
+    }
+    ORDER_PURCHASE_BASE_WEIGHT = 5.0
 
     async def build_interactions(
         self,
-        days_back: int = 180,          
+        days_back: int = 180,
         min_weight: float = 0.5,
-    ) -> List[Tuple[str, str, float]]:
-        """
-        Trả về list interactions: (user_id, product_id, weight)
-        - Aggregate duplicate bằng cách lấy weight cao nhất
-        - Ưu tiên purchase > các hành vi khác
-        """
-
-        interactions_dict = defaultdict(float)  # (user, product) -> max weight
+    ) -> List[Tuple[int, int, float]]:
+        since = datetime.now(timezone.utc) - timedelta(days=days_back)
+        interaction_weights: Dict[Tuple[int, int], float] = defaultdict(float)
 
         behaviors = await prisma.userbehavior.find_many(
-            where={
-                    "createdAt":{"gte": (prisma.now() - prisma.timedelta(days=days_back))}
-            },
-            select={
-                "userId": True,
-                "productId": True,
-                "action": True,
-            }
+            where={"createdAt": {"gte": since}, "deletedAt": None},
         )
 
-        for b in behaviors:
-            weight = self._weight_action(b.action)
-            key = (b.userId, b.productId)
-            interactions_dict[key] = max(interactions_dict[key], weight)
+        for behavior in behaviors:
+            action_value = self._to_action_value(behavior.action)
+            weight = self.ACTION_WEIGHTS.get(action_value, 1.0)
+            interaction_weights[(behavior.userId, behavior.productId)] += weight
 
-        order_items = await prisma.orderitem.find_many(
-            where={
-                "order": {"isNot": None},  
-            },
-            include={
-                "order": {
-                    "select": {"userId": True}
-                }
-            },
-            select={
-                "productId": True,
-            }
+        orders = await prisma.order.find_many(
+            where={"createdAt": {"gte": since}, "deletedAt": None},
         )
+        order_user_map = {order.id: order.userId for order in orders}
 
-        for item in order_items:
-            if item.order:  
-                key = (item.order.userId, item.productId)
-                interactions_dict[key] = max(interactions_dict[key], 5.0)
+        if order_user_map:
+            order_items = await prisma.orderitem.find_many(
+                where={"orderId": {"in": list(order_user_map.keys())}, "deletedAt": None},
+            )
+
+            for order_item in order_items:
+                user_id = order_user_map.get(order_item.orderId)
+                if user_id is None:
+                    continue
+                quantity = max(order_item.quantity or 1, 1)
+                weight = self.ORDER_PURCHASE_BASE_WEIGHT + min(quantity, 5) * 0.4
+                interaction_weights[(user_id, order_item.productId)] += weight
 
         interactions = [
-            (user_id, prod_id, weight)
-            for (user_id, prod_id), weight in interactions_dict.items()
+            (user_id, product_id, weight)
+            for (user_id, product_id), weight in interaction_weights.items()
             if weight >= min_weight
         ]
-
-        print(f"Built {len(interactions)} interactions from {len(interactions_dict)} unique pairs")
         return interactions
 
-    def _weight_action(self, action: str) -> float:
-        weights = {
-            "VIEW": 1.0,
-            "CLICK": 2.0,
-            "ADD_TO_CART": 3.0,
-            "PURCHASE": 5.0,
-            "WISHLIST": 2.5,
-            "REVIEW": 2.0,
-            "SHARE": 1.5,
-            "RETURN": -3.0,
-            "CANCEL": -2.0,
-            "RATE": 2.0,
-            "SUBSCRIBE": 1.5,
-            "UNSUBSCRIBE": -1.5,
-            "FOLLOW": 1.0,
-            "UNFOLLOW": -1.0,
-            "LIKE": 1.5,
-            "DISLIKE": -1.5,
-        }
-        return weights.get(action.upper(), 1.0)
+    def _to_action_value(self, action: str) -> str:
+        return action.value if hasattr(action, "value") else str(action)

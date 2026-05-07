@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2, Shield } from "lucide-react";
 
@@ -30,15 +30,13 @@ export default function AdminLoginPage() {
     password: "",
   });
 
-  const loginMutation = useLogin({
-    config: {
-      onSuccess: () => {
-        setTimeout(() => {
-          navigate("/");
-        }, 50);
-      },
-    },
-  });
+  const loginMutation = useLogin();
+
+  useEffect(() => {
+    if (loginMutation.isSuccess) {
+      navigate("/", { replace: true });
+    }
+  }, [loginMutation.isSuccess, navigate]);
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();

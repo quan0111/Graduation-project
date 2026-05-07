@@ -1,14 +1,20 @@
-export interface IRecommendation {
-  id: number
+import type { IProduct } from "@/modules/product/types";
 
-  user_id: number
-  session_id?: string | null
+export type BehaviorAction = "VIEW" | "CLICK" | "ADD_TO_CART" | "PURCHASE";
 
-  recommended: any
+export interface TrackBehaviorPayload {
+  productId: number;
+  action: BehaviorAction;
+  sessionId?: string;
+  duration?: number;
+  metadata?: Record<string, unknown>;
+}
 
-  algorithm?: string | null
+export interface RecommendationQuery {
+  topK?: number;
+  productId?: number;
+}
 
-  timestamp: string
-
-  feedback?: number | null
+export interface RecommendationResult {
+  products: IProduct[];
 }
