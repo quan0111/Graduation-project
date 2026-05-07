@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Archive, ShieldCheck, Truck, Zap } from "lucide-react";
 import { toast } from "sonner";
@@ -9,6 +10,7 @@ import { useDeleteCartItem } from "@/modules/cart/api/delete-cart";
 import { useGetAddresses } from "@/modules/address/api/get-address";
 
 import { useCreateOrder } from "../../api/add-order";
+import { useCreatePaymentQr } from "../../api/create-payment-qr";
 import { Confirmation } from "../../components/checkout/confirmation";
 import { OrderSummary } from "../../components/checkout/orderSumary";
 import { PaymentMethod } from "../../components/checkout/paymentMethod";
@@ -16,6 +18,7 @@ import { ShippingForm } from "../../components/checkout/shippingForm";
 import { ShippingMethod } from "../../components/checkout/shippingMethod";
 import { Stepper } from "../../components/checkout/stepper";
 import { useCheckout, type ShippingMethodType } from "../../hook/useCheckout";
+import { CouponInput } from "@/modules/coupon/components/couponInput";
 
 type CheckoutLocationItem = {
   id?: number | string;
@@ -47,6 +50,7 @@ export default function CheckOutPage() {
 
   const { data: addresses } = useGetAddresses();
   const createOrderMutation = useCreateOrder();
+  const createPaymentQrMutation = useCreatePaymentQr();
   const deleteCartMutation = useDeleteCartItem();
 
   const cartItems = (location.state?.items as CheckoutLocationItem[] | undefined) || [];
@@ -88,10 +92,25 @@ export default function CheckOutPage() {
   }));
 
   const state = useCheckout(checkoutItems);
+  const [paymentQrData, setPaymentQrData] = useState<any>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
 
   const handleShippingChange = (id: string) => {
     state.setShipping(id as ShippingMethodType);
   };
+
+  const handleApplyCoupon = (coupon: any, discount: number) => {
+    setAppliedCoupon(coupon);
+    setDiscountAmount(discount);
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setDiscountAmount(0);
+  };
+
+  const totalWithDiscount = state.total - discountAmount;
 
   const handlePlaceOrder = async () => {
     if (!state.shippingAddress) {
@@ -140,6 +159,19 @@ export default function CheckOutPage() {
           .filter(Boolean)
           .map((cartItemId) => deleteCartMutation.mutateAsync(Number(cartItemId))),
       );
+
+      if (state.payment === "MOMO" || state.payment === "VNPAY") {
+        const qrPayment = await createPaymentQrMutation.mutateAsync({
+          orderId: createdOrder.id,
+          method: state.payment,
+        });
+        setPaymentQrData({
+          ...qrPayment,
+          orderId: createdOrder.id,
+        });
+        state.setStep(5); // New step for QR display
+        return;
+      }
 
       toast.success("Đặt hàng thành công");
       navigate(`/orders/${createdOrder.id}`);
@@ -214,7 +246,8 @@ export default function CheckOutPage() {
                   onChange={state.setPayment}
                   methods={[
                     { id: "COD", name: "Thanh toán khi nhận hàng" },
-                    { id: "VNPAY", name: "VNPAY" },
+                    { id: "MOMO", name: "MoMo QR" },
+                    { id: "VNPAY", name: "VNPay QR" },
                   ]}
                 />
                 <button
@@ -232,18 +265,81 @@ export default function CheckOutPage() {
                 <Confirmation
                   total={state.total}
                   onSubmit={handlePlaceOrder}
-                  loading={createOrderMutation.isPending || deleteCartMutation.isPending}
+                  loading={createOrderMutation.isPending || createPaymentQrMutation.isPending || deleteCartMutation.isPending}
                 />
               </div>
             ) : null}
+
+            {state.step === 5 && paymentQrData ? (
+              <div className="space-y-4 rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold text-slate-950">Quét mã QR để thanh toán</h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Sử dụng app {state.payment === "MOMO" ? "MoMo" : "VNPay"} để quét mã bên dưới
+                  </p>
+                </div>
+
+                {paymentQrData.qrCodeUrl && (
+                  <div className="flex justify-center">
+                    <img
+                      src={paymentQrData.qrCodeUrl}
+                      alt="Payment QR Code"
+                      className="h-64 w-64 rounded-lg border border-slate-200"
+                    />
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-3">
+                  {paymentQrData.paymentUrl && (
+                    <a
+                      href={paymentQrData.paymentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full rounded-full bg-[#ee4d2d] py-3 text-center font-semibold text-white transition hover:bg-[#d93f21]"
+                    >
+                      Mở trang thanh toán
+                    </a>
+                  )}
+
+                  {paymentQrData.deeplink && (
+                    <a
+                      href={paymentQrData.deeplink}
+                      className="w-full rounded-full border border-[#ee4d2d] py-3 text-center font-semibold text-[#ee4d2d] transition hover:bg-[#ee4d2d] hover:text-white"
+                    >
+                      Mở app {state.payment === "MOMO" ? "MoMo" : "VNPay"}
+                    </a>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      if (paymentQrData.orderId) {
+                        navigate(`/orders/${paymentQrData.orderId}`);
+                      }
+                    }}
+                    className="w-full rounded-full border border-slate-300 py-3 text-center font-semibold text-slate-600 transition hover:bg-slate-50"
+                  >
+                    Tôi đã thanh toán xong
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="mb-6">
+            <CouponInput
+              orderAmount={state.subtotal}
+              onApplyCoupon={handleApplyCoupon}
+              onRemoveCoupon={handleRemoveCoupon}
+            />
           </div>
 
           <OrderSummary
             items={checkoutItems}
             subtotal={state.subtotal}
-            total={state.total}
+            total={totalWithDiscount}
             shipping={state.shippingPrice}
             tax={state.tax}
+            discount={discountAmount}
           />
         </div>
       </div>

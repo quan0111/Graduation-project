@@ -1,4 +1,4 @@
-type StepType = 1 | 2 | 3 | 4;
+type StepType = 1 | 2 | 3 | 4 | 5;
 
 interface StepperProps {
   step: StepType;
@@ -9,11 +9,12 @@ const steps = [
   "Phương thức giao",
   "Phương thức thanh toán",
   "Xác nhận hóa đơn",
+  "Thanh toán QR",
 ] as const;
 
 export const Stepper: React.FC<StepperProps> = ({ step }) => {
   return (
-    <div className="grid gap-4 md:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-5">
       {steps.map((label, index) => {
         const currentStep = index + 1;
         const active = step >= currentStep;

@@ -23,7 +23,11 @@ class CartService:
                 "items": {
                     "include": {
                         "shop": True,
-                        "product": True,
+                        "product": {
+                            "include": {
+                                "images": True
+                            }
+                        },
                         "variant": True
                     }
                 }
@@ -42,7 +46,11 @@ class CartService:
                 "items": {
                     "include": {
                         "shop": True,
-                        "product": True,
+                        "product": {
+                            "include": {
+                                "images": True
+                            }
+                        },
                         "variant": True
                     }
                 }
@@ -56,7 +64,11 @@ class CartService:
                     "items": {
                         "include": {
                             "shop": True,
-                            "product": True,
+                            "product": {
+                                "include": {
+                                    "images": True
+                                }
+                            },
                             "variant": True
                         }
                     }

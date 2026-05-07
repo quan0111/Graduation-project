@@ -117,7 +117,7 @@ export default function ProductDetailPage() {
 
         <section className="rounded-3xl border border-orange-100 bg-white p-6 shadow-sm">
           <h2 className="mb-6 text-xl font-semibold text-slate-900">Đánh giá sản phẩm</h2>
-          <ProductReviews reviews={product.reviews ?? []} />
+          <ProductReviews productId={productId} />
         </section>
 
         <RecommendationSection

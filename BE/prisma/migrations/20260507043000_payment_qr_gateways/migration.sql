@@ -1,0 +1,24 @@
+-- AlterEnum
+ALTER TYPE "PaymentMethod" ADD VALUE IF NOT EXISTS 'MOMO';
+
+-- AlterEnum
+ALTER TYPE "OrderStatus" ADD VALUE IF NOT EXISTS 'PAYMENT_FAILED';
+
+-- AlterTable
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "amount" DOUBLE PRECISION;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "providerOrderId" TEXT;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "requestId" TEXT;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "transactionId" TEXT;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "paymentUrl" TEXT;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "qrCodeUrl" TEXT;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "deeplink" TEXT;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "providerMessage" TEXT;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "providerResponse" JSONB;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "rawCallback" JSONB;
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "paidAt" TIMESTAMP(3);
+ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- CreateIndex
+CREATE UNIQUE INDEX IF NOT EXISTS "Payment_providerOrderId_key" ON "Payment"("providerOrderId");
+CREATE INDEX IF NOT EXISTS "Payment_method_idx" ON "Payment"("method");
+CREATE INDEX IF NOT EXISTS "Payment_status_idx" ON "Payment"("status");

@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from src.core.dependencies import get_current_user
 from src.modules.order.order_schema import (
@@ -8,7 +8,10 @@ from src.modules.order.order_schema import (
     OrderOut,
     OrderUpdate,
     PaymentCreate,
+    PaymentGatewayCreate,
+    PaymentGatewayOut,
     PaymentOut,
+    PaymentUpdate,
 )
 from src.modules.order.order_service import OrderService
 from src.modules.order.payment_service import PaymentService
@@ -29,9 +32,35 @@ async def create_payment(payment_data: PaymentCreate):
     return await PaymentService.create_payment(payment_data)
 
 
+@router.post("/payment/qr", response_model=PaymentGatewayOut)
+async def create_qr_payment(payment_data: PaymentGatewayCreate, request: Request, user=Depends(get_current_user)):
+    client_host = request.client.host if request.client else "127.0.0.1"
+    return await PaymentService.create_gateway_payment(payment_data, user, client_host)
+
+
 @router.get("/payment/order/{order_id}", response_model=PaymentOut)
 async def get_payment_by_order(order_id: int):
     return await PaymentService.get_payment_by_order(order_id)
+
+
+@router.get("/payment/vnpay/return")
+async def vnpay_return(request: Request):
+    return await PaymentService.handle_vnpay_return(dict(request.query_params))
+
+
+@router.post("/payment/momo/ipn")
+async def momo_ipn(payload: dict):
+    result = await PaymentService.handle_momo_callback(payload)
+    return {
+        "resultCode": 0,
+        "message": "Received",
+        "success": result["success"],
+    }
+
+
+@router.get("/payment/momo/return")
+async def momo_return(request: Request):
+    return await PaymentService.handle_momo_callback(dict(request.query_params))
 
 
 @router.get("/payment/{payment_id}", response_model=PaymentOut)
@@ -40,7 +69,7 @@ async def get_payment(payment_id: int):
 
 
 @router.patch("/payment/{payment_id}")
-async def update_payment_by_id(payment_id: int, payment_data: PaymentCreate):
+async def update_payment_by_id(payment_id: int, payment_data: PaymentUpdate):
     return await PaymentService.update_payment_status(payment_id, payment_data.status)
 
 

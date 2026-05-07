@@ -1,6 +1,6 @@
 import type { OrderStatusType } from "@/constant";
 
-export type PaymentMethodType = "COD" | "VNPAY" | "STRIPE";
+export type PaymentMethodType = "COD" | "VNPAY" | "MOMO" | "STRIPE";
 export type PaymentStatusType = "pending" | "success" | "failed";
 export type ShipmentStatusType =
   | "ready_to_ship"
@@ -54,7 +54,17 @@ export interface IPayment {
   order_id: number;
   method: PaymentMethodType;
   status: PaymentStatusType;
+  amount?: number | null;
+  provider_order_id?: string | null;
+  request_id?: string | null;
+  transaction_id?: string | null;
+  payment_url?: string | null;
+  qr_code_url?: string | null;
+  deeplink?: string | null;
+  provider_message?: string | null;
+  paid_at?: string | null;
   created_at: string;
+  updated_at?: string | null;
 }
 
 export interface IShipment {

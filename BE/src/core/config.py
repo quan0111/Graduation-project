@@ -13,7 +13,18 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     OLLAMA_BASE_URL: str = "http://127.0.0.1:11434"
     OLLAMA_MODEL: Optional[str] = None
-    OLLAMA_TIMEOUT_SECONDS: int = 25
+    OLLAMA_TIMEOUT_SECONDS: int = 45
+    MOMO_ENDPOINT: str = "https://test-payment.momo.vn/v2/gateway/api/create"
+    MOMO_PARTNER_CODE: str = ""
+    MOMO_ACCESS_KEY: str = ""
+    MOMO_SECRET_KEY: str = ""
+    MOMO_REDIRECT_URL: str = ""
+    MOMO_IPN_URL: str = ""
+    VNPAY_TMN_CODE: str = ""
+    VNPAY_HASH_SECRET_KEY: str = ""
+    VNPAY_RETURN_URL: str = ""
+    VNPAY_PAYMENT_URL: str = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
+    VNPAY_API_URL: str = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction"
 
     model_config = SettingsConfigDict(          # ← dùng SettingsConfigDict
         env_file=".env",

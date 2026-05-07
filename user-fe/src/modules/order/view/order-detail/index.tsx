@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router-dom";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, RotateCcw } from "lucide-react";
+import { useState } from "react";
 
 import { buttonVariants } from "@/components/ui/button";
 
@@ -10,6 +11,9 @@ import { OrderItems } from "../../components/orderItems";
 import { OrderShipping } from "../../components/shipping";
 import { OrderSummary } from "../../components/summary";
 import { OrderTimeline } from "../../components/orderTimeLine";
+import { useShipmentByOrder } from "@/modules/shipment/api/get-shipment";
+import { ShipmentTracking } from "@/modules/shipment/components/shipmentTracking";
+import { ReturnRequestForm } from "@/modules/return-request/components/returnRequestForm";
 
 export default function OrderDetailPage() {
   const { id } = useParams();
@@ -17,6 +21,8 @@ export default function OrderDetailPage() {
   const { data: order, isLoading, isError } = useGetOrderById(orderId, {
     enabled: !!orderId,
   });
+  const { data: shipment } = useShipmentByOrder(orderId);
+  const [showReturnForm, setShowReturnForm] = useState(false);
 
   if (isLoading) {
     return <div className="p-6 text-sm text-slate-500">Đang tải hóa đơn...</div>;
@@ -44,6 +50,7 @@ export default function OrderDetailPage() {
 
             <OrderTimeline status={order.status} />
             <OrderShipping order={order} />
+            <ShipmentTracking shipment={shipment ?? null} />
 
             <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
               <div className="mb-5">
@@ -60,10 +67,31 @@ export default function OrderDetailPage() {
             <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
               <p className="mb-4 text-base font-semibold text-slate-950">Tác vụ</p>
               <OrderActions order={order} />
+              {order.status === "completed" && (
+                <button
+                  onClick={() => setShowReturnForm(true)}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  <RotateCcw className="size-4" />
+                  Yêu cầu trả hàng
+                </button>
+              )}
             </div>
           </aside>
         </div>
       </div>
+
+      {showReturnForm && (
+        <ReturnRequestForm
+          orderId={orderId}
+          orderItems={order.items}
+          onCancel={() => setShowReturnForm(false)}
+          onSuccess={() => {
+            setShowReturnForm(false);
+            window.location.reload();
+          }}
+        />
+      )}
     </div>
   );
 }

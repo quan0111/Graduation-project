@@ -270,6 +270,7 @@ enum OrderStatus {
   PENDING
   CONFIRMED
   PAID
+  PAYMENT_FAILED
   PROCESSING
   READY_TO_SHIP
   SHIPPED
@@ -310,20 +311,36 @@ model OrderItem {
 }
 
 model Payment {
-  id      Int           @id @default(autoincrement())
-  orderId Int           @unique
-  method  PaymentMethod
-  status  PaymentStatus @default(PENDING)
+  id              Int           @id @default(autoincrement())
+  orderId         Int           @unique
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  amount          Float?
+  providerOrderId String?       @unique
+  requestId       String?
+  transactionId   String?
+  paymentUrl      String?
+  qrCodeUrl       String?
+  deeplink        String?
+  providerMessage String?
+  providerResponse Json?
+  rawCallback     Json?
+  paidAt          DateTime?
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
+  @@index([method])
+  @@index([status])
 }
 
 enum PaymentMethod {
   COD
   VNPAY
+  MOMO
   STRIPE
 }
 

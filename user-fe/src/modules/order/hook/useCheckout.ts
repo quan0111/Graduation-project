@@ -3,7 +3,7 @@ import type { PaymentMethodType } from "../types";
 
 /* ---------- types ---------- */
 
-type StepType = 1 | 2 | 3 | 4;
+type StepType = 1 | 2 | 3 | 4 | 5;
 
 export type ShippingMethodType =
   | "STANDARD"

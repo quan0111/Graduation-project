@@ -100,7 +100,8 @@ class OrderService:
                 variant = None
                 if item.variantId:
                     variant = await tx.productvariant.find_unique(
-                        where={"id": item.variantId}
+                        where={"id": item.variantId},
+                        include={"images": True}
                     )
                     if not variant:
                         raise HTTPException(404, "Variant not found")
@@ -108,12 +109,22 @@ class OrderService:
                     if variant.stock < item.quantity:
                         raise HTTPException(400, "Not enough stock")
 
-                product = await tx.product.find_unique(where={"id": item.productId})
+                product = await tx.product.find_unique(
+                    where={"id": item.productId},
+                    include={"images": True}
+                )
                 if not product:
                     raise HTTPException(404, "Product not found")
 
                 price = item.price
                 subtotal += price * item.quantity
+
+                # Get image URL from variant images first, then product images
+                image_url = None
+                if variant and variant.images and len(variant.images) > 0:
+                    image_url = variant.images[0].url
+                elif product.images and len(product.images) > 0:
+                    image_url = product.images[0].url
 
                 order_items_data.append(
                     {
@@ -124,7 +135,7 @@ class OrderService:
                         "price": price,
                         "productName": product.name,
                         "variantName": variant.name if variant else None,
-                        "productImage": None,
+                        "productImage": image_url,
                     }
                 )
 
@@ -156,6 +167,7 @@ class OrderService:
                         "order": {"connect": {"id": order.id}},
                         "method": order_data.payment.method,
                         "status": "PENDING",
+                        "amount": float(order.totalAmount or 0),
                     }
                 )
 

@@ -11,6 +11,7 @@ interface Props {
   total: number;
   tax?: number;
   shipping?: number;
+  discount?: number;
 }
 
 const formatCurrency = (value: number) =>
@@ -26,6 +27,7 @@ export const OrderSummary: React.FC<Props> = ({
   subtotal,
   tax,
   shipping,
+  discount,
 }) => {
   return (
     <aside className="sticky top-24 overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-slate-200/80">
@@ -71,6 +73,12 @@ export const OrderSummary: React.FC<Props> = ({
           <span>VAT 10%</span>
           <span className="font-medium text-slate-900">{formatCurrency(tax || 0)}</span>
         </div>
+        {discount && discount > 0 && (
+          <div className="flex items-center justify-between text-green-600">
+            <span>Giảm giá</span>
+            <span className="font-medium">-{formatCurrency(discount)}</span>
+          </div>
+        )}
         <div className="border-t border-slate-100 pt-3">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-slate-700">Tổng thanh toán</span>

@@ -52,7 +52,17 @@ const mapPayment = (payment: any): IPayment | null =>
         order_id: payment.orderId,
         method: payment.method,
         status: toLowerStatus<IPayment["status"]>(payment.status),
+        amount: payment.amount ?? null,
+        provider_order_id: payment.providerOrderId ?? null,
+        request_id: payment.requestId ?? null,
+        transaction_id: payment.transactionId ?? null,
+        payment_url: payment.paymentUrl ?? null,
+        qr_code_url: payment.qrCodeUrl ?? null,
+        deeplink: payment.deeplink ?? null,
+        provider_message: payment.providerMessage ?? null,
+        paid_at: payment.paidAt ?? null,
         created_at: payment.createdAt,
+        updated_at: payment.updatedAt ?? null,
       }
     : null;
 

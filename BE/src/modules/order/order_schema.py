@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -82,16 +82,50 @@ class PaymentBase(BaseModel):
 
 
 class PaymentCreate(PaymentBase):
+    orderId: int
+
+
+class OrderPaymentCreate(PaymentBase):
     pass
+
+
+class PaymentUpdate(BaseModel):
+    status: str
+
+
+class PaymentGatewayCreate(BaseModel):
+    orderId: int
+    method: str
 
 
 class PaymentOut(PaymentBase):
     id: int
     orderId: int
+    amount: Optional[float] = None
+    providerOrderId: Optional[str] = None
+    requestId: Optional[str] = None
+    transactionId: Optional[str] = None
+    paymentUrl: Optional[str] = None
+    qrCodeUrl: Optional[str] = None
+    deeplink: Optional[str] = None
+    providerMessage: Optional[str] = None
+    providerResponse: Optional[Dict[str, Any]] = None
+    rawCallback: Optional[Dict[str, Any]] = None
+    paidAt: Optional[datetime] = None
     createdAt: datetime
+    updatedAt: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+
+
+class PaymentGatewayOut(BaseModel):
+    payment: PaymentOut
+    paymentUrl: Optional[str] = None
+    qrCodeUrl: Optional[str] = None
+    deeplink: Optional[str] = None
+    providerOrderId: Optional[str] = None
+    requestId: Optional[str] = None
 
 
 class OrderBase(BaseModel):
@@ -106,7 +140,7 @@ class OrderBase(BaseModel):
 
 class OrderCreate(OrderBase):
     items: List[OrderItemCreate]
-    payment: Optional[PaymentCreate] = None
+    payment: Optional[OrderPaymentCreate] = None
 
 
 class OrderUpdate(BaseModel):

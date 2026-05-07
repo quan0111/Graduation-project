@@ -22,3 +22,10 @@ class ChatbotMessageOut(BaseModel):
     intent: str
     suggestions: List[str] = []
     products: List[ChatbotProductOut] = []
+
+
+class ChatRequest(ChatbotMessageIn):
+    pass
+
+class ChatResponse(BaseModel):
+    message: str

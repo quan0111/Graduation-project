@@ -31,6 +31,7 @@ class ProductShort(BaseModel):
     id: int
     name: str
     price: float
+    images: list = []
 
     class Config:
         from_attributes = True

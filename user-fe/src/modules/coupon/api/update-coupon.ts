@@ -20,6 +20,16 @@ const updateCoupon = async (
     return res.data;
 };
 
+const activateCoupon = async (couponId: number) => {
+    const res = await apiClient.patch(`${API_URL_COUPON}/${couponId}/activate`);
+    return res.data;
+};
+
+const deactivateCoupon = async (couponId: number) => {
+    const res = await apiClient.patch(`${API_URL_COUPON}/${couponId}/deactivate`);
+    return res.data;
+};
+
 export const useUpdateCoupon = (
     config?: UseMutationOptions<
         UpdateCouponResponse,
@@ -29,6 +39,24 @@ export const useUpdateCoupon = (
 ) => {
     return useMutation({
         mutationFn: ({ id, data }) => updateCoupon(id, data),
+        ...config,
+    });
+};
+
+export const useActivateCoupon = (
+    config?: UseMutationOptions<any, Error, number>,
+) => {
+    return useMutation({
+        mutationFn: activateCoupon,
+        ...config,
+    });
+};
+
+export const useDeactivateCoupon = (
+    config?: UseMutationOptions<any, Error, number>,
+) => {
+    return useMutation({
+        mutationFn: deactivateCoupon,
         ...config,
     });
 };
