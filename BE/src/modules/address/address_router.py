@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 from src.modules.address.address_service import AddressService
 from src.modules.address.address_schema import AddressCreate, AddressUpdate, AddressOut
-from src.core.dependencies import get_current_user   
+from src.core.dependencies import get_current_user, get_role_value
 
 router = APIRouter(prefix="/addresses", tags=["Addresses"])
 address_service = AddressService()
@@ -35,7 +35,7 @@ async def get_addresses_by_user(
     user_id: int,
     current_user=Depends(get_current_user)
 ):
-    if current_user.id != user_id:
+    if current_user.id != user_id and get_role_value(current_user) != "ADMIN":
         raise HTTPException(403, "Forbidden")
 
     return await address_service.get_by_user(user_id)

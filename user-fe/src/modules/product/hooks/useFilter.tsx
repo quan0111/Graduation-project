@@ -9,7 +9,8 @@ export function useProductFilter() {
 
   const toggleFilter = (type: keyof typeof filters, value: any) => {
     setFilters(prev => {
-      const exists = prev[type].includes(value);
+      const list = prev[type] as any[];
+      const exists = list.includes(value);
 
       return {
         ...prev,

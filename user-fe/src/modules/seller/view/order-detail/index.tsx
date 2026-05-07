@@ -22,6 +22,7 @@ import {
 } from "@/modules/order/utils/order";
 
 const shipmentStatuses: Array<{ value: ShipmentStatusType; label: string }> = [
+  { value: "processing", label: "Đang xử lý" },
   { value: "ready_to_ship", label: "Sẵn sàng giao" },
   { value: "shipped", label: "Đã gửi hàng" },
   { value: "in_transit", label: "Đang vận chuyển" },
@@ -39,7 +40,7 @@ export default function SellerOrderDetailPage() {
 
   const [carrier, setCarrier] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
-  const [status, setStatus] = useState<ShipmentStatusType>("ready_to_ship");
+  const [status, setStatus] = useState<ShipmentStatusType>("processing");
 
   useEffect(() => {
     if (!order?.shipment) {

@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 from typing import List
+from src.core.dependencies import get_current_user, get_role_value, require_admin
 from src.modules.review.review_schema import ReviewCreate, ReviewUpdate, ReviewOut
 from src.modules.review.review_service import ReviewService     
 
@@ -7,10 +8,11 @@ router = APIRouter(prefix="/reviews", tags=["Reviews"])
 
 
 @router.post("/", response_model=ReviewOut)
-async def create_review(review_data: ReviewCreate):
-    return await ReviewService.create_review(review_data)
+async def create_review(review_data: ReviewCreate, user=Depends(get_current_user)):
+    return await ReviewService.create_review(review_data, user)
 @router.get("/", response_model=List[ReviewOut])
-async def get_all_reviews():
+async def get_all_reviews(user=Depends(require_admin)):
+    _ = user
     return await ReviewService.get_all_review()
 @router.get("/product/{product_id}", response_model=List[ReviewOut])
 async def get_reviews_by_product(product_id: int):
@@ -18,7 +20,9 @@ async def get_reviews_by_product(product_id: int):
 
 
 @router.get("/user/{user_id}", response_model=List[ReviewOut])
-async def get_reviews_by_user(user_id: int):
+async def get_reviews_by_user(user_id: int, user=Depends(get_current_user)):
+    if user.id != user_id and get_role_value(user) != "ADMIN":
+        raise HTTPException(403, "Forbidden")
     return await ReviewService.get_reviews_by_user(user_id)
 
 
@@ -28,13 +32,17 @@ async def get_review(review_id: int):
 
 
 @router.patch("/{review_id}", response_model=ReviewOut)
-async def update_review(review_id: int, review_data: ReviewUpdate):
-    return await ReviewService.update_review(review_id, review_data)
+async def update_review(
+    review_id: int,
+    review_data: ReviewUpdate,
+    user=Depends(get_current_user),
+):
+    return await ReviewService.update_review(review_id, review_data, user)
 
 
 @router.delete("/{review_id}")
-async def delete_review(review_id: int):
-    await ReviewService.delete_review(review_id)
+async def delete_review(review_id: int, user=Depends(get_current_user)):
+    await ReviewService.delete_review(review_id, user)
     return {"message": "Review deleted successfully"}
 
 

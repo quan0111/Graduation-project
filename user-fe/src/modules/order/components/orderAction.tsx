@@ -17,9 +17,7 @@ export const OrderActions = ({ order }: Props) => {
   const addCartMutation = useAddItem();
 
   const handleCancel = async () => {
-    if (!window.confirm("Bạn chắc chắn muốn hủy đơn này?")) {
-      return;
-    }
+    if (!window.confirm("Bạn chắc chắn muốn hủy đơn này?")) return;
 
     try {
       await cancelMutation.mutateAsync({
@@ -58,8 +56,8 @@ export const OrderActions = ({ order }: Props) => {
     }
   };
 
-  const canCancel = ["pending", "confirmed", "processing"].includes(order.status);
-  const canRebuy = !["cancelled"].includes(order.status);
+  const canCancel = order.status === "pending";
+  const canRebuy = order.status !== "cancelled";
 
   return (
     <div className="flex flex-wrap gap-3">

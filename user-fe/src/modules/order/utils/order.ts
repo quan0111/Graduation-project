@@ -50,7 +50,7 @@ export const orderStatusMeta: Record<
   { label: string; tone: string; chip: string }
 > = {
   pending: {
-    label: "Chờ xác nhận",
+    label: "Chờ thanh toán",
     tone: "text-amber-700",
     chip: "bg-amber-50 text-amber-700 ring-amber-200",
   },
@@ -63,6 +63,11 @@ export const orderStatusMeta: Record<
     label: "Đã thanh toán",
     tone: "text-emerald-700",
     chip: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  },
+  payment_failed: {
+    label: "Thanh toán thất bại",
+    tone: "text-rose-700",
+    chip: "bg-rose-50 text-rose-700 ring-rose-200",
   },
   processing: {
     label: "Đang chuẩn bị",
@@ -120,10 +125,9 @@ export const getOrderVisibleSubtotal = (order: IOrder) =>
 export const getTrackingSteps = (status: OrderStatusType) => {
   const steps = [
     "pending",
+    "paid",
     "processing",
-    "ready_to_ship",
     "shipped",
-    "in_transit",
     "delivered",
     "completed",
   ] as OrderStatusType[];

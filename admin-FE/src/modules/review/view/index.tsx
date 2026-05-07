@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { DataTable } from "@/components/common/data-table";
-import { ReviewStats } from "../components/stats-card";
 import { ReviewFilter } from "../components/search-filter-review";
 import { reviewColumns } from "../components/review-collum";
 import { useGetReview } from "../api/get-review";
@@ -38,7 +37,7 @@ export default function ReviewsPage() {
     );
   };
 
-  const handleApprove = (review: any) => {
+  const handleApprove = () => {
     toast.success("Đã duyệt review (demo)");
   };
 

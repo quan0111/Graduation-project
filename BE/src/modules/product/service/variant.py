@@ -3,6 +3,7 @@ from itertools import product
 from fastapi import HTTPException
 
 from src.core.database import prisma
+from src.core.dependencies import get_role_value
 from src.modules.product.product_schema import VariantCreate, VariantOut, VariantUpdate
 
 class VariantService:
@@ -15,7 +16,7 @@ class VariantService:
         if not variant:
             raise HTTPException(404, "Variant not found")
 
-        if viewer.role == "ADMIN":
+        if get_role_value(viewer) == "ADMIN":
             return variant, variant.product
 
         is_owner = bool(variant.product and variant.product.shop and variant.product.shop.ownerId == viewer.id)
@@ -25,10 +26,25 @@ class VariantService:
         return variant, variant.product
 
     @staticmethod
-    async def create_variant(data: VariantCreate) -> VariantOut:
-        product = await prisma.product.find_unique(where={"id": data.productId})
+    async def _assert_product_access(product_id: int, viewer):
+        product = await prisma.product.find_unique(
+            where={"id": product_id},
+            include={"shop": True},
+        )
         if not product:
             raise HTTPException(404, "Product not found")
+        if get_role_value(viewer) != "ADMIN" and product.shop.ownerId != viewer.id:
+            raise HTTPException(403, "Forbidden")
+        return product
+
+    @staticmethod
+    async def create_variant(data: VariantCreate, viewer=None) -> VariantOut:
+        if viewer is not None:
+            await VariantService._assert_product_access(data.productId, viewer)
+        else:
+            product = await prisma.product.find_unique(where={"id": data.productId})
+            if not product:
+                raise HTTPException(404, "Product not found")
 
         variant = await prisma.productvariant.create(
             data={
@@ -55,10 +71,13 @@ class VariantService:
         return VariantOut.from_orm(variant)
 
     @staticmethod
-    async def update_variant(variant_id: int, data: VariantUpdate) -> VariantOut:
-        variant = await prisma.productvariant.find_unique(where={"id": variant_id})
-        if not variant:
-            raise HTTPException(404, "Variant not found")
+    async def update_variant(variant_id: int, data: VariantUpdate, viewer=None) -> VariantOut:
+        if viewer is not None:
+            await VariantService._assert_variant_access(variant_id, viewer)
+        else:
+            variant = await prisma.productvariant.find_unique(where={"id": variant_id})
+            if not variant:
+                raise HTTPException(404, "Variant not found")
 
         update_data = data.model_dump(exclude_unset=True)
 
@@ -105,10 +124,13 @@ class VariantService:
 
         return {"message": "Stock updated", "newStock": new_stock}
     @staticmethod
-    async def generate_variants(product_id: int, options: dict):
-        product_check = await prisma.product.find_unique(where={"id": product_id})
-        if not product_check:
-            raise HTTPException(404, "Product not found")
+    async def generate_variants(product_id: int, options: dict, viewer=None):
+        if viewer is not None:
+            await VariantService._assert_product_access(product_id, viewer)
+        else:
+            product_check = await prisma.product.find_unique(where={"id": product_id})
+            if not product_check:
+                raise HTTPException(404, "Product not found")
 
         combinations = list(product(*options.values()))
 
@@ -139,10 +161,13 @@ class VariantService:
         return [VariantOut.from_orm(v) for v in variants]
 
     @staticmethod
-    async def delete_variant(variant_id: int):
-        variant = await prisma.productvariant.find_unique(where={"id": variant_id})
-        if not variant:
-            raise HTTPException(404, "Variant not found")
+    async def delete_variant(variant_id: int, viewer=None):
+        if viewer is not None:
+            await VariantService._assert_variant_access(variant_id, viewer)
+        else:
+            variant = await prisma.productvariant.find_unique(where={"id": variant_id})
+            if not variant:
+                raise HTTPException(404, "Variant not found")
 
         await prisma.productvariant.update(
             where={"id": variant_id},
@@ -152,10 +177,13 @@ class VariantService:
         return {"message": "Variant deleted"}
 
     @staticmethod
-    async def add_variant_image(variant_id: int, url: str, position: int = 1):
-        variant = await prisma.productvariant.find_unique(where={"id": variant_id})
-        if not variant:
-            raise HTTPException(404, "Variant not found")
+    async def add_variant_image(variant_id: int, url: str, position: int = 1, viewer=None):
+        if viewer is not None:
+            await VariantService._assert_variant_access(variant_id, viewer)
+        else:
+            variant = await prisma.productvariant.find_unique(where={"id": variant_id})
+            if not variant:
+                raise HTTPException(404, "Variant not found")
 
         return await prisma.variantimage.create(
             data={
@@ -176,10 +204,26 @@ class VariantService:
         )
 
     @staticmethod
-    async def update_variant_image(image_id: int, url: str = None, position: int = None):
-        image = await prisma.variantimage.find_unique(where={"id": image_id})
+    async def _assert_variant_image_access(image_id: int, viewer):
+        image = await prisma.variantimage.find_unique(
+            where={"id": image_id},
+            include={"variant": {"include": {"product": {"include": {"shop": True}}}}},
+        )
         if not image:
             raise HTTPException(404, "Image not found")
+        shop = image.variant.product.shop
+        if get_role_value(viewer) != "ADMIN" and shop.ownerId != viewer.id:
+            raise HTTPException(403, "Forbidden")
+        return image
+
+    @staticmethod
+    async def update_variant_image(image_id: int, url: str = None, position: int = None, viewer=None):
+        if viewer is not None:
+            await VariantService._assert_variant_image_access(image_id, viewer)
+        else:
+            image = await prisma.variantimage.find_unique(where={"id": image_id})
+            if not image:
+                raise HTTPException(404, "Image not found")
 
         data = {}
 
@@ -195,10 +239,13 @@ class VariantService:
         )
 
     @staticmethod
-    async def delete_variant_image(image_id: int):
-        image = await prisma.variantimage.find_unique(where={"id": image_id})
-        if not image:
-            raise HTTPException(404, "Image not found")
+    async def delete_variant_image(image_id: int, viewer=None):
+        if viewer is not None:
+            await VariantService._assert_variant_image_access(image_id, viewer)
+        else:
+            image = await prisma.variantimage.find_unique(where={"id": image_id})
+            if not image:
+                raise HTTPException(404, "Image not found")
 
         await prisma.variantimage.update(
             where={"id": image_id},
@@ -208,7 +255,11 @@ class VariantService:
         return {"message": "Image deleted"}
 
     @staticmethod
-    async def set_primary_image(variant_id: int, image_id: int):
+    async def set_primary_image(variant_id: int, image_id: int, viewer=None):
+        if viewer is not None:
+            await VariantService._assert_variant_access(variant_id, viewer)
+            await VariantService._assert_variant_image_access(image_id, viewer)
+
         await prisma.variantimage.update_many(
             where={"variantId": variant_id},
             data={"position": 99}
@@ -221,7 +272,10 @@ class VariantService:
 
         return {"message": "Primary image updated"}
     @staticmethod
-    async def reorder_images(variant_id: int, image_orders: list):
+    async def reorder_images(variant_id: int, image_orders: list, viewer=None):
+        if viewer is not None:
+            await VariantService._assert_variant_access(variant_id, viewer)
+
         for img in image_orders:
             await prisma.variantimage.update(
                 where={"id": img["id"]},

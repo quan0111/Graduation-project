@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from src.core.dependencies import get_current_user, get_optional_current_user
+from src.core.dependencies import get_current_user, get_optional_current_user, get_role_value, require_admin
 from src.modules.analytics.analytics_schema import BehaviorCreate, BehaviorTrackPayload
 from src.modules.analytics.analytics_service import AnalyticsService
 
@@ -26,7 +26,9 @@ async def product_analytics(product_id: int):
 
 
 @router.get("/user/{user_id}")
-async def user_analytics(user_id: int):
+async def user_analytics(user_id: int, user=Depends(get_current_user)):
+    if user.id != user_id and get_role_value(user) != "ADMIN":
+        raise HTTPException(status_code=403, detail="Forbidden")
     return await AnalyticsService.get_user_analytics(user_id)
 
 
@@ -49,12 +51,18 @@ async def recommend_me(
 
 
 @router.post("/recommend/train")
-async def retrain_recommender(user=Depends(get_current_user)):
-    if user.role != "ADMIN":
-        raise HTTPException(status_code=403, detail="Only admin can retrain recommendation model")
+async def retrain_recommender(user=Depends(require_admin)):
+    _ = user
     return await AnalyticsService.retrain_model()
 
 
 @router.get("/recommend/{user_id}")
-async def recommend(user_id: int, top_k: int = 10, product_id: int | None = None):
+async def recommend(
+    user_id: int,
+    top_k: int = 10,
+    product_id: int | None = None,
+    user=Depends(get_current_user),
+):
+    if user.id != user_id and get_role_value(user) != "ADMIN":
+        raise HTTPException(status_code=403, detail="Forbidden")
     return await AnalyticsService.recommend_products(user_id, top_k=top_k, context_product_id=product_id)

@@ -16,6 +16,7 @@ import AdminLoginPage from "@/modules/auth/view/LoginPage"
 import ProtectedRoute from "./protectedGuard"
 import SellerApplicationsPage from "@/modules/shop/view/sellerAplication"
 import AdminProfilePage from "@/modules/auth/view/me"
+import ReturnsPage from "@/modules/returns/view"
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -64,6 +65,10 @@ export const router = createBrowserRouter([
       {
         path: "orders",
         element: <OrdersPage />,
+      },
+      {
+        path: "returns",
+        element: <ReturnsPage />,
       },
       {
         path: "categories",

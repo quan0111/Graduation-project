@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from "react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Filter, Eye, Shield, LockOpen, MoreVertical } from "lucide-react";
+import { Eye, Shield, LockOpen, MoreVertical } from "lucide-react";
 import { UserFilters } from "../components/filter-search-user";
 import { DataTable } from "@/components/common/data-table";
 import { useFilter } from "@/hooks/use-filter";

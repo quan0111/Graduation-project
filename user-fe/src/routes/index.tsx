@@ -21,6 +21,7 @@ import SellerDashboardPage from "@/modules/seller/view/dashboard";
 import AddProductPage from "@/modules/seller/view/new-product";
 import SellerOrdersPage from "@/modules/seller/view/orders";
 import SellerOrderDetailPage from "@/modules/seller/view/order-detail";
+import SellerReturnsPage from "@/modules/seller/view/returns";
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -64,6 +65,10 @@ export const router = createBrowserRouter([
   {
     path: "/seller/orders/:id",
     element: <SellerOrderDetailPage />,
+  },
+  {
+    path: "/seller/returns",
+    element: <SellerReturnsPage />,
   },
   {
     path: "/seller/products/new",

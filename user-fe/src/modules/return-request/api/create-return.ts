@@ -6,6 +6,9 @@ import { apiClient } from "@/lib/api";
 export interface ReturnRequestCreatePayload {
   orderId: number;
   reason: string;
+  description?: string;
+  items: ReturnItemCreatePayload[];
+  evidences?: ReturnEvidenceCreatePayload[];
 }
 
 export interface ReturnItemCreatePayload {
@@ -32,6 +35,11 @@ const addReturnEvidence = async (returnId: number, payload: ReturnEvidenceCreate
   return response.data;
 };
 
+const refundReturnRequest = async (returnId: number) => {
+  const response = await apiClient.patch(`${API_URL_RETURN}/${returnId}/refund`);
+  return response.data;
+};
+
 export const useCreateReturnRequest = (
   config?: UseMutationOptions<any, Error, ReturnRequestCreatePayload>,
 ) => {
@@ -55,6 +63,15 @@ export const useAddReturnEvidence = (
 ) => {
   return useMutation({
     mutationFn: ({ returnId, payload }) => addReturnEvidence(returnId, payload),
+    ...config,
+  });
+};
+
+export const useRefundReturnRequest = (
+  config?: UseMutationOptions<any, Error, number>,
+) => {
+  return useMutation({
+    mutationFn: refundReturnRequest,
     ...config,
   });
 };

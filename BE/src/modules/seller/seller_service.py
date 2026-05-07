@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import HTTPException
 
 from src.core.database import prisma
+from src.core.dependencies import get_role_value
 
 
 class SellerService:
@@ -15,7 +16,7 @@ class SellerService:
         if not user or user.deletedAt:
             raise HTTPException(404, "User not found")
 
-        if user.role == "SELLER":
+        if get_role_value(user) == "SELLER":
             raise HTTPException(400, "User is already a seller")
 
         existing_shop = await prisma.shop.find_first(

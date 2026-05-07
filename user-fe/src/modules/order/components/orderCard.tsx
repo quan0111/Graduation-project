@@ -21,7 +21,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       <div
         className={[
           "overflow-hidden transition-all duration-300",
-          expanded ? "max-h-[1200px] opacity-100" : "max-h-0 opacity-0",
+          expanded ? "max-h-300 opacity-100" : "max-h-0 opacity-0",
         ].join(" ")}
       >
         <OrderDetails order={order} />

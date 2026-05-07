@@ -1,8 +1,51 @@
 from fastapi import HTTPException
 
 from src.core.database import prisma
+from src.core.dependencies import get_role_value
 from src.modules.order.order_schema import OrderCreate, OrderUpdate
 
+
+ORDER_STATUSES = {
+    "PENDING",
+    "CONFIRMED",
+    "PAID",
+    "PAYMENT_FAILED",
+    "PROCESSING",
+    "READY_TO_SHIP",
+    "SHIPPED",
+    "IN_TRANSIT",
+    "DELIVERED",
+    "COMPLETED",
+    "CANCELLED",
+    "RETURN_REQUESTED",
+    "RETURNED",
+}
+
+ADMIN_TRANSITIONS = {
+    "PENDING": {"PAID", "PAYMENT_FAILED", "CANCELLED"},
+    "PAYMENT_FAILED": {"PENDING", "CANCELLED"},
+    "PAID": {"PROCESSING", "CANCELLED"},
+    "PROCESSING": {"READY_TO_SHIP", "SHIPPED", "CANCELLED"},
+    "READY_TO_SHIP": {"SHIPPED", "CANCELLED"},
+    "SHIPPED": {"IN_TRANSIT", "DELIVERED"},
+    "IN_TRANSIT": {"DELIVERED"},
+    "DELIVERED": {"COMPLETED", "RETURN_REQUESTED"},
+    "COMPLETED": {"RETURN_REQUESTED"},
+}
+
+SELLER_TRANSITIONS = {
+    "PAID": {"PROCESSING"},
+    "PROCESSING": {"READY_TO_SHIP", "SHIPPED"},
+    "READY_TO_SHIP": {"SHIPPED"},
+    "SHIPPED": {"IN_TRANSIT", "DELIVERED"},
+    "IN_TRANSIT": {"DELIVERED"},
+}
+
+CUSTOMER_TRANSITIONS = {
+    "DELIVERED": {"COMPLETED"},
+}
+
+CANCELLABLE_STATUSES = {"PENDING", "PAYMENT_FAILED"}
 
 ORDER_INCLUDE = {
     "items": {
@@ -19,6 +62,29 @@ ORDER_INCLUDE = {
 
 
 class OrderService:
+    @staticmethod
+    def _to_value(value):
+        return value.value if hasattr(value, "value") else str(value)
+
+    @staticmethod
+    def _normalize_status(status: str) -> str:
+        normalized = status.upper()
+        if normalized not in ORDER_STATUSES:
+            raise HTTPException(400, "Invalid order status")
+        return normalized
+
+    @staticmethod
+    def _assert_transition(current_status: str, next_status: str, transitions: dict[str, set[str]]):
+        if current_status == next_status:
+            return
+
+        allowed_next = transitions.get(current_status, set())
+        if next_status not in allowed_next:
+            raise HTTPException(
+                400,
+                f"Invalid order transition: {current_status} -> {next_status}",
+            )
+
     @staticmethod
     async def _get_seller_shop(user_id: int):
         shop = await prisma.shop.find_first(
@@ -56,6 +122,29 @@ class OrderService:
             raise HTTPException(403, "Forbidden")
 
         return order
+
+    @staticmethod
+    async def assert_order_visibility(order_id: int, current_user):
+        order = await OrderService._get_order_or_404(order_id)
+        role = get_role_value(current_user)
+
+        if role == "ADMIN" or order.userId == current_user.id:
+            return order
+
+        if role == "SELLER":
+            shop = await OrderService._get_seller_shop(current_user.id)
+            if any(item.shopId == shop.id for item in order.items):
+                return order
+
+        raise HTTPException(403, "Forbidden")
+
+    @staticmethod
+    async def _assert_seller_order_access(order, current_user):
+        shop = await OrderService._get_seller_shop(current_user.id)
+        if not any(item.shopId == shop.id for item in order.items):
+            raise HTTPException(403, "Forbidden")
+
+        return shop
 
     @staticmethod
     def _filter_order_items_for_shop(order, shop_id: int):
@@ -178,10 +267,7 @@ class OrderService:
 
     @staticmethod
     async def get_order(order_id: int, current_user):
-        return await OrderService._assert_customer_order_access(
-            order_id=order_id,
-            user_id=current_user.id,
-        )
+        return await OrderService.assert_order_visibility(order_id, current_user)
 
     @staticmethod
     async def get_my_orders(current_user):
@@ -240,10 +326,31 @@ class OrderService:
 
     @staticmethod
     async def update_order(order_id: int, current_user, order_data: OrderUpdate):
-        await OrderService._assert_customer_order_access(order_id, current_user.id)
+        order = await OrderService.assert_order_visibility(order_id, current_user)
+        data = order_data.model_dump(exclude_unset=True)
+
+        if "status" not in data or data["status"] is None:
+            return order
+
+        next_status = OrderService._normalize_status(data["status"])
+        current_status = OrderService._to_value(order.status)
+        role = get_role_value(current_user)
+
+        if role == "ADMIN":
+            transitions = ADMIN_TRANSITIONS
+        elif role == "SELLER":
+            await OrderService._assert_seller_order_access(order, current_user)
+            transitions = SELLER_TRANSITIONS
+        else:
+            if order.userId != current_user.id:
+                raise HTTPException(403, "Forbidden")
+            transitions = CUSTOMER_TRANSITIONS
+
+        OrderService._assert_transition(current_status, next_status, transitions)
+
         return await prisma.order.update(
             where={"id": order_id},
-            data=order_data.model_dump(exclude_unset=True),
+            data={"status": next_status},
             include=ORDER_INCLUDE,
         )
 
@@ -262,8 +369,13 @@ class OrderService:
             if not order:
                 raise HTTPException(404, "Order not found")
 
-            if order.status == "CANCELLED":
+            order_status = OrderService._to_value(order.status)
+
+            if order_status == "CANCELLED":
                 return {"message": "Already cancelled"}
+
+            if order_status not in CANCELLABLE_STATUSES:
+                raise HTTPException(400, "Only pending or failed-payment orders can be cancelled")
 
             for item in order.items:
                 if item.variantId:

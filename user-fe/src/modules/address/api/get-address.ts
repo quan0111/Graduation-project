@@ -44,6 +44,8 @@ export const useGetAddresses = (
   return useQuery<IAddress[], Error, IAddress[], ["addresses"]>({
     queryKey: ["addresses"],
     queryFn: getAddresses,
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
     ...config,
   });
 };

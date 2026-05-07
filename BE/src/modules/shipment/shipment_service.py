@@ -6,15 +6,44 @@ from src.core.database import prisma
 
 
 TRACKING_ORDER_STATUSES = {
-    "READY_TO_SHIP",
+    "PROCESSING",
     "SHIPPED",
-    "IN_TRANSIT",
     "DELIVERED",
-    "COMPLETED",
+}
+
+SHIPMENT_TRANSITIONS = {
+    "PROCESSING": {"SHIPPED"},
+    "READY_TO_SHIP": {"SHIPPED"},
+    "SHIPPED": {"DELIVERED"},
 }
 
 
 class ShipmentService:
+    @staticmethod
+    def _to_value(value):
+        return value.value if hasattr(value, "value") else str(value)
+
+    @staticmethod
+    def _normalize_status(status: str) -> str:
+        normalized = status.upper()
+        if normalized == "IN_TRANSIT":
+            return "SHIPPED"
+        if normalized == "READY_TO_SHIP":
+            return "PROCESSING"
+        if normalized not in TRACKING_ORDER_STATUSES:
+            raise HTTPException(400, "Invalid shipment status")
+        return normalized
+
+    @staticmethod
+    def _assert_status_transition(current_status: str, next_status: str):
+        if current_status == next_status:
+            return
+        if next_status not in SHIPMENT_TRANSITIONS.get(current_status, set()):
+            raise HTTPException(
+                400,
+                f"Invalid shipment transition: {current_status} -> {next_status}",
+            )
+
     @staticmethod
     async def _get_seller_shop(user_id: int):
         shop = await prisma.shop.find_first(
@@ -87,7 +116,10 @@ class ShipmentService:
 
     @staticmethod
     async def create_shipment(current_user, data):
-        await ShipmentService._assert_mutation_access(data.orderId, current_user)
+        order = await ShipmentService._assert_mutation_access(data.orderId, current_user)
+        order_status = ShipmentService._to_value(order.status)
+        if order_status != "PAID":
+            raise HTTPException(400, "Only paid orders can move to processing")
 
         existing = await prisma.shipment.find_unique(where={"orderId": data.orderId})
         if existing:
@@ -98,13 +130,13 @@ class ShipmentService:
                 "orderId": data.orderId,
                 "carrier": data.carrier,
                 "trackingNumber": data.trackingNumber,
-                "status": "READY_TO_SHIP",
+                "status": "PROCESSING",
             }
         )
 
         await prisma.order.update(
             where={"id": data.orderId},
-            data={"status": "READY_TO_SHIP"},
+            data={"status": "PROCESSING"},
         )
 
         return shipment
@@ -129,6 +161,12 @@ class ShipmentService:
 
         update_data = data.model_dump(exclude_unset=True)
         status = update_data.get("status")
+        current_status = ShipmentService._normalize_status(shipment.status)
+
+        if status:
+            status = ShipmentService._normalize_status(status)
+            ShipmentService._assert_status_transition(current_status, status)
+            update_data["status"] = status
 
         if status == "SHIPPED":
             update_data["shippedAt"] = datetime.utcnow()

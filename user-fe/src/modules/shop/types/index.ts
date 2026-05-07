@@ -17,3 +17,34 @@ export interface IShop {
   Products?: IProduct[]
 }
 
+export interface IdentityInfo {
+  fullName: string
+  cccdNumber: string
+  cccdFrontImage: File | null
+  cccdBackImage: File | null
+}
+
+export interface TaxInfo {
+  businessType: 'individual' | 'household' | 'company'
+  businessRegistrationPlace: string
+  registeredEmail: string
+  taxNumber: string
+  codEnabled: boolean
+  dailyDeliveryEnabled: boolean
+  expressDeliveryEnabled: boolean
+  instantDeliveryEnabled: boolean
+  buyNowPayLaterEnabled: boolean
+}
+
+export interface ShopInfo {
+  shopName: string
+  pickupAddress: string
+  city: string
+  district: string
+  ward: string
+  email: string
+  phone: string
+}
+
+export type RegistrationStep = 'shop-info' | 'identity' | 'tax' | 'shipping' | 'complete'
+

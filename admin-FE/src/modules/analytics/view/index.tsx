@@ -177,8 +177,8 @@ export default function AnalyticsPage() {
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {CATEGORY_DATA.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      {CATEGORY_DATA.map((category, index) => (
+                        <Cell key={category.name} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip />

@@ -20,7 +20,7 @@ export const productUtils = {
   },
 
   isInStock: (product: IProduct): boolean => {
-    return product.Variants?.some(v => v.stock > 0) ?? false;
+    return product.variants?.some(v => v.stock > 0) ?? false;
   },
 
   getRatingColor: (rating: number): string => {

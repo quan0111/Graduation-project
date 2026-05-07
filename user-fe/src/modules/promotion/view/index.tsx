@@ -1,72 +1,28 @@
-import { useState } from "react";
-import { usePromotions } from "../hooks/usePromotion";
-import { HeroBanner } from "../components/heroBanner";
-import { CategoryFilter } from "../components/categoryFilter";
-import { EmptyState } from "@/modules/order/components/emptyState";
-import { PromotionGrid } from "../components/grid";
-import { CTASection } from "../components/CTA";
+import { useMemo } from "react";
 
-// mock data (hoặc API)
+import { EmptyState } from "@/modules/order/components/emptyState";
+
+import { CTASection } from "../components/CTA";
+import { CategoryFilter } from "../components/categoryFilter";
+import { PromotionGrid } from "../components/grid";
+import { HeroBanner } from "../components/heroBanner";
+import { ALL_PROMOTIONS, usePromotionCoupons, usePromotions } from "../hooks/usePromotion";
 
 export default function PromotionPage() {
-  const [categories] = useState<string[]>([
-    "Tất cả",
-    "Shopee",
-    "Tiki",
-    "Lazada",
-  ]);
-   const promotions = [
-  {
-    id: "1",
-    title: "Giảm 50K cho đơn từ 300K",
-    description: "Áp dụng cho tất cả sản phẩm",
-    image: "https://via.placeholder.com/400x200",
-    discount: "-50K",
-    code: "SALE50",
-    used: 80,
-    total: 100,
-    validUntil: "2026-12-31",
-    category: "Shopee",
-  },
-  {
-    id: "2",
-    title: "Giảm 20%",
-    description: "Áp dụng cho ngành hàng điện tử",
-    image: "https://via.placeholder.com/400x200",
-    discount: "-20%",
-    code: "ELEC20",
-    used: 30,
-    total: 100,
-    validUntil: "2026-10-10",
-    category: "Tiki",
-  },
-  {
-    id: "3",
-    title: "Freeship toàn quốc",
-    description: "Không giới hạn giá trị đơn hàng",
-    image: "https://via.placeholder.com/400x200",
-    discount: "FREESHIP",
-    code: "SHIP0",
-    used: 90,
-    total: 100,
-    validUntil: "2026-09-01",
-    category: "Lazada",
-  },
-  {
-    id: "4",
-    title: "Giảm 100K",
-    description: "Đơn từ 1 triệu",
-    image: "https://via.placeholder.com/400x200",
-    discount: "-100K",
-    code: "BIGSALE",
-    used: 10,
-    total: 50,
-    validUntil: "2026-08-20",
-    category: "Shopee",
-  },
-];
-
+  const { data: promotions = [], isLoading, isError } = usePromotionCoupons();
+  const categories = useMemo(
+    () => [ALL_PROMOTIONS, ...Array.from(new Set(promotions.map((promotion) => promotion.category))).filter((item) => item !== ALL_PROMOTIONS)],
+    [promotions],
+  );
   const promo = usePromotions(promotions);
+
+  if (isLoading) {
+    return <div className="p-6 text-sm text-slate-500">Đang tải khuyến mãi...</div>;
+  }
+
+  if (isError) {
+    return <div className="p-6 text-sm text-rose-500">Không thể tải khuyến mãi từ API.</div>;
+  }
 
   return (
     <div className="p-6">

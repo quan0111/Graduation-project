@@ -1,61 +1,103 @@
-import { PackageCheck, PackageOpen, Receipt, Truck } from "lucide-react";
+import { CheckCircle2, Circle, Clock } from "lucide-react";
 
 import type { IOrder } from "../types";
-import { getTrackingSteps } from "../utils/order";
+import { formatDateTime, getTrackingSteps } from "../utils/order";
 
 interface OrderTimelineProps {
   status: IOrder["status"];
+  order?: IOrder;
 }
 
-const stepIcons = [
-  Receipt,
-  PackageOpen,
-  Truck,
-  PackageCheck,
-  PackageCheck,
-  PackageCheck,
-  PackageCheck,
-];
+const stepDescriptions: Record<string, string> = {
+  pending: "Đơn hàng đã được tạo và đang chờ thanh toán",
+  paid: "Đơn hàng đã thanh toán thành công",
+  processing: "Shop đang chuẩn bị đơn hàng",
+  shipped: "Đơn hàng đã được bàn giao cho đơn vị vận chuyển",
+  delivered: "Đơn hàng đã giao đến địa chỉ nhận hàng",
+  completed: "Đơn hàng đã hoàn tất thành công",
+};
 
-export const OrderTimeline: React.FC<OrderTimelineProps> = ({ status }) => {
+export const OrderTimeline: React.FC<OrderTimelineProps> = ({ status, order }) => {
   const steps = getTrackingSteps(status);
 
   return (
-    <div className="rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm">
-      <div className="mb-4">
-        <p className="text-sm font-semibold text-slate-950">Theo dõi đơn hàng</p>
-        <p className="text-sm text-slate-500">Trạng thái xử lý hiện tại của đơn hàng</p>
+    <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
+      <div className="mb-6">
+        <p className="text-lg font-semibold text-slate-900">Theo dõi đơn hàng</p>
+        <p className="mt-1 text-sm text-slate-500">Trạng thái xử lý hiện tại của đơn hàng</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-7">
+      <div className="space-y-4">
         {steps.map((step, index) => {
-          const Icon = stepIcons[index] || PackageCheck;
+          const isCurrent = step.key === status;
+          const isDone = step.active && !isCurrent;
+          const description = stepDescriptions[step.key] || step.label;
 
           return (
             <div key={step.key} className="relative">
-              <div className="flex items-center gap-3 md:flex-col md:items-start">
-                <div
-                  className={[
-                    "flex size-10 items-center justify-center rounded-2xl ring-1",
-                    step.active
-                      ? "bg-[#ee4d2d] text-white ring-[#ee4d2d]"
-                      : "bg-slate-50 text-slate-400 ring-slate-200",
-                  ].join(" ")}
-                >
-                  <Icon className="size-5" />
+              <div className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <div
+                    className={[
+                      "flex size-10 items-center justify-center rounded-full ring-2",
+                      step.active
+                        ? "bg-[#ee4d2d] text-white ring-[#ee4d2d]"
+                        : "bg-slate-100 text-slate-400 ring-slate-200",
+                      isCurrent ? "ring-offset-2" : "",
+                    ].join(" ")}
+                  >
+                    {isDone ? (
+                      <CheckCircle2 className="size-5" />
+                    ) : isCurrent ? (
+                      <Clock className="size-5" />
+                    ) : (
+                      <Circle className="size-5" />
+                    )}
+                  </div>
+                  {index < steps.length - 1 && (
+                    <div
+                      className={[
+                        "mt-2 w-0.5 flex-1",
+                        isDone ? "bg-[#ee4d2d]" : "bg-slate-200",
+                      ].join(" ")}
+                    />
+                  )}
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-900">{step.label}</p>
+
+                <div className="flex-1 pb-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className={[
+                        "font-semibold",
+                        step.active ? "text-slate-900" : "text-slate-500",
+                      ].join(" ")}>
+                        {step.label}
+                      </p>
+                      <p className={[
+                        "mt-1 text-sm",
+                        step.active ? "text-slate-600" : "text-slate-400",
+                      ].join(" ")}>
+                        {description}
+                      </p>
+                    </div>
+                    {isCurrent && (
+                      <span className="rounded-full bg-[#ee4d2d] px-3 py-1 text-xs font-medium text-white">
+                        Hiện tại
+                      </span>
+                    )}
+                  </div>
+
+                  {step.active && order && (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                      <Clock className="size-3" />
+                      <span>
+                        {step.key === "pending" && order.created_at ? formatDateTime(order.created_at) : ""}
+                        {step.key !== "pending" && order.updated_at ? formatDateTime(order.updated_at) : ""}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
-              {index < steps.length - 1 && (
-                <div
-                  className={[
-                    "absolute left-5 top-10 h-8 w-px md:left-10 md:top-5 md:h-px md:w-[calc(100%-1rem)]",
-                    step.active ? "bg-[#ee4d2d]" : "bg-slate-200",
-                  ].join(" ")}
-                />
-              )}
             </div>
           );
         })}

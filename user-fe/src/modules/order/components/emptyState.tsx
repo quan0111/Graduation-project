@@ -5,7 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 
 export const EmptyState = () => {
   return (
-    <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white px-6 py-14 text-center shadow-sm">
+    <div className="rounded-4xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center shadow-sm">
       <div className="mx-auto flex size-16 items-center justify-center rounded-3xl bg-orange-50 text-[#ee4d2d]">
         <Package2 className="size-8" />
       </div>

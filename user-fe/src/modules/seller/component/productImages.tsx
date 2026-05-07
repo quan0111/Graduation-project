@@ -1,5 +1,4 @@
 import { Card } from '@/components/ui/card';
-import { Upload } from 'lucide-react';
 
 export function ProductImages({ images, setImages }: any) {
 

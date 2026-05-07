@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 
 export function LoginForm() {
   const navigate = useNavigate()
+  const location = useLocation()
   const {setUser} = useAuthStore() 
   const [error,setError] = useState("")
   const [success,setSuccess] = useState("")
@@ -37,7 +38,9 @@ export function LoginForm() {
             setUser(data.user);
           }
 
-          navigate("/");
+          // Redirect to checkout or original redirect URL, otherwise go to home
+          const redirectUrl = location.state?.redirect || "/";
+          navigate(redirectUrl);
         },
         onError: (err: any) => {
           const errorMessage = err?.response?.data?.message || "Sai thông tin đăng nhập";

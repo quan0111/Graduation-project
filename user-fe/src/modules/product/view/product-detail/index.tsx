@@ -9,10 +9,12 @@ import { ProductInfo } from "@/modules/product/components/productInfo";
 import { ProductPrice } from "@/modules/product/components/price";
 import { ProductReviews } from "@/modules/product/components/review";
 import { ProductVariants } from "@/modules/product/components/variantSelector";
+import { RecentlyViewed } from "@/modules/product/components/RecentlyViewed";
 import { ShippingInfo } from "@/modules/product/components/shippingInfo";
 import { VendorInfo } from "@/modules/product/components/vendorInfo";
 import { useGetProductByID } from "@/modules/product/api/get-product-id";
 import { useProductDetail } from "@/modules/product/hooks/useProductDetail";
+import { useRecentlyViewed } from "@/modules/product/hooks/useRecentlyViewed";
 import type { IProduct } from "@/modules/product/types";
 import { normalizeProduct } from "@/modules/product/utils/normalize-product";
 import { useRecommendations } from "@/modules/recommendation/api/get-recommendations";
@@ -31,6 +33,7 @@ export default function ProductDetailPage() {
     productId: Number.isFinite(productId) && productId > 0 ? productId : undefined,
   });
   const { trackAddToCart, trackClick, trackView } = useTrackProductBehavior();
+  const { addRecentlyViewed } = useRecentlyViewed();
   const trackedViewByProductIdRef = useRef<Set<number>>(new Set());
 
   const product: IProduct | undefined = useMemo(() => {
@@ -51,7 +54,8 @@ export default function ProductDetailPage() {
     }
     trackedViewByProductIdRef.current.add(product.id);
     trackView(product.id, { page: "product_detail" });
-  }, [product, trackView]);
+    addRecentlyViewed(product);
+  }, [product, trackView, addRecentlyViewed]);
 
   if (isLoading) {
     return (
@@ -76,7 +80,7 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#fffaf6] pb-12 pt-6">
-      <div className="mx-auto max-w-7xl space-y-6 px-4">
+      <div className="mx-auto max-w-7xl space-y-6 px-4 md:px-6">
         <div className="grid gap-6 rounded-3xl border border-orange-100 bg-white p-5 shadow-sm lg:grid-cols-12">
           <div className="lg:col-span-5">
             <ProductGallery images={product.images?.map((image) => image.url) ?? []} name={product.name} />
@@ -129,6 +133,8 @@ export default function ProductDetailPage() {
             trackClick(recommendedProduct.id, { page: "product_detail", source: "recommendation" })
           }
         />
+
+        <RecentlyViewed />
       </div>
     </div>
   );

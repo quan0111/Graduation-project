@@ -3,6 +3,7 @@ import type { OrderStatusType } from "@/constant";
 export type PaymentMethodType = "COD" | "VNPAY" | "MOMO" | "STRIPE";
 export type PaymentStatusType = "pending" | "success" | "failed";
 export type ShipmentStatusType =
+  | "processing"
   | "ready_to_ship"
   | "shipped"
   | "in_transit"

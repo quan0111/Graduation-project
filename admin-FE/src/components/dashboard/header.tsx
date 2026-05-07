@@ -59,7 +59,7 @@ export function DashboardHeader() {
         </Button>
         
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+          <DropdownMenuTrigger>
             <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
               <Bell className="size-5" />
               <Badge className="absolute -right-1 -top-1 size-5 rounded-full bg-primary p-0 text-xs text-primary-foreground">

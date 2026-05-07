@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends
 
-from src.core.dependencies import get_current_user
+from src.core.dependencies import get_current_user, require_admin
 from src.modules.shipment.shipment_schema import ShipmentCreate, ShipmentOut, ShipmentUpdate
 from src.modules.shipment.shipment_service import ShipmentService
 
@@ -37,5 +37,6 @@ async def track_shipment(tracking_number: str):
 
 
 @router.get("/", response_model=List[ShipmentOut])
-async def get_all_shipments():
+async def get_all_shipments(user=Depends(require_admin)):
+    _ = user
     return await ShipmentService.get_all_shipments()

@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Search } from 'lucide-react'
+import { Plus } from 'lucide-react'
 
 export function ProductsManagement() {
   return (

@@ -1,7 +1,7 @@
 import type { IAddress } from "../../address/types"
 import type { IShop } from "../../seller/types"
 import type { IProduct } from "../../product/types"
-import type {  ICart, ICartShort } from "@/modules/cart/types"
+import type { ICart } from "@/modules/cart/types"
 export type UserRoleType =
   | "ADMIN"
   | "SELLER"

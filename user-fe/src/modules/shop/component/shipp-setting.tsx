@@ -13,7 +13,7 @@ interface ShippingSettingsProps {
 }
 
 export function ShippingSettings({ data, onNext, onPrev }: ShippingSettingsProps) {
-  const [formData, setFormData] = useState(data)
+  const [formData, setFormData] = useState<TaxInfo>(data)
 
   const handleNext = () => {
     onNext(formData)

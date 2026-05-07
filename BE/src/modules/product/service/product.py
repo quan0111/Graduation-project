@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import HTTPException
 
 from src.core.database import prisma
+from src.core.dependencies import get_role_value
 from src.modules.product.product_schema import (
     ProductCreate,
     ProductOut,
@@ -12,6 +13,10 @@ from src.modules.product.product_schema import (
 
 
 class ProductService:
+    @staticmethod
+    def _is_admin(viewer) -> bool:
+        return get_role_value(viewer) == "ADMIN"
+
     @staticmethod
     async def _get_shop_for_owner(user_id: int):
         return await prisma.shop.find_first(
@@ -24,6 +29,37 @@ class ProductService:
     @staticmethod
     def _viewer_proxy(user_id: int, role: str):
         return type("Viewer", (), {"id": user_id, "role": role})()
+
+    @staticmethod
+    async def _assert_product_access(product_id: int, viewer):
+        product = await prisma.product.find_unique(
+            where={"id": product_id},
+            include={"shop": True},
+        )
+        if not product or product.deletedAt:
+            raise HTTPException(404, "Product not found")
+
+        is_owner = bool(product.shop and product.shop.ownerId == viewer.id)
+        if not ProductService._is_admin(viewer) and not is_owner:
+            raise HTTPException(403, "Forbidden")
+
+        return product
+
+    @staticmethod
+    async def _assert_product_image_access(image_id: int, viewer):
+        image = await prisma.productimage.find_unique(
+            where={"id": image_id},
+            include={"product": {"include": {"shop": True}}},
+        )
+        if not image:
+            raise HTTPException(404, "Image not found")
+
+        product = image.product
+        is_owner = bool(product and product.shop and product.shop.ownerId == viewer.id)
+        if not ProductService._is_admin(viewer) and not is_owner:
+            raise HTTPException(403, "Forbidden")
+
+        return image
 
     @staticmethod
     def _build_product_payload(product_data: ProductCreate | SellerProductCreate, shop_id: int, status: str):
@@ -148,7 +184,7 @@ class ProductService:
     async def get_all_products(viewer=None):
         where = {"deletedAt": None}
 
-        if not viewer or viewer.role != "ADMIN":
+        if not viewer or get_role_value(viewer) != "ADMIN":
             where["status"] = "ACTIVE"
 
         products = await prisma.product.find_many(
@@ -196,7 +232,7 @@ class ProductService:
             if not viewer:
                 raise HTTPException(404, "Product not found")
 
-            is_admin = viewer.role == "ADMIN"
+            is_admin = ProductService._is_admin(viewer)
             is_owner = bool(product.shop and product.shop.ownerId == viewer.id)
 
             if not is_admin and not is_owner:
@@ -214,7 +250,7 @@ class ProductService:
     async def get_products_by_shop(shop_id: int, viewer=None):
         where = {"shopId": shop_id, "deletedAt": None}
 
-        if not viewer or viewer.role != "ADMIN":
+        if not viewer or get_role_value(viewer) != "ADMIN":
             shop = await prisma.shop.find_unique(where={"id": shop_id})
             is_owner = bool(shop and viewer and shop.ownerId == viewer.id)
             if not is_owner:
@@ -262,7 +298,7 @@ class ProductService:
         if not existing or existing.deletedAt:
             raise HTTPException(404, "Product not found")
 
-        is_admin = viewer.role == "ADMIN"
+        is_admin = ProductService._is_admin(viewer)
         is_owner = bool(existing.shop and existing.shop.ownerId == viewer.id)
         if not is_admin and not is_owner:
             raise HTTPException(403, "Forbidden")
@@ -303,7 +339,8 @@ class ProductService:
         return await ProductService._serialize_product(product_id)
 
     @staticmethod
-    async def delete_product(product_id: int):
+    async def delete_product(product_id: int, viewer):
+        await ProductService._assert_product_access(product_id, viewer)
         await prisma.product.update(
             where={"id": product_id},
             data={"deletedAt": datetime.utcnow()}
@@ -312,10 +349,13 @@ class ProductService:
         return {"message": "Product deleted successfully"}
 
     @staticmethod
-    async def add_product_image(product_id: int, url: str, position: int = 1, isPrimary: bool = False):
-        product = await prisma.product.find_unique(where={"id": product_id})
-        if not product:
-            raise HTTPException(404, "Product not found")
+    async def add_product_image(product_id: int, url: str, position: int = 1, isPrimary: bool = False, viewer=None):
+        if viewer is not None:
+            await ProductService._assert_product_access(product_id, viewer)
+        else:
+            product = await prisma.product.find_unique(where={"id": product_id})
+            if not product:
+                raise HTTPException(404, "Product not found")
 
         return await prisma.productimage.create(
             data={
@@ -327,10 +367,13 @@ class ProductService:
         )
 
     @staticmethod
-    async def update_product_image(image_id: int, url: str = None, position: int = None, isPrimary: bool = None):
-        image = await prisma.productimage.find_unique(where={"id": image_id})
-        if not image:
-            raise HTTPException(404, "Image not found")
+    async def update_product_image(image_id: int, url: str = None, position: int = None, isPrimary: bool = None, viewer=None):
+        if viewer is not None:
+            await ProductService._assert_product_image_access(image_id, viewer)
+        else:
+            image = await prisma.productimage.find_unique(where={"id": image_id})
+            if not image:
+                raise HTTPException(404, "Image not found")
 
         data = {}
         if url is not None:
@@ -346,10 +389,13 @@ class ProductService:
         )
 
     @staticmethod
-    async def delete_product_image(image_id: int):
-        image = await prisma.productimage.find_unique(where={"id": image_id})
-        if not image:
-            raise HTTPException(404, "Image not found")
+    async def delete_product_image(image_id: int, viewer=None):
+        if viewer is not None:
+            await ProductService._assert_product_image_access(image_id, viewer)
+        else:
+            image = await prisma.productimage.find_unique(where={"id": image_id})
+            if not image:
+                raise HTTPException(404, "Image not found")
 
         await prisma.productimage.update(
             where={"id": image_id},
@@ -359,9 +405,13 @@ class ProductService:
         return {"message": "Image deleted"}
 
     @staticmethod
-    async def set_primary_image(product_id: int, image_id: int):
+    async def set_primary_image(image_id: int, viewer=None):
+        image = await ProductService._assert_product_image_access(image_id, viewer) if viewer is not None else await prisma.productimage.find_unique(where={"id": image_id})
+        if not image:
+            raise HTTPException(404, "Image not found")
+
         await prisma.productimage.update_many(
-            where={"productId": product_id},
+            where={"productId": image.productId},
             data={"isPrimary": False}
         )
 
@@ -373,7 +423,10 @@ class ProductService:
         return {"message": "Primary image updated"}
 
     @staticmethod
-    async def reorder_product_images(product_id: int, image_orders: list):
+    async def reorder_product_images(product_id: int, image_orders: list, viewer=None):
+        if viewer is not None:
+            await ProductService._assert_product_access(product_id, viewer)
+
         for image in image_orders:
             await prisma.productimage.update(
                 where={"id": image["id"]},

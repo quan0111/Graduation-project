@@ -3,7 +3,7 @@
 import React from "react";
 import { ProfileTab } from "./profileTab";
 import { AddressTab } from "./addressTab";
-import { PasswordTab } from "./passWordTab";
+import { PasswordTab } from "./passwordTab";
 
 
 // các tab hợp lệ
@@ -36,9 +36,7 @@ export const Content: React.FC<ContentProps> = ({ tab, state }) => {
         fullName: "",
         email: "",
         bio: undefined
-      }} setProfile={function (value: React.SetStateAction<{ avatar: string; fullName: string; email: string; bio?: string; }>): void {
-        throw new Error("Function not implemented.");
-      } } {...(state as ProfileState)} />;
+      }} setProfile={() => {}} {...(state as ProfileState)} />;
 
     case "address":
       return <AddressTab {...(state as AddressState)} />;

@@ -8,8 +8,12 @@ export interface ReturnRequest {
   orderId: number;
   userId: number;
   reason: string;
+  description?: string | null;
+  rejectReason?: string | null;
+  refundAmount?: number | null;
   status: string;
   createdAt: string;
+  reviewedAt?: string | null;
   user?: {
     id: number;
     email: string;
@@ -32,6 +36,11 @@ const getUserReturnRequests = async (userId: number): Promise<ReturnRequest[]> =
   return response.data;
 };
 
+const getSellerReturnRequests = async (): Promise<ReturnRequest[]> => {
+  const response = await apiClient.get(`${API_URL_RETURN}/seller`);
+  return response.data;
+};
+
 export const useReturnRequest = (
   returnId: number,
   config?: UseQueryOptions<ReturnRequest, Error>,
@@ -50,6 +59,16 @@ export const useUserReturnRequests = (
   return useQuery({
     queryKey: ["returns", "user", userId],
     queryFn: () => getUserReturnRequests(userId),
+    ...config,
+  });
+};
+
+export const useSellerReturnRequests = (
+  config?: UseQueryOptions<ReturnRequest[], Error>,
+) => {
+  return useQuery({
+    queryKey: ["returns", "seller"],
+    queryFn: getSellerReturnRequests,
     ...config,
   });
 };

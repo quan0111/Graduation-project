@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, Request
 
-from src.core.dependencies import get_current_user
+from src.core.dependencies import get_current_user, require_admin, require_seller
 from src.modules.order.order_schema import (
     OrderCreate,
     OrderOut,
@@ -28,8 +28,8 @@ async def create_order(
 
 
 @router.post("/payment", response_model=PaymentOut)
-async def create_payment(payment_data: PaymentCreate):
-    return await PaymentService.create_payment(payment_data)
+async def create_payment(payment_data: PaymentCreate, user=Depends(get_current_user)):
+    return await PaymentService.create_payment(payment_data, user)
 
 
 @router.post("/payment/qr", response_model=PaymentGatewayOut)
@@ -39,7 +39,8 @@ async def create_qr_payment(payment_data: PaymentGatewayCreate, request: Request
 
 
 @router.get("/payment/order/{order_id}", response_model=PaymentOut)
-async def get_payment_by_order(order_id: int):
+async def get_payment_by_order(order_id: int, user=Depends(get_current_user)):
+    await OrderService.assert_order_visibility(order_id, user)
     return await PaymentService.get_payment_by_order(order_id)
 
 
@@ -64,27 +65,33 @@ async def momo_return(request: Request):
 
 
 @router.get("/payment/{payment_id}", response_model=PaymentOut)
-async def get_payment(payment_id: int):
-    return await PaymentService.get_payment(payment_id)
+async def get_payment(payment_id: int, user=Depends(get_current_user)):
+    return await PaymentService.get_payment(payment_id, user)
 
 
 @router.patch("/payment/{payment_id}")
-async def update_payment_by_id(payment_id: int, payment_data: PaymentUpdate):
+async def update_payment_by_id(
+    payment_id: int,
+    payment_data: PaymentUpdate,
+    user=Depends(require_admin),
+):
+    _ = user
     return await PaymentService.update_payment_status(payment_id, payment_data.status)
 
 
 @router.get("/payment", response_model=List[PaymentOut])
-async def get_all_payments():
+async def get_all_payments(user=Depends(require_admin)):
+    _ = user
     return await PaymentService.get_all_payments()
 
 
 @router.get("/seller", response_model=List[OrderOut])
-async def get_seller_orders(user=Depends(get_current_user)):
+async def get_seller_orders(user=Depends(require_seller)):
     return await OrderService.get_seller_orders(user)
 
 
 @router.get("/seller/{order_id}", response_model=OrderOut)
-async def get_seller_order(order_id: int, user=Depends(get_current_user)):
+async def get_seller_order(order_id: int, user=Depends(require_seller)):
     return await OrderService.get_seller_order(order_id, user)
 
 
@@ -114,7 +121,12 @@ async def cancel_order(order_id: int, user=Depends(get_current_user)):
 
 
 @router.patch("/{order_id}/payment")
-async def update_payment(order_id: int, payment_data: OrderUpdate):
+async def update_payment(
+    order_id: int,
+    payment_data: OrderUpdate,
+    user=Depends(require_admin),
+):
+    _ = user
     order = await OrderService._get_order_or_404(order_id)
     if not order.payment:
         return {"message": "Payment not found for this order"}

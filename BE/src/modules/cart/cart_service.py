@@ -1,5 +1,6 @@
 from src.core.database import prisma
 from fastapi import HTTPException
+from src.core.dependencies import get_role_value
 
 
 class CartService:
@@ -38,6 +39,12 @@ class CartService:
             raise HTTPException(404, "Cart not found")
 
         return self._attach_total(cart)
+
+    async def get_cart_for_user(self, cart_id: int, current_user):
+        cart = await self.get_cart(cart_id)
+        if cart["userId"] != current_user.id and get_role_value(current_user) != "ADMIN":
+            raise HTTPException(403, "Forbidden")
+        return cart
 
     async def get_cart_by_user(self, user_id: int):
         cart = await prisma.cart.find_unique(
@@ -111,7 +118,19 @@ class CartService:
             }
         )
 
-    async def update_item(self, item_id: int, quantity: int):
+    async def _assert_item_access(self, item_id: int, user_id: int):
+        item = await prisma.cartitem.find_unique(
+            where={"id": item_id},
+            include={"cart": True},
+        )
+        if not item:
+            raise HTTPException(404, "Cart item not found")
+        if item.cart.userId != user_id:
+            raise HTTPException(403, "Forbidden")
+        return item
+
+    async def update_item(self, item_id: int, quantity: int, user_id: int):
+        await self._assert_item_access(item_id, user_id)
         if quantity < 0:
             raise HTTPException(400, "Quantity must be >= 0")
 
@@ -124,10 +143,17 @@ class CartService:
             data={"quantity": quantity}
         )
 
-    async def delete_item(self, item_id: int):
+    async def delete_item(self, item_id: int, user_id: int):
+        await self._assert_item_access(item_id, user_id)
         return await prisma.cartitem.delete(where={"id": item_id})
 
-    async def clear_cart(self, cart_id: int):
+    async def clear_cart(self, cart_id: int, user_id: int):
+        cart = await prisma.cart.find_unique(where={"id": cart_id})
+        if not cart:
+            raise HTTPException(404, "Cart not found")
+        if cart.userId != user_id:
+            raise HTTPException(403, "Forbidden")
+
         await prisma.cartitem.delete_many(
             where={"cartId": cart_id}
         )

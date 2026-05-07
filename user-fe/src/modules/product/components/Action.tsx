@@ -1,9 +1,11 @@
 import { Minus, Plus, ShoppingCart } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { useAddItem } from "@/modules/cart/api/add-item";
+import { getStoredStorefrontUser } from "@/lib/auth-storage";
 
 interface ProductActionsProps {
   productId: number;
@@ -16,8 +18,17 @@ interface ProductActionsProps {
 export const ProductActions = ({ productId, variantId, shopId, stock, onAddedToCart }: ProductActionsProps) => {
   const [quantity, setQuantity] = useState(1);
   const addMutation = useAddItem();
+  const navigate = useNavigate();
 
   const handleAddToCart = async () => {
+    // Kiểm tra authentication
+    const user = getStoredStorefrontUser();
+    if (!user) {
+      toast.error("Bạn cần đăng nhập để thêm vào giỏ hàng");
+      navigate("/login", { state: { redirect: window.location.pathname } });
+      return;
+    }
+
     if (!shopId) {
       toast.error("Sản phẩm chưa có thông tin shop");
       return;

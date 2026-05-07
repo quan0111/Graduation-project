@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import HTTPException
 
 from src.core.database import prisma
+from src.core.dependencies import get_role_value
 from src.modules.order.momo_service import MoMoService
 from src.modules.order.order_schema import PaymentCreate, PaymentGatewayCreate, PaymentGatewayOut, PaymentOut
 from src.modules.order.vnpay_service import VNPayService
@@ -12,10 +13,12 @@ class PaymentService:
     GATEWAY_METHODS = {"MOMO", "VNPAY"}
 
     @staticmethod
-    async def create_payment(payment_data: PaymentCreate) -> PaymentOut:
+    async def create_payment(payment_data: PaymentCreate, current_user) -> PaymentOut:
         order = await prisma.order.find_unique(where={"id": payment_data.orderId})
         if not order:
             raise HTTPException(404, "Order not found")
+        if order.userId != current_user.id and get_role_value(current_user) != "ADMIN":
+            raise HTTPException(403, "Forbidden")
 
         existing = await prisma.payment.find_unique(where={"orderId": payment_data.orderId})
         if existing:
@@ -152,10 +155,17 @@ class PaymentService:
         }
 
     @staticmethod
-    async def get_payment(payment_id: int) -> PaymentOut:
-        payment = await prisma.payment.find_unique(where={"id": payment_id})
+    async def get_payment(payment_id: int, current_user=None) -> PaymentOut:
+        payment = await prisma.payment.find_unique(
+            where={"id": payment_id},
+            include={"order": True},
+        )
         if not payment:
             raise HTTPException(404, "Payment not found")
+        if current_user is not None:
+            role = get_role_value(current_user)
+            if role != "ADMIN" and payment.order.userId != current_user.id:
+                raise HTTPException(403, "Forbidden")
 
         return PaymentService._to_out(payment)
 
@@ -221,9 +231,13 @@ class PaymentService:
     @staticmethod
     async def _sync_order_payment_status(order_id: int, payment_status: str):
         if payment_status == "SUCCESS":
-            await prisma.order.update(where={"id": order_id}, data={"status": "PAID"})
+            order = await prisma.order.find_unique(where={"id": order_id})
+            if order and PaymentService._to_value(order.status) in {"PENDING", "PAYMENT_FAILED"}:
+                await prisma.order.update(where={"id": order_id}, data={"status": "PAID"})
         elif payment_status == "FAILED":
-            await prisma.order.update(where={"id": order_id}, data={"status": "PAYMENT_FAILED"})
+            order = await prisma.order.find_unique(where={"id": order_id})
+            if order and PaymentService._to_value(order.status) == "PENDING":
+                await prisma.order.update(where={"id": order_id}, data={"status": "PAYMENT_FAILED"})
 
     @staticmethod
     def _to_out(payment) -> PaymentOut:

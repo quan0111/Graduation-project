@@ -34,12 +34,16 @@ export const HomeContainer = ({
   onProductClick,
 }: HomeContainerProps) => {
   return (
-    <div className="bg-[#fffaf6]">
-      <HeroSection />
-      <CategoryGrid categories={categories} />
-      <FeatureSection features={features} />
+    <div className="min-h-screen bg-[#fffaf6]">
+      <div className="mx-auto max-w-7xl px-4 md:px-6">
+        <HeroSection />
+        <div className="py-8 md:py-12">
+          <CategoryGrid categories={categories} />
+        </div>
+        <FeatureSection features={features} />
+      </div>
 
-      <div className="mx-auto max-w-7xl space-y-12 px-4 py-12">
+      <div className="mx-auto max-w-7xl space-y-12 px-4 md:px-6 py-12">
         <RecommendationSection
           title="Dành riêng cho bạn"
           subtitle="Sản phẩm được chọn dựa trên hành vi xem và mua gần đây của bạn."

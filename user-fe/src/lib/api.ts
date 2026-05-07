@@ -59,7 +59,7 @@ apiClient.interceptors.response.use(
         return apiClient(original);
       } catch (refreshError) {
         clearStorefrontSession();
-        window.location.href = "/login";
+        // Don't automatically redirect - let components handle auth state
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

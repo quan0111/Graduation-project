@@ -11,7 +11,6 @@ class FinanceService:
             where={"id": order_id},
             include={
                 "items": True,
-                "shop": True
             }
         )
 
@@ -96,16 +95,17 @@ class FinanceService:
     @staticmethod
     async def get_shop_revenue(shop_id: int):
 
-        orders = await prisma.order.find_many(
-            where={"shopId": shop_id, "status": "DELIVERED"},
-            include={"items": True}
+        items = await prisma.orderitem.find_many(
+            where={
+                "shopId": shop_id,
+                "order": {
+                    "status": {"in": ["DELIVERED", "COMPLETED"]},
+                },
+            },
+            include={"order": True}
         )
 
-        total_revenue = sum(
-            item.price * item.quantity
-            for order in orders
-            for item in order.items
-        )
+        total_revenue = sum(item.price * item.quantity for item in items)
 
         commission = total_revenue * 0.1
         net = total_revenue - commission

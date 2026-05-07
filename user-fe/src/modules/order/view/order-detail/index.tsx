@@ -1,19 +1,21 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ChevronLeft, RotateCcw } from "lucide-react";
-import { useState } from "react";
 
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { ReturnRequestForm } from "@/modules/return-request/components/returnRequestForm";
+import { ShipmentTracking } from "@/modules/shipment/components/shipmentTracking";
+import { useShipmentByOrder } from "@/modules/shipment/api/get-shipment";
 
 import { useGetOrderById } from "../../api/get-order";
+import { useUpdateOrder } from "../../api/update-order";
+import { CancelOrderModal } from "../../components/CancelOrderModal";
 import { OrderActions } from "../../components/orderAction";
 import { OrderHeader } from "../../components/orderHeader";
 import { OrderItems } from "../../components/orderItems";
 import { OrderShipping } from "../../components/shipping";
 import { OrderSummary } from "../../components/summary";
 import { OrderTimeline } from "../../components/orderTimeLine";
-import { useShipmentByOrder } from "@/modules/shipment/api/get-shipment";
-import { ShipmentTracking } from "@/modules/shipment/components/shipmentTracking";
-import { ReturnRequestForm } from "@/modules/return-request/components/returnRequestForm";
 
 export default function OrderDetailPage() {
   const { id } = useParams();
@@ -22,7 +24,9 @@ export default function OrderDetailPage() {
     enabled: !!orderId,
   });
   const { data: shipment } = useShipmentByOrder(orderId);
+  const completeMutation = useUpdateOrder();
   const [showReturnForm, setShowReturnForm] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   if (isLoading) {
     return <div className="p-6 text-sm text-slate-500">Đang tải hóa đơn...</div>;
@@ -31,6 +35,15 @@ export default function OrderDetailPage() {
   if (isError || !order) {
     return <div className="p-6 text-sm text-rose-500">Không tìm thấy hóa đơn.</div>;
   }
+
+  const handleCompleteOrder = async () => {
+    if (!window.confirm("Xác nhận bạn đã nhận được hàng?")) return;
+    await completeMutation.mutateAsync({
+      id: String(order.id),
+      data: { status: "completed" },
+    });
+    window.location.reload();
+  };
 
   return (
     <div className="min-h-screen bg-[#f6f7fb]">
@@ -48,14 +61,16 @@ export default function OrderDetailPage() {
               <OrderHeader order={order} expanded />
             </div>
 
-            <OrderTimeline status={order.status} />
+            <OrderTimeline status={order.status} order={order} />
             <OrderShipping order={order} />
             <ShipmentTracking shipment={shipment ?? null} />
 
             <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
               <div className="mb-5">
                 <p className="text-lg font-semibold text-slate-950">Sản phẩm trong đơn</p>
-                <p className="text-sm text-slate-500">Thông tin hiển thị đúng theo hóa đơn của tài khoản hiện tại.</p>
+                <p className="text-sm text-slate-500">
+                  Thông tin hiển thị đúng theo hóa đơn của tài khoản hiện tại.
+                </p>
               </div>
               <OrderItems items={order.items} />
             </div>
@@ -67,6 +82,24 @@ export default function OrderDetailPage() {
             <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
               <p className="mb-4 text-base font-semibold text-slate-950">Tác vụ</p>
               <OrderActions order={order} />
+              {order.status === "delivered" && (
+                <Button
+                  className="mt-4 w-full bg-[#ee4d2d] hover:bg-[#d93f21]"
+                  onClick={handleCompleteOrder}
+                  disabled={completeMutation.isPending}
+                >
+                  {completeMutation.isPending ? "Đang xác nhận..." : "Đã nhận hàng"}
+                </Button>
+              )}
+              {order.status === "pending" && (
+                <button
+                  onClick={() => setShowCancelModal(true)}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-red-300 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                >
+                  <RotateCcw className="size-4" />
+                  Hủy đơn hàng
+                </button>
+              )}
               {order.status === "completed" && (
                 <button
                   onClick={() => setShowReturnForm(true)}
@@ -88,6 +121,18 @@ export default function OrderDetailPage() {
           onCancel={() => setShowReturnForm(false)}
           onSuccess={() => {
             setShowReturnForm(false);
+            window.location.reload();
+          }}
+        />
+      )}
+
+      {showCancelModal && (
+        <CancelOrderModal
+          orderId={orderId}
+          isOpen={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          onSuccess={() => {
+            setShowCancelModal(false);
             window.location.reload();
           }}
         />

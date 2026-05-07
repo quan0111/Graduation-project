@@ -1,31 +1,43 @@
-from fastapi import APIRouter
 from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException
+
+from src.core.database import prisma
+from src.core.dependencies import get_current_user, get_role_value, require_seller_or_admin
 from src.modules.follower.follower_service import ShopFollowerService
 from src.modules.follower.follower_schema import ShopFollowerOut
 
 router = APIRouter(prefix="/shop-follow", tags=["Shop Follow"])
 
 @router.post("/{shop_id}")
-async def follow_shop(shop_id: int, user_id: int):
-    return await ShopFollowerService.follow_shop(user_id, shop_id)
+async def follow_shop(shop_id: int, user=Depends(get_current_user)):
+    return await ShopFollowerService.follow_shop(user.id, shop_id)
 
 @router.delete("/{shop_id}")
-async def unfollow_shop(shop_id: int, user_id: int):
-    return await ShopFollowerService.unfollow_shop(user_id, shop_id)
+async def unfollow_shop(shop_id: int, user=Depends(get_current_user)):
+    return await ShopFollowerService.unfollow_shop(user.id, shop_id)
 
 
 @router.get("/is-following/{shop_id}")
-async def is_following(shop_id: int, user_id: int):
-    result = await ShopFollowerService.is_following(user_id, shop_id)
+async def is_following(shop_id: int, user=Depends(get_current_user)):
+    result = await ShopFollowerService.is_following(user.id, shop_id)
     return {"is_following": result}
 
 
 @router.get("/user/{user_id}", response_model=List[ShopFollowerOut])
-async def get_followed_shops(user_id: int):
+async def get_followed_shops(user_id: int, user=Depends(get_current_user)):
+    if user.id != user_id and get_role_value(user) != "ADMIN":
+        raise HTTPException(403, "Forbidden")
     return await ShopFollowerService.get_followed_shops(user_id)
 
 @router.get("/shop/{shop_id}", response_model=List[ShopFollowerOut])
-async def get_shop_followers(shop_id: int):
+async def get_shop_followers(shop_id: int, user=Depends(require_seller_or_admin)):
+    if get_role_value(user) != "ADMIN":
+        shop = await prisma.shop.find_first(
+            where={"id": shop_id, "ownerId": user.id, "deletedAt": None}
+        )
+        if not shop:
+            raise HTTPException(403, "Forbidden")
     return await ShopFollowerService.get_shop_followers(shop_id)
 
 

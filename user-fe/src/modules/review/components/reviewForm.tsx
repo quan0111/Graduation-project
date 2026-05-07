@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Star, X } from "lucide-react";
+import { Star, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 import { useCreateReview } from "../api/create-review";
 
@@ -23,8 +24,48 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
+  const [images, setImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   const createMutation = useCreateReview();
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    if (images.length + files.length > 5) {
+      toast.error("Tối đa 5 ảnh");
+      return;
+    }
+
+    const validFiles = files.filter((file) => {
+      if (!file.type.startsWith("image/")) {
+        toast.error(`File ${file.name} không phải là ảnh`);
+        return false;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`File ${file.name} vượt quá 5MB`);
+        return false;
+      }
+      return true;
+    });
+
+    setImages((prev) => [...prev, ...validFiles]);
+
+    // Create previews
+    validFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviews((prev) => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async () => {
     if (rating === 0) {
@@ -38,6 +79,7 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({
         productId,
         rating,
         comment: comment.trim() || undefined,
+        images: images.length > 0 ? images : undefined,
       });
 
       toast.success("Đánh giá đã được gửi");
@@ -94,6 +136,53 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({
               rows={4}
               className="w-full"
             />
+          </div>
+
+          {/* Image Upload */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Hình ảnh (tối đa 5 ảnh, mỗi ảnh tối đa 5MB)</label>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="image-upload"
+                />
+                <label
+                  htmlFor="image-upload"
+                  className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-slate-400 hover:bg-slate-50 transition-colors"
+                >
+                  <Upload className="w-5 h-5 text-slate-500" />
+                  <span className="text-sm text-slate-600">Chọn ảnh</span>
+                </label>
+                <span className="text-sm text-slate-500">{images.length}/5</span>
+              </div>
+
+              {/* Image Previews */}
+              {imagePreviews.length > 0 && (
+                <div className="grid grid-cols-3 gap-3">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg border border-slate-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(index)}
+                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Actions */}

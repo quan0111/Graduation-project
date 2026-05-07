@@ -75,7 +75,7 @@ export const useUpdateReview = ({ config }: { config?: MutationConfig<typeof upd
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: updateReview,
-        onSuccess: async (_, variables) => {
+        onSuccess: async () => {
             await queryClient.invalidateQueries({ queryKey: ["reviews"] });
             await queryClient.invalidateQueries({ queryKey: ["product"] });
         },

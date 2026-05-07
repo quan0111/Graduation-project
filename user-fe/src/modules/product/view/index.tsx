@@ -75,8 +75,8 @@ export default function ProductPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fffaf6] pb-16 pt-6">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4">
+    <div className="min-h-screen bg-[#fffaf6] pb-12 pt-6">
+      <div className="mx-auto max-w-7xl flex flex-col gap-6 px-4 md:px-6">
         <CatalogHeader totalProducts={apiProducts.length} />
 
         <div className="grid gap-6 lg:grid-cols-4">

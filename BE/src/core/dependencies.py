@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
 
@@ -48,3 +50,30 @@ async def get_optional_current_user(token=Depends(optional_security)):
         return None
 
     return user
+
+
+def get_role_value(user) -> str:
+    return user.role.value if hasattr(user.role, "value") else str(user.role)
+
+
+def assert_roles(user, allowed_roles: Iterable[str]):
+    allowed = {role.upper() for role in allowed_roles}
+    if get_role_value(user) not in allowed:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return user
+
+
+async def require_admin(user=Depends(get_current_user)):
+    return assert_roles(user, {"ADMIN"})
+
+
+async def require_seller(user=Depends(get_current_user)):
+    return assert_roles(user, {"SELLER"})
+
+
+async def require_customer(user=Depends(get_current_user)):
+    return assert_roles(user, {"CUSTOMER"})
+
+
+async def require_seller_or_admin(user=Depends(get_current_user)):
+    return assert_roles(user, {"SELLER", "ADMIN"})

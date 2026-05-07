@@ -12,6 +12,7 @@ import {
   Megaphone,
   MessageCircle,
   Package,
+  RefreshCcw,
   Search,
   Settings,
   ShieldCheck,
@@ -30,6 +31,7 @@ const menuGroups = [
     items: [
       { label: "Tổng quan", href: "/seller/dashboard", icon: LayoutDashboard, match: "/seller/dashboard" },
       { label: "Đơn hàng", href: "/seller/orders", icon: ClipboardList, match: "/seller/orders" },
+      { label: "Trả hàng / hoàn tiền", href: "/seller/returns", icon: RefreshCcw, match: "/seller/returns" },
       { label: "Sản phẩm", href: "/seller/products/new", icon: Package, match: "/seller/products" },
       { label: "Vận chuyển", href: "/seller/orders", icon: Truck, match: "/seller/orders" },
     ],

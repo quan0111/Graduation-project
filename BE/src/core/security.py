@@ -29,7 +29,7 @@ def hash_token(token: str):
 
 def create_access_token(
     data: dict,
-    expires_delta: int = 60,
+    expires_delta: int = 10080,
     scope: str = AUTH_SCOPE_STOREFRONT
 ):
     to_encode = data.copy()

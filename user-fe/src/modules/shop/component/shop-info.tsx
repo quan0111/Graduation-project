@@ -12,7 +12,7 @@ interface ShopInfoFormProps {
 }
 
 export function ShopInfoForm({ data, onNext }: ShopInfoFormProps) {
-  const [formData, setFormData] = useState(data)
+  const [formData, setFormData] = useState<ShopInfo>(data)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const validateForm = () => {

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.security import HTTPBearer
 
 from src.core.database import prisma
-from src.core.dependencies import get_current_user as get_current_user_dep
+from src.core.dependencies import get_current_user as get_current_user_dep, get_role_value
 from src.core.security import AUTH_SCOPE_ADMIN, AUTH_SCOPE_STOREFRONT
 from src.modules.auth.schema import AuthResponse, LoginRequest, RegisterRequest
 from src.modules.auth.service import AuthService
@@ -117,7 +117,7 @@ async def get_me(user=Depends(get_current_user_dep)):
 
 @router.get("/admin/me")
 async def get_admin_me(user=Depends(get_current_user_dep)):
-    if user.role != "ADMIN":
+    if get_role_value(user) != "ADMIN":
         raise HTTPException(403, "Admin access required")
 
     return {

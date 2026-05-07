@@ -127,7 +127,7 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-[#f6f7fb]">
-      <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
+      <div className="mx-auto max-w-7xl px-4 md:px-6 py-8">
         <section className="rounded-[2rem] bg-[radial-gradient(circle_at_top_left,_rgba(238,77,45,0.18),_transparent_36%),linear-gradient(135deg,#111827,#1f2937)] px-6 py-8 text-white shadow-lg">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -176,12 +176,14 @@ export default function CartPage() {
             />
           </div>
 
-          <CartSummary
-            subtotal={subtotal}
-            selectedCount={selectedItems.length}
-            disabled={!selectedItems.length}
-            onCheckout={handleCheckout}
-          />
+          <div className="lg:sticky lg:top-24 lg:self-start">
+            <CartSummary
+              subtotal={subtotal}
+              selectedCount={selectedItems.length}
+              disabled={!selectedItems.length}
+              onCheckout={handleCheckout}
+            />
+          </div>
         </div>
       </div>
     </div>

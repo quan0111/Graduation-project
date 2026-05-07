@@ -53,6 +53,7 @@ export const OrderStatus = {
   Pending: "pending",
   Confirmed: "confirmed",
   Paid: "paid",
+  PaymentFailed: "payment_failed",
   Processing: "processing",
   ReadyToShip: "ready_to_ship",
   Shipped: "shipped",

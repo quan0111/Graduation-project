@@ -19,12 +19,94 @@ const initialMessages: ChatMessage[] = [
   {
     id: "welcome",
     role: "assistant",
-    content: "Minh co the goi y san pham, tim hang, kiem tra gio hang va don hang trong MarketHub.",
-    suggestions: ["Goi y san pham cho toi", "Kiem tra gio hang", "Don hang cua toi"],
+    content: "Chào bạn! Tôi là trợ lý MarketHub AI. Tôi có thể giúp bạn tìm sản phẩm, trả lời câu hỏi về đơn hàng, giỏ hàng, và giới thiệu thông tin sản phẩm.",
+    suggestions: ["Gợi ý sản phẩm cho tôi", "Kiểm tra giỏ hàng", "Đơn hàng của tôi", "Chính sách đổi trả"],
   },
 ];
 
 const priceFormatter = new Intl.NumberFormat("vi-VN");
+
+// Local knowledge base for common questions
+const localKnowledgeBase: Record<string, { answer: string; suggestions?: string[] }> = {
+  "chính sách đổi trả": {
+    answer: "MarketHub hỗ trợ đổi trả trong vòng 7 ngày làm việc khi sản phẩm bị lỗi hoặc không đúng mô tả. Bạn cần tạo yêu cầu trả hàng từ trang chi tiết đơn hàng.",
+    suggestions: ["Làm sao để trả hàng?", "Chính sách hoàn tiền"],
+  },
+  "đổi trả": {
+    answer: "Bạn có thể trả hàng trong vòng 7 ngày làm việc. Vào trang Đơn hàng > chọn đơn hàng > nhấn Yêu cầu trả hàng.",
+    suggestions: ["Kiểm tra đơn hàng", "Chính sách hoàn tiền"],
+  },
+  "hoàn tiền": {
+    answer: "Sau khi admin duyệt yêu cầu trả hàng, seller sẽ hoàn tiền cho bạn. Thời gian hoàn tiền thường từ 3-5 ngày làm việc.",
+    suggestions: ["Chính sách đổi trả"],
+  },
+  "vận chuyển": {
+    answer: "MarketHub miễn phí vận chuyển cho đơn hàng từ 300.000đ trên toàn quốc. Thời gian giao hàng tiêu chuẩn 2-3 ngày, giao nhanh 2-4 giờ.",
+    suggestions: ["Phí vận chuyển", "Theo dõi đơn hàng"],
+  },
+  "phí vận chuyển": {
+    answer: "Miễn phí vận chuyển cho đơn từ 300.000đ. Dưới 300.000đ: Giao tiêu chuẩn 30.000đ, Giao nhanh 50.000đ, Giao trong ngày 99.000đ.",
+    suggestions: ["Vận chuyển"],
+  },
+  "thanh toán": {
+    answer: "MarketHub hỗ trợ thanh toán bằng thẻ ngân hàng, ví MoMo, VNPay và thanh toán khi nhận hàng (COD).",
+    suggestions: ["Các phương thức thanh toán"],
+  },
+  "phương thức thanh toán": {
+    answer: "Bạn có thể thanh toán bằng: Thẻ ATM/VISA/MasterCard, Ví MoMo, VNPay QR, hoặc COD (thanh toán khi nhận hàng).",
+    suggestions: ["Thanh toán"],
+  },
+  "tài khoản": {
+    answer: "Bạn cần đăng nhập để đặt hàng, xem đơn hàng, và sử dụng các tính năng cá nhân hóa. Nhấn Đăng nhập ở góc trên bên phải.",
+    suggestions: ["Đăng ký tài khoản"],
+  },
+  "đăng ký": {
+    answer: "Nhấn Đăng ký ở trang đăng nhập, điền email, mật khẩu và thông tin cá nhân để tạo tài khoản mới.",
+    suggestions: ["Đăng nhập"],
+  },
+  "khuyến mãi": {
+    answer: "MarketHub thường xuyên có các chương trình khuyến mãi. Bạn có thể nhập mã voucher tại trang thanh toán để được giảm giá.",
+    suggestions: ["Kiểm tra khuyến mãi"],
+  },
+  "voucher": {
+    answer: "Nhập mã voucher tại trang thanh toán để được giảm giá. Mỗi voucher có điều kiện áp dụng riêng biệt.",
+    suggestions: ["Khuyến mãi"],
+  },
+  "liên hệ": {
+    answer: "Bạn có thể liên hệ hỗ trợ qua email support@markethub.com hoặc hotline 1900-1234. Đội ngũ CSKH hoạt động 24/7.",
+    suggestions: ["Chính sách"],
+  },
+  "hỗ trợ": {
+    answer: "Đội ngũ CSKH của MarketHub sẵn sàng hỗ trợ bạn 24/7. Vui lòng liên hệ qua hotline 1900-1234 hoặc email support@markethub.com.",
+    suggestions: ["Liên hệ"],
+  },
+  "sản phẩm": {
+    answer: "MarketHub có hàng nghìn sản phẩm từ các danh mục: Điện tử, Thời trang, Gia dụng, Mỹ phẩm, và nhiều hơn nữa. Bạn có thể tìm kiếm theo danh mục hoặc từ khóa.",
+    suggestions: ["Gợi ý sản phẩm", "Sản phẩm bán chạy"],
+  },
+  "giới thiệu sản phẩm": {
+    answer: "Dưới đây là một số sản phẩm nổi bật trên MarketHub:\n\n📱 Điện thoại iPhone 15 Pro Max - Chip A17 Pro, Camera 48MP\n💻 MacBook Air M2 - Mỏng nhẹ, hiệu năng mạnh mẽ\n👟 Nike Air Jordan - Giày thể thao phong cách\n💄 Son MAC Rouge - Màu sắc bền đẹp\n🎧 Tai nghe Sony WH-1000XM5 - Chống ồn đỉnh cao\n\nBạn muốn xem chi tiết sản phẩm nào?",
+    suggestions: ["iPhone 15", "MacBook Air", "Nike Jordan"],
+  },
+  "san pham noi bat": {
+    answer: "Sản phẩm nổi bật tháng này:\n\n🌟 iPhone 15 Pro Max - 29.990.000đ\n🌟 MacBook Air M2 - 24.990.000đ\n🌟 Sony WH-1000XM5 - 8.990.000đ\n🌟 Nike Air Jordan 1 - 4.500.000đ\n🌟 Son MAC Ruby Woo - 650.000đ",
+    suggestions: ["Gợi ý sản phẩm", "Sản phẩm giá rẻ"],
+  },
+  "danh mục": {
+    answer: "MarketHub có các danh mục sản phẩm:\n\n📱 Điện tử & Điện thoại\n👕 Thời trang\n🏠 Gia dụng\n💄 Mỹ phẩm\n📚 Sách\n🎮 Đồ chơi\n🍪 Thực phẩm",
+    suggestions: ["Điện thoại", "Thời trang", "Mỹ phẩm"],
+  },
+};
+
+const getLocalAnswer = (query: string): { answer: string; suggestions?: string[] } | null => {
+  const lowerQuery = query.toLowerCase().trim();
+  for (const [key, value] of Object.entries(localKnowledgeBase)) {
+    if (lowerQuery.includes(key)) {
+      return value;
+    }
+  }
+  return null;
+};
 
 const makeId = () => {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -64,6 +146,22 @@ export function ChatbotWidget() {
     setMessages((current) => [...current, { id: makeId(), role: "user", content: text }]);
     setDraft("");
 
+    // Check local knowledge base first
+    const localAnswer = getLocalAnswer(text);
+    if (localAnswer) {
+      setMessages((current) => [
+        ...current,
+        {
+          id: makeId(),
+          role: "assistant",
+          content: localAnswer.answer,
+          suggestions: localAnswer.suggestions,
+        },
+      ]);
+      return;
+    }
+
+    // If not in local knowledge, call API
     mutation.mutate(
       { message: text, productId: currentProductId },
       {
@@ -85,8 +183,8 @@ export function ChatbotWidget() {
             {
               id: makeId(),
               role: "assistant",
-              content: "Hien chua the tra loi. Ban thu lai sau it phut.",
-              suggestions: ["Goi y san pham cho toi", "Tim san pham gia tot"],
+              content: "Hiện chưa thể trả lời. Bạn thử lại sau ít phút.",
+              suggestions: ["Gợi ý sản phẩm cho tôi", "Tìm sản phẩm giá tốt", "Chính sách đổi trả"],
             },
           ]);
         },
@@ -117,7 +215,7 @@ export function ChatbotWidget() {
               </span>
               <div>
                 <p className="text-sm font-semibold text-slate-950">MarketHub AI</p>
-                <p className="text-xs text-slate-500">Tra loi ngan gon trong pham vi app</p>
+                <p className="text-xs text-slate-500">Trợ lý thông minh 24/7</p>
               </div>
             </div>
             <Button variant="ghost" size="icon-sm" onClick={() => setOpen(false)} aria-label="Dong chatbot">
@@ -137,7 +235,7 @@ export function ChatbotWidget() {
                 >
                   <div className="mb-1 flex items-center gap-1.5 text-xs font-medium opacity-80">
                     {message.role === "assistant" ? <Bot className="size-3.5" /> : null}
-                    {message.role === "assistant" ? "Tro ly" : "Ban"}
+                    {message.role === "assistant" ? "Trợ lý" : "Bạn"}
                   </div>
                   <p className="leading-5">{message.content}</p>
 
@@ -187,7 +285,7 @@ export function ChatbotWidget() {
               <div className="flex justify-start">
                 <div className="flex items-center gap-2 rounded-2xl border border-orange-100 bg-orange-50 px-3 py-2 text-sm text-slate-600">
                   <Loader2 className="size-4 animate-spin" />
-                  Dang tra loi...
+                  Đang trả lời...
                 </div>
               </div>
             )}
@@ -198,7 +296,7 @@ export function ChatbotWidget() {
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Hoi ve san pham, don hang, gio hang..."
+              placeholder="Hỏi về sản phẩm, đơn hàng, chính sách..."
               className="max-h-24 min-h-10 rounded-2xl py-2"
             />
             <Button type="submit" size="icon" disabled={!draft.trim() || mutation.isPending} aria-label="Gui tin nhan">

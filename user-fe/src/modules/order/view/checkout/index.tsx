@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Archive, ShieldCheck, Truck, Zap } from "lucide-react";
 import { toast } from "sonner";
@@ -54,6 +54,25 @@ export default function CheckOutPage() {
   const deleteCartMutation = useDeleteCartItem();
 
   const cartItems = (location.state?.items as CheckoutLocationItem[] | undefined) || [];
+
+  // Kiểm tra authentication và cart items ngay khi vào trang
+  useEffect(() => {
+    const user = getStoredStorefrontUser();
+
+    // Nếu chưa đăng nhập, redirect về login với return URL
+    if (!user) {
+      toast.error("Bạn cần đăng nhập để thanh toán");
+      navigate("/login", { state: { redirect: "/checkout" } });
+      return;
+    }
+
+    // Nếu không có cart items, redirect về cart
+    if (!cartItems || cartItems.length === 0) {
+      toast.error("Vui lòng chọn sản phẩm từ giỏ hàng để thanh toán");
+      navigate("/cart");
+      return;
+    }
+  }, [navigate, cartItems]);
 
   const shippingMethods = [
     {
@@ -135,9 +154,10 @@ export default function CheckOutPage() {
         userId: user.id,
         subtotal: state.subtotal,
         shippingFee: state.shippingPrice,
-        discountAmount: 0,
-        totalAmount: state.total,
+        discountAmount,
+        totalAmount: totalWithDiscount,
         shippingAddressId: state.shippingAddress.id,
+        couponId: appliedCoupon?.id ? Number(appliedCoupon.id) : undefined,
         items: validItems.map((item) => ({
           productId: item.productId,
           variantId: item.variantId,
@@ -187,8 +207,8 @@ export default function CheckOutPage() {
 
   return (
     <div className="min-h-screen bg-[#f6f7fb]">
-      <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
-        <section className="rounded-[2rem] bg-[radial-gradient(circle_at_top_left,_rgba(238,77,45,0.16),_transparent_36%),linear-gradient(135deg,#111827,#1f2937)] px-6 py-8 text-white shadow-lg">
+      <div className="mx-auto max-w-7xl px-4 md:px-6 py-8">
+        <section className="rounded-4xl bg-[radial-gradient(circle_at_top_left,rgba(238,77,45,0.16),transparent_36%),linear-gradient(135deg,#111827,#1f2937)] px-6 py-8 text-white shadow-lg">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.24em] text-orange-200">Checkout Flow</p>
@@ -206,12 +226,12 @@ export default function CheckOutPage() {
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.45fr)_380px]">
           <div className="space-y-6">
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+            <div className="rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
               <Stepper step={state.step} />
             </div>
 
             {state.step === 1 ? (
-              <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+              <div className="rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
                 <ShippingForm
                   addresses={addresses || []}
                   onNext={(address) => {
@@ -223,7 +243,7 @@ export default function CheckOutPage() {
             ) : null}
 
             {state.step === 2 ? (
-              <div className="space-y-4 rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+              <div className="space-y-4 rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
                 <ShippingMethod
                   value={state.shipping}
                   onChange={handleShippingChange}
@@ -240,7 +260,7 @@ export default function CheckOutPage() {
             ) : null}
 
             {state.step === 3 ? (
-              <div className="space-y-4 rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+              <div className="space-y-4 rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
                 <PaymentMethod
                   value={state.payment}
                   onChange={state.setPayment}
@@ -261,7 +281,7 @@ export default function CheckOutPage() {
             ) : null}
 
             {state.step === 4 ? (
-              <div className="space-y-4 rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+              <div className="space-y-4 rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
                 <Confirmation
                   total={state.total}
                   onSubmit={handlePlaceOrder}
@@ -271,7 +291,7 @@ export default function CheckOutPage() {
             ) : null}
 
             {state.step === 5 && paymentQrData ? (
-              <div className="space-y-4 rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+              <div className="space-y-4 rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
                 <div className="text-center">
                   <h3 className="text-lg font-semibold text-slate-950">Quét mã QR để thanh toán</h3>
                   <p className="mt-1 text-sm text-slate-500">

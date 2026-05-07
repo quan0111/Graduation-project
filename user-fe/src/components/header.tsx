@@ -76,7 +76,7 @@ export default function Header() {
 
       {/* MAIN HEADER */}
       <div className="max-w-7xl mx-auto px-4 py-3 md:py-4">
-        <div className="flex items-center gap-3 md:gap-6">
+        <div className="flex items-center gap-2 md:gap-6">
 
           {/* LOGO */}
           <Link to="/" className="shrink-0">
@@ -101,7 +101,7 @@ export default function Header() {
           </div>
 
           {/* RIGHT SIDE */}
-          <div className="flex items-center gap-3 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-4 ml-auto">
 
             {/* WISHLIST */}
             <button className="p-2 hover:bg-muted rounded hidden md:block">

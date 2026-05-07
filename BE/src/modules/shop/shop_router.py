@@ -1,7 +1,7 @@
 from src.modules.shop.shop_service import ShopService
 from src.modules.shop.shop_schema import ShopCreate, ShopUpdate, ShopOut
 
-from src.core.dependencies import get_current_user
+from src.core.dependencies import require_admin, require_seller
 
 from fastapi import APIRouter, Depends
 from typing import List
@@ -10,7 +10,8 @@ router = APIRouter(prefix="/shops", tags=["Shops"])
 
 
 @router.post("/", response_model=ShopOut)
-async def create_shop(shop_data: ShopCreate):
+async def create_shop(shop_data: ShopCreate, admin=Depends(require_admin)):
+    _ = admin
     new_shop = await ShopService.create_shop(shop_data)
     return new_shop
 
@@ -24,7 +25,7 @@ async def get_all_shops():
 # 🔥 GET CURRENT USER SHOP
 @router.get("/me", response_model=ShopOut)
 async def get_my_shop(
-    user=Depends(get_current_user)
+    user=Depends(require_seller)
 ):
     return await ShopService.get_shop_by_user(user.id)
 
@@ -32,7 +33,7 @@ async def get_my_shop(
 @router.patch("/me", response_model=ShopOut)
 async def update_my_shop(
     shop_data: ShopUpdate,
-    user=Depends(get_current_user),
+    user=Depends(require_seller),
 ):
     return await ShopService.update_my_shop(user.id, shop_data)
 
@@ -44,12 +45,14 @@ async def get_shop_by_id(shop_id: int):
 
 
 @router.patch("/{shop_id}", response_model=ShopOut)
-async def update_shop(shop_id: int, shop_data: ShopUpdate):
+async def update_shop(shop_id: int, shop_data: ShopUpdate, admin=Depends(require_admin)):
+    _ = admin
     updated_shop = await ShopService.update_shop(shop_id, shop_data)
     return updated_shop
 
 
 @router.patch("/{shop_id}/delete")
-async def delete_shop(shop_id: int):
+async def delete_shop(shop_id: int, admin=Depends(require_admin)):
+    _ = admin
     await ShopService.delete_shop(shop_id)
     return {"message": "Shop deleted successfully"}

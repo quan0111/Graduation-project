@@ -16,6 +16,7 @@ import {
   Star,
   CreditCard,
   AlertTriangle,
+  RotateCcw,
 } from "lucide-react"
 
 import {
@@ -40,6 +41,7 @@ const mainNavItems = [
   { title: "Quản lý Shop", icon: Store, href: "/shops"},
   { title: "Duyệt sản phẩm", icon: Package, href: "/products" },
   { title: "Quản lý Đơn hàng", icon: ShoppingCart, href: "/orders" },
+  { title: "Duyệt hoàn tiền", icon: RotateCcw, href: "/returns" },
   { title: "Thống kê doanh thu", icon: BarChart3, href: "/analytics" },
   { title: "Phê duyệt người bán", icon: Users, href: "/seller-applications" },
   { title: "Quản lý người dùng", icon: Users, href: "/users" },

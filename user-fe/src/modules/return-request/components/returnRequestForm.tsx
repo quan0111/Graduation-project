@@ -5,8 +5,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import { useCreateReturnRequest, useAddReturnItem, useAddReturnEvidence } from "../api/create-return";
-import type { ReturnRequestCreatePayload, ReturnItemCreatePayload, ReturnEvidenceCreatePayload } from "../api/create-return";
+import { useCreateReturnRequest } from "../api/create-return";
+import type { ReturnRequestCreatePayload } from "../api/create-return";
 
 interface ReturnRequestFormProps {
   orderId: number;
@@ -27,8 +27,6 @@ export const ReturnRequestForm: React.FC<ReturnRequestFormProps> = ({
   const [newImageUrl, setNewImageUrl] = useState("");
 
   const createMutation = useCreateReturnRequest();
-  const addItemMutation = useAddReturnItem();
-  const addEvidenceMutation = useAddReturnEvidence();
 
   const handleItemQuantityChange = (itemId: number, quantity: number) => {
     setSelectedItems((prev) => ({
@@ -63,32 +61,14 @@ export const ReturnRequestForm: React.FC<ReturnRequestFormProps> = ({
       const payload: ReturnRequestCreatePayload = {
         orderId,
         reason,
-      };
-
-      const returnRequest = await createMutation.mutateAsync(payload);
-
-      // Add items
-      for (const [itemId, quantity] of Object.entries(selectedItems)) {
-        const itemPayload: ReturnItemCreatePayload = {
+        items: Object.entries(selectedItems).map(([itemId, quantity]) => ({
           orderItemId: Number(itemId),
           quantity,
-        };
-        await addItemMutation.mutateAsync({
-          returnId: returnRequest.id,
-          payload: itemPayload,
-        });
-      }
+        })),
+        evidences: evidenceUrls.map((imageUrl) => ({ imageUrl })),
+      };
 
-      // Add evidence
-      for (const imageUrl of evidenceUrls) {
-        const evidencePayload: ReturnEvidenceCreatePayload = {
-          imageUrl,
-        };
-        await addEvidenceMutation.mutateAsync({
-          returnId: returnRequest.id,
-          payload: evidencePayload,
-        });
-      }
+      await createMutation.mutateAsync(payload);
 
       toast.success("Yêu cầu trả hàng đã được gửi");
       onSuccess();
@@ -216,7 +196,7 @@ export const ReturnRequestForm: React.FC<ReturnRequestFormProps> = ({
             <Button
               onClick={handleSubmit}
               className="bg-[#ee4d2d] hover:bg-[#d93f21]"
-              disabled={createMutation.isPending || addItemMutation.isPending || addEvidenceMutation.isPending}
+              disabled={createMutation.isPending}
             >
               <RotateCcw className="mr-2 size-4" />
               Gửi yêu cầu

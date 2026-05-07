@@ -147,6 +147,10 @@ class OrderUpdate(BaseModel):
     status: Optional[str] = None
 
 
+class OrderStatusUpdate(BaseModel):
+    status: str
+
+
 class OrderOut(BaseModel):
     id: int
     userId: int
