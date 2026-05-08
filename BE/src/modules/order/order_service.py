@@ -205,6 +205,18 @@ class OrderService:
                 if not product:
                     raise HTTPException(404, "Product not found")
 
+                # 🚫 Kiểm tra trạng thái sản phẩm tại thời điểm checkout
+                if product.status == "BANNED":
+                    raise HTTPException(
+                        400,
+                        f"Sản phẩm '{product.name}' đã bị cấm và không thể đặt hàng"
+                    )
+                if product.status != "ACTIVE":
+                    raise HTTPException(
+                        400,
+                        f"Sản phẩm '{product.name}' hiện không khả dụng (trạng thái: {product.status})"
+                    )
+
                 price = item.price
                 subtotal += price * item.quantity
 
@@ -249,6 +261,13 @@ class OrderService:
                 },
                 include=ORDER_INCLUDE,
             )
+
+            # ✅ Tăng usedCount của coupon trong cùng transaction
+            if order_data.couponId:
+                await tx.coupon.update(
+                    where={"id": order_data.couponId},
+                    data={"usedCount": {"increment": 1}},
+                )
 
             if order_data.payment:
                 await tx.payment.create(

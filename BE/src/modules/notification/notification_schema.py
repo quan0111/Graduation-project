@@ -8,8 +8,10 @@ class NotificationType(str, Enum):
     PAYMENT = "PAYMENT"
     SYSTEM = "SYSTEM"
     PROMOTION = "PROMOTION"
+    PRODUCT_BANNED = "PRODUCT_BANNED"
 
 class NotificationCreate(BaseModel):  
+    userId: int
     title: str
     content: str
     type: NotificationType

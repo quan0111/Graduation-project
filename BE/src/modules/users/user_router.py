@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from typing import List
+from pydantic import BaseModel
 from src.core.dependencies import get_current_user, require_admin
 from src.modules.auth.service import AuthService
 from src.modules.users.user_schema import (
@@ -13,11 +14,18 @@ from src.modules.users.user_service import UserService
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
+
+class BanUserRequest(BaseModel):
+    reason: str
+
+
 @router.post("/", response_model=UserOut)
 async def create_user(user_data: UserCreate, admin=Depends(require_admin)):
     _ = admin
     new_user = await UserService.create_user(user_data)
     return new_user
+
+
 @router.get("/", response_model=List[UserOut])
 async def get_all_users(admin=Depends(require_admin)):
     _ = admin
@@ -61,13 +69,32 @@ async def get_user(user_id: int, admin=Depends(require_admin)):
     _ = admin
     user = await UserService.get_user(user_id)
     return user
+
+
 @router.patch("/{user_id}", response_model=UserOut)
 async def update_user(user_id: int, user_data: UserUpdate, admin=Depends(require_admin)):
     _ = admin
     updated_user = await UserService.update_user(user_id, user_data)
     return updated_user
+
+
 @router.patch("/{user_id}/delete")
 async def delete_user(user_id: int, admin=Depends(require_admin)):
     _ = admin
     await UserService.delete_user(user_id)
     return {"message": "User deleted successfully"}
+
+
+@router.patch("/{user_id}/ban")
+async def ban_user(user_id: int, body: BanUserRequest, admin=Depends(require_admin)):
+    """Admin ban user: khóa tài khoản + tất cả shop của user đó"""
+    _ = admin
+    return await UserService.ban_user(user_id, body.reason)
+
+
+@router.patch("/{user_id}/unban")
+async def unban_user(user_id: int, admin=Depends(require_admin)):
+    """Admin mở khóa tài khoản user"""
+    _ = admin
+    return await UserService.unban_user(user_id)
+

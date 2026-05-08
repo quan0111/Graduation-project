@@ -1,6 +1,6 @@
 
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,6 +11,7 @@ import { useRegister } from '../api/register'
 
 export function SignupForm() {
   const registerMutation = useRegister()
+  const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -45,10 +46,12 @@ export function SignupForm() {
         password: formData.password,
       },
       {
-        onSuccess: (data) => {
-          console.log('Register success', data)
-          toast.success('Đăng ký thành công')
+        onSuccess: () => {
+          toast.success('Đăng ký thành công! Vui lòng đăng nhập.')
           setIsLoading(false)
+          navigate('/login', {
+            state: { message: 'Đăng ký thành công! Hãy đăng nhập để tiếp tục.' },
+          })
         },
         onError: (err: any) => {
           toast.error(err?.response?.data?.detail || 'Đăng ký thất bại')

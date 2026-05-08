@@ -119,7 +119,7 @@ class AuthService:
             raise HTTPException(401, "Invalid credentials")
 
         if not user.isActive:
-            raise HTTPException(403, "User disabled")
+            raise HTTPException(403, "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ.")
 
         if not verify_password(data.password, user.password):
             raise HTTPException(401, "Invalid credentials")

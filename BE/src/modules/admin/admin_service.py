@@ -8,23 +8,57 @@ from src.modules.admin.admin_schema import (
     Pagination,
     SellerFilter,
 )
+from src.modules.notification.notification_schema import NotificationCreate
+from src.modules.notification.notification_service import NotificationService
 
 
 class AdminService:
     @staticmethod
-    async def set_product_status(product_id: int, status: str):
+    async def set_product_status(product_id: int, status: str, ban_reason: str = ""):
         allowed = {"ACTIVE", "DRAFT", "REJECT", "BANNED", "OUT_OF_STOCK", "APROVAL"}
         if status not in allowed:
             raise HTTPException(400, "Invalid product status")
 
-        product = await prisma.product.find_unique(where={"id": product_id})
+        if status in {"BANNED", "REJECT"} and not ban_reason:
+            raise HTTPException(400, "Bắt buộc phải cung cấp lý do khi ban hoặc từ chối sản phẩm")
+
+        product = await prisma.product.find_unique(
+            where={"id": product_id},
+            include={"shop": True},
+        )
         if not product or product.deletedAt:
             raise HTTPException(404, "Product not found")
 
-        return await prisma.product.update(
+        updated = await prisma.product.update(
             where={"id": product_id},
             data={"status": status},
         )
+
+        # 🔔 Gửi notification cho shop owner khi sản phẩm bị BANNED hoặc REJECT
+        if status in {"BANNED", "REJECT"} and product.shop and product.shop.ownerId:
+            status_label = "bị cấm (BANNED)" if status == "BANNED" else "bị từ chối (REJECT)"
+            reason_text = f" Lý do: {ban_reason}." if ban_reason else ""
+            await NotificationService.create(
+                NotificationCreate(
+                    userId=product.shop.ownerId,
+                    title="⚠️ Sản phẩm của bạn đã bị xử lý",
+                    content=(
+                        f"Sản phẩm '{product.name}' trong shop '{product.shop.name}' "
+                        f"đã {status_label} bởi Admin.{reason_text} "
+                        f"Vui lòng liên hệ hỗ trợ nếu bạn có thắc mắc."
+                    ),
+                    type="PRODUCT_BANNED",
+                    metadata={
+                        "productId": product_id,
+                        "productName": product.name,
+                        "shopId": product.shop.id,
+                        "status": status,
+                        "banReason": ban_reason,
+                    },
+                )
+            )
+
+        return updated
 
 
     @staticmethod

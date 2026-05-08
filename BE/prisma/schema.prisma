@@ -87,6 +87,7 @@ model Shop {
   description String?
   avatarUrl   String?
   ownerId     Int     @unique
+  isActive    Boolean @default(true)
   owner       User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   followers        ShopFollower[]
@@ -103,6 +104,7 @@ model Shop {
 
   @@index([slug])
   @@index([ownerId])
+  @@index([isActive])
 }
 
 model Category {
@@ -458,7 +460,9 @@ enum NotificationType {
   PROMOTION
   SYSTEM
   CHAT
+  PRODUCT_BANNED
 }
+
 
 model Notification {
   id       Int              @id @default(autoincrement())

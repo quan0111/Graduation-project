@@ -77,11 +77,24 @@ async def seller_stats(
     return await AdminService.get_seller_stats(shop_id)
 
 
+from pydantic import BaseModel
+from typing import Optional
+
+
+class ProductStatusRequest(BaseModel):
+    status: str
+    banReason: Optional[str] = ""
+
+
 @router.patch("/products/{product_id}/status")
 async def update_product_status(
     product_id: int,
-    status: str,
+    body: ProductStatusRequest,
     user=Depends(require_admin),
 ):
     _ = user
-    return await AdminService.set_product_status(product_id, status)
+    return await AdminService.set_product_status(
+        product_id,
+        body.status,
+        ban_reason=body.banReason or "",
+    )

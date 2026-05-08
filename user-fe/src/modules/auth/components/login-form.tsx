@@ -13,39 +13,50 @@ export function LoginForm() {
   const navigate = useNavigate()
   const location = useLocation()
   const {setUser} = useAuthStore() 
-  const [error,setError] = useState("")
-  const [success,setSuccess] = useState("")
+  const [error, setError] = useState("")
+  const [bannedError, setBannedError] = useState("")
+  const [success, setSuccess] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const loginMutation = useLogin()
   const isLoading = loginMutation.isPending
 
-  const HandleLogin = (e:React.FormEvent) =>{
-    e.preventDefault()
-    loginMutation.mutate({
-      email,
-      password,
+  // Hiển thị thông báo từ trang đăng ký redirect sang
+  const redirectMessage = location.state?.message as string | undefined
 
-    },
+  const HandleLogin = (e: React.FormEvent) => {
+    e.preventDefault()
+    setBannedError("")
+    setError("")
+    loginMutation.mutate(
+      { email, password },
       {
         onSuccess: (data: any) => {
-          toast.success("Đăng nhập thành công!");
-          setSuccess("Đăng nhập thành công");
-          setError("");
-
+          toast.success("Đăng nhập thành công!")
+          setSuccess("Đăng nhập thành công")
+          setError("")
           if (data?.user) {
-            setUser(data.user);
+            setUser(data.user)
           }
-
-          // Redirect to checkout or original redirect URL, otherwise go to home
-          const redirectUrl = location.state?.redirect || "/";
-          navigate(redirectUrl);
+          const redirectUrl = location.state?.redirect || "/"
+          navigate(redirectUrl)
         },
         onError: (err: any) => {
-          const errorMessage = err?.response?.data?.message || "Sai thông tin đăng nhập";
-          toast.error(errorMessage);
-          setError(errorMessage);
+          const status = err?.response?.status
+          const detail = err?.response?.data?.detail || ""
+          // Detect tài khoản bị khóa (403)
+          if (status === 403 || detail.includes("bị khóa") || detail.includes("disabled")) {
+            const msg = detail.includes("bị khóa")
+              ? detail
+              : "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ."
+            setBannedError(msg)
+            toast.error(msg)
+          } else {
+            const msg = detail || "Sai thông tin đăng nhập"
+            setError(msg)
+            toast.error(msg)
+          }
         },
       }
     )
@@ -109,7 +120,28 @@ export function LoginForm() {
               Quên mật khẩu?
             </Link>
           </div>
-            {error && (
+
+          {/* Banner từ trang đăng ký redirect sang */}
+          {redirectMessage && !error && !bannedError && (
+            <div className="text-sm text-green-700 bg-green-50 border border-green-200 px-3 py-2 rounded-md flex items-center gap-2">
+              <span>✅</span>
+              <span>{redirectMessage}</span>
+            </div>
+          )}
+
+          {/* Tài khoản bị khóa — banner nổi bật */}
+          {bannedError && (
+            <div className="text-sm text-red-700 bg-red-50 border border-red-300 px-4 py-3 rounded-md flex items-start gap-2">
+              <span className="text-lg leading-tight">🔒</span>
+              <div>
+                <p className="font-semibold">Tài khoản bị khóa</p>
+                <p className="mt-0.5 text-red-600">{bannedError}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Lỗi đăng nhập thông thường */}
+          {error && !bannedError && (
             <div className="text-sm text-red-500 bg-red-50 border border-red-200 px-3 py-2 rounded-md">
               {error}
             </div>

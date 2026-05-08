@@ -93,7 +93,28 @@ class CartService:
         if not product:
             raise HTTPException(400, "Product not found")
 
+        # 🚫 Chặn sản phẩm bị ban hoặc chưa active
+        if product.status == "BANNED":
+            raise HTTPException(400, "Sản phẩm này đã bị cấm và không thể thêm vào giỏ hàng")
+        if product.status != "ACTIVE":
+            raise HTTPException(400, "Sản phẩm không còn khả dụng")
+
         variant_id = data.variantId if data.variantId else None
+
+        # 🚫 Kiểm tra stock nếu có variant
+        if variant_id:
+            variant = await prisma.productvariant.find_unique(
+                where={"id": variant_id}
+            )
+            if not variant:
+                raise HTTPException(400, "Variant not found")
+            if variant.stock <= 0:
+                raise HTTPException(400, "Sản phẩm đã hết hàng")
+            if variant.stock < data.quantity:
+                raise HTTPException(
+                    400,
+                    f"Chỉ còn {variant.stock} sản phẩm trong kho"
+                )
 
         return await prisma.cartitem.upsert(
             where={
@@ -159,23 +180,49 @@ class CartService:
         )
         return {"message": "Cart cleared"}
 
-    # 🔥 FIX QUAN TRỌNG
+    # 🔥 Tính total và đánh dấu trạng thái từng item trong giỏ
     def _attach_total(self, cart):
         total = 0
 
+        cart_dict = cart.model_dump()
+        enriched_items = []
+
         for item in cart.items:
+            item_dict = item.model_dump() if hasattr(item, "model_dump") else dict(item)
             price = 0
 
-            if item.variant:
-                price = item.variant.price
-            elif item.product:
-                price = item.product.price
+            product = item.product
+            variant = item.variant
 
-            total += price * item.quantity
+            # 🚩 Xác định trạng thái item
+            item_status = "OK"
 
+            if not product or product.deletedAt:
+                item_status = "UNAVAILABLE"
+            elif product.status == "BANNED":
+                item_status = "BANNED"
+            elif product.status != "ACTIVE":
+                item_status = "UNAVAILABLE"
+            elif variant:
+                if variant.stock <= 0:
+                    item_status = "OUT_OF_STOCK"
+                elif variant.stock < item.quantity:
+                    item_status = "INSUFFICIENT_STOCK"
+                    item_dict["availableStock"] = variant.stock
 
+            item_dict["itemStatus"] = item_status
 
-        cart_dict = cart.model_dump()
+            # Chỉ tính giá cho item hợp lệ
+            if item_status == "OK":
+                if variant:
+                    price = variant.price
+                elif product:
+                    price = product.price
+                total += price * item.quantity
+
+            enriched_items.append(item_dict)
+
+        cart_dict["items"] = enriched_items
         cart_dict["totalAmount"] = total
 
         return cart_dict
