@@ -9,7 +9,7 @@ interface OrderTimelineProps {
 }
 
 const stepDescriptions: Record<string, string> = {
-  pending: "Đơn hàng đã được tạo và đang chờ thanh toán",
+  pending: "Đơn hàng đã được tạo",
   paid: "Đơn hàng đã thanh toán thành công",
   processing: "Shop đang chuẩn bị đơn hàng",
   shipped: "Đơn hàng đã được bàn giao cho đơn vị vận chuyển",
@@ -18,7 +18,9 @@ const stepDescriptions: Record<string, string> = {
 };
 
 export const OrderTimeline: React.FC<OrderTimelineProps> = ({ status, order }) => {
-  const steps = getTrackingSteps(status);
+  // COD orders don't have payment record, so skip 'paid' step
+  const hasPayment = !!order?.payment;
+  const steps = getTrackingSteps(status, hasPayment);
 
   return (
     <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">

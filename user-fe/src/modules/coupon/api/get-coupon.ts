@@ -50,7 +50,7 @@ export const useGetCoupon = (
 
 export const useCouponByCode = (
   code: string,
-  config?: UseQueryOptions<ICoupon, Error>,
+  config?: Partial<UseQueryOptions<ICoupon, Error>>,
 ) => {
   return useQuery({
     queryKey: ["coupon", "code", code],
@@ -62,7 +62,7 @@ export const useCouponByCode = (
 export const useValidateCoupon = (
   code: string,
   orderAmount: number,
-  config?: UseQueryOptions<any, Error>,
+  config?: Partial<UseQueryOptions<any, Error>>,
 ) => {
   return useQuery({
     queryKey: ["coupon", "validate", code, orderAmount],

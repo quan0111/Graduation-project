@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Ticket, X, Check } from "lucide-react";
 import { toast } from "sonner";
 
@@ -19,11 +19,26 @@ export const CouponInput: React.FC<CouponInputProps> = ({
   onRemoveCoupon,
 }) => {
   const [code, setCode] = useState("");
+  const [debouncedCode, setDebouncedCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
 
-  const { data: coupon, isLoading: validating } = useCouponByCode(code);
+  // Debounce code input - chỉ gọi API sau 500ms khi người dùng dừng gõ
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedCode(code);
+    }, 500);
 
-  const { data: validation } = useValidateCoupon(code, orderAmount);
+    return () => clearTimeout(timer);
+  }, [code]);
+
+  // Chỉ gọi API khi debouncedCode có giá trị
+  const { data: coupon, isLoading: validating } = useCouponByCode(debouncedCode, {
+    enabled: debouncedCode.length > 0,
+  });
+
+  const { data: validation } = useValidateCoupon(debouncedCode, orderAmount, {
+    enabled: debouncedCode.length > 0,
+  });
 
   const handleApply = () => {
     if (!code.trim()) {

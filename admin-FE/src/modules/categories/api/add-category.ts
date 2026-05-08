@@ -20,10 +20,12 @@ export const useCreateCategory = ({
     return useMutation({
         mutationFn: createCategory,
         onMutate: () => {},
-        onError: () => {},
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.detail || "Tạo danh mục thất bại ❌");
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({
-                queryKey: ["Categories"],
+                queryKey: ["categories"],
             });
         },
         ...config,

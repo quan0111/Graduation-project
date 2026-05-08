@@ -2,6 +2,8 @@ from datetime import datetime
 
 from fastapi import HTTPException
 
+from src.core.cache import CacheManager, cache_invalidate, cache_result
+from src.core.config import settings
 from src.core.database import prisma
 from src.core.dependencies import get_role_value
 from src.modules.product.product_schema import (
@@ -149,6 +151,8 @@ class ProductService:
         return ProductOut(**data)
 
     @staticmethod
+    @cache_invalidate(f"{CacheManager.PRODUCT_LIST}*")
+    @cache_invalidate(f"{CacheManager.SHOP_PRODUCTS}*")
     async def create_product(product_data: ProductCreate) -> ProductOut:
         product = await prisma.product.create(
             data=ProductService._build_product_payload(
@@ -160,6 +164,8 @@ class ProductService:
         return await ProductService._serialize_product(product.id)
 
     @staticmethod
+    @cache_invalidate(f"{CacheManager.PRODUCT_LIST}*")
+    @cache_invalidate(f"{CacheManager.SHOP_PRODUCTS}*")
     async def create_my_product(user_id: int, product_data: SellerProductCreate) -> ProductOut:
         shop = await ProductService._get_shop_for_owner(user_id)
         if not shop:
@@ -181,6 +187,7 @@ class ProductService:
         return await ProductService._serialize_product(product.id)
 
     @staticmethod
+    @cache_result(CacheManager.PRODUCT_LIST, expire_seconds=CacheManager.MEDIUM_TTL)
     async def get_all_products(viewer=None):
         where = {"deletedAt": None}
 
@@ -212,6 +219,7 @@ class ProductService:
         return result
 
     @staticmethod
+    @cache_result(CacheManager.PRODUCT_DETAIL, expire_seconds=CacheManager.LONG_TTL)
     async def get_product_by_id(product_id: int, viewer=None) -> ProductOut:
         product = await prisma.product.find_unique(
             where={"id": product_id},
@@ -247,6 +255,7 @@ class ProductService:
         return ProductOut(**data)
 
     @staticmethod
+    @cache_result(CacheManager.SHOP_PRODUCTS, expire_seconds=CacheManager.MEDIUM_TTL)
     async def get_products_by_shop(shop_id: int, viewer=None):
         where = {"shopId": shop_id, "deletedAt": None}
 
@@ -290,6 +299,9 @@ class ProductService:
         return await ProductService.get_products_by_shop(shop.id, viewer)
 
     @staticmethod
+    @cache_invalidate(f"{CacheManager.PRODUCT_LIST}*")
+    @cache_invalidate(f"{CacheManager.PRODUCT_DETAIL}:"+"{product_id}")
+    @cache_invalidate(f"{CacheManager.SHOP_PRODUCTS}*")
     async def update_product(product_id: int, product_data: ProductUpdate, viewer) -> ProductOut:
         existing = await prisma.product.find_unique(
             where={"id": product_id},
@@ -339,6 +351,9 @@ class ProductService:
         return await ProductService._serialize_product(product_id)
 
     @staticmethod
+    @cache_invalidate(f"{CacheManager.PRODUCT_LIST}*")
+    @cache_invalidate(f"{CacheManager.PRODUCT_DETAIL}:"+"{product_id}")
+    @cache_invalidate(f"{CacheManager.SHOP_PRODUCTS}*")
     async def delete_product(product_id: int, viewer):
         await ProductService._assert_product_access(product_id, viewer)
         await prisma.product.update(

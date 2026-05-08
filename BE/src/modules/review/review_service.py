@@ -28,6 +28,8 @@ class ReviewService:
             }
         )
 
+        # COD orders don't require payment record, so check order status directly
+        # MOMO/VNPAY orders require payment record
         payload = data.dict()
         payload["userId"] = current_user.id
         payload["isVerifiedPurchase"] = bool(paid_order)

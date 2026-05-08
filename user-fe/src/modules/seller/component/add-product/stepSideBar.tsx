@@ -7,26 +7,32 @@ export function StepSidebar({
   currentStep,
   currentStepIndex,
   onStepChange,
+  canNavigateTo,
 }: {
   currentStep: WizardStep;
   currentStepIndex: number;
   onStepChange: (step: WizardStep) => void;
+  canNavigateTo: (step: WizardStep) => boolean;
 }) {
   return (
     <aside className="space-y-4">
       {STEPS.map((step, index) => {
         const isActive = step.id === currentStep;
         const isDone = index < currentStepIndex;
+        const canClick = canNavigateTo(step.id);
 
         return (
           <button
             key={step.id}
             type="button"
             onClick={() => onStepChange(step.id)}
+            disabled={!canClick}
             className={`w-full rounded-[24px] border px-4 py-4 text-left transition ${
               isActive
                 ? "border-orange-300 bg-orange-50 shadow-sm"
-                : "border-slate-200 bg-white hover:border-orange-200 hover:bg-orange-50/40"
+                : canClick
+                  ? "border-slate-200 bg-white hover:border-orange-200 hover:bg-orange-50/40"
+                  : "border-slate-100 bg-slate-50 cursor-not-allowed opacity-50"
             }`}
           >
             <div className="flex items-start gap-3">

@@ -118,7 +118,11 @@ class ShipmentService:
     async def create_shipment(current_user, data):
         order = await ShipmentService._assert_mutation_access(data.orderId, current_user)
         order_status = ShipmentService._to_value(order.status)
-        if order_status != "PAID":
+
+        # COD orders can be shipped without payment (PENDING status)
+        # MOMO/VNPAY orders must be PAID before shipping
+        payment = await prisma.payment.find_unique(where={"orderId": data.orderId})
+        if payment and order_status != "PAID":
             raise HTTPException(400, "Only paid orders can move to processing")
 
         existing = await prisma.shipment.find_unique(where={"orderId": data.orderId})

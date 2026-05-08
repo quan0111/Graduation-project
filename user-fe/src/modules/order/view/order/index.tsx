@@ -48,7 +48,7 @@ export default function OrderPage() {
   return (
     <div className="min-h-screen bg-[#f6f7fb]">
       <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
-        <section className="rounded-[2rem] bg-[radial-gradient(circle_at_top_left,_rgba(238,77,45,0.18),_transparent_36%),linear-gradient(135deg,#111827,#1f2937)] px-6 py-8 text-white shadow-lg">
+        <section className="rounded-4xl bg-[radial-gradient(circle_at_top_left,rgba(238,77,45,0.18),transparent_36%),linear-gradient(135deg,#111827,#1f2937)] px-6 py-8 text-white shadow-lg">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
             <div>
               <p className="text-sm uppercase tracking-[0.28em] text-orange-200">Order Center</p>

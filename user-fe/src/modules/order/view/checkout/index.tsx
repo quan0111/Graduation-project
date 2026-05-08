@@ -55,25 +55,20 @@ export default function CheckOutPage() {
 
   const cartItems = (location.state?.items as CheckoutLocationItem[] | undefined) || [];
 
-  // Kiểm tra authentication và cart items ngay khi vào trang
   useEffect(() => {
     const user = getStoredStorefrontUser();
 
-    // Nếu chưa đăng nhập, redirect về login với return URL
     if (!user) {
       toast.error("Bạn cần đăng nhập để thanh toán");
       navigate("/login", { state: { redirect: "/checkout" } });
       return;
     }
-
-    // Nếu không có cart items, redirect về cart
     if (!cartItems || cartItems.length === 0) {
       toast.error("Vui lòng chọn sản phẩm từ giỏ hàng để thanh toán");
       navigate("/cart");
       return;
     }
   }, [navigate, cartItems]);
-
   const shippingMethods = [
     {
       id: "STANDARD",
@@ -129,7 +124,11 @@ export default function CheckOutPage() {
     setDiscountAmount(0);
   };
 
-  const totalWithDiscount = state.total - discountAmount;
+  const totalWithDiscount =
+  state.subtotal +
+  state.shippingPrice +
+  state.tax -
+  discountAmount;
 
   const handlePlaceOrder = async () => {
     if (!state.shippingAddress) {
@@ -165,10 +164,12 @@ export default function CheckOutPage() {
           quantity: item.quantity,
           price: item.price,
         })),
-        payment: {
+        // Chỉ tạo payment record cho MOMO/VNPAY (thanh toán trước)
+        // COD không cần payment record lúc đặt hàng
+        payment: (state.payment === "MOMO" || state.payment === "VNPAY") ? {
           method: state.payment,
           status: "PENDING",
-        },
+        } : undefined,
       };
 
       const createdOrder = await createOrderMutation.mutateAsync(payload);
@@ -180,6 +181,7 @@ export default function CheckOutPage() {
           .map((cartItemId) => deleteCartMutation.mutateAsync(Number(cartItemId))),
       );
 
+      // Chỉ tạo QR payment cho MOMO/VNPAY
       if (state.payment === "MOMO" || state.payment === "VNPAY") {
         const qrPayment = await createPaymentQrMutation.mutateAsync({
           orderId: createdOrder.id,
@@ -345,22 +347,22 @@ export default function CheckOutPage() {
             ) : null}
           </div>
 
-          <div className="mb-6">
-            <CouponInput
-              orderAmount={state.subtotal}
-              onApplyCoupon={handleApplyCoupon}
-              onRemoveCoupon={handleRemoveCoupon}
-            />
-          </div>
+            <div className="space-y-6">
+              <CouponInput
+                orderAmount={state.subtotal}
+                onApplyCoupon={handleApplyCoupon}
+                onRemoveCoupon={handleRemoveCoupon}
+              />
 
-          <OrderSummary
-            items={checkoutItems}
-            subtotal={state.subtotal}
-            total={totalWithDiscount}
-            shipping={state.shippingPrice}
-            tax={state.tax}
-            discount={discountAmount}
-          />
+              <OrderSummary
+                items={checkoutItems}
+                subtotal={state.subtotal}
+                total={totalWithDiscount}
+                shipping={state.shippingPrice}
+                tax={state.tax}
+                discount={discountAmount}
+              />
+            </div>
         </div>
       </div>
     </div>

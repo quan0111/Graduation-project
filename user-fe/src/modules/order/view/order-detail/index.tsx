@@ -57,7 +57,7 @@ export default function OrderDetailPage() {
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
           <section className="space-y-6">
-            <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-slate-200/80">
+            <div className="overflow-hidden rounded-4xl bg-white shadow-sm ring-1 ring-slate-200/80">
               <OrderHeader order={order} expanded />
             </div>
 
@@ -65,7 +65,7 @@ export default function OrderDetailPage() {
             <OrderShipping order={order} />
             <ShipmentTracking shipment={shipment ?? null} />
 
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+            <div className="rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
               <div className="mb-5">
                 <p className="text-lg font-semibold text-slate-950">Sản phẩm trong đơn</p>
                 <p className="text-sm text-slate-500">
@@ -79,7 +79,7 @@ export default function OrderDetailPage() {
           <aside className="space-y-6">
             <OrderSummary order={order} />
 
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+            <div className="rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
               <p className="mb-4 text-base font-semibold text-slate-950">Tác vụ</p>
               <OrderActions order={order} />
               {order.status === "delivered" && (

@@ -3,12 +3,12 @@ export interface ICategory {
   name: string
   slug?: string | null
 
-  parent_id?: number | null
+  parentId?: number | null
 
-  created_at: string
-  updated_at: string
-  deleted_at?: string | null
+  createdAt: string
+  updatedAt: string
+  deletedAt?: string | null
 
-  Parent?: ICategory
-  Children?: ICategory[]
+  parent?: ICategory
+  children?: ICategory[]
 }

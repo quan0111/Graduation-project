@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { CheckCircle2, Clock3, Store, UserRound } from 'lucide-react'
+import { CheckCircle2, Clock3, Store, UserRound, ArrowLeft, ShieldCheck, Rocket } from 'lucide-react'
 import { toast } from "sonner"
 
 import { Button } from '@/components/ui/button'
@@ -19,20 +19,15 @@ import type {
   SellerRegistration,
   ShopInfo,
   TaxInfo,
+  RegistrationStep,
 } from '../../types'
 
-type RegistrationStep =
-  | 'shop-info'
-  | 'shipping'
-  | 'identity'
-  | 'tax'
-  | 'complete'
 
 const STEPS: { id: RegistrationStep; label: string }[] = [
-  { id: 'shop-info', label: 'Thông tin cửa hàng' },
-  { id: 'shipping', label: 'Cài đặt vận chuyển' },
-  { id: 'identity', label: 'Thông tin định danh' },
-  { id: 'tax', label: 'Thông tin thuế' },
+  { id: 'shop-info', label: 'Cửa hàng' },
+  { id: 'shipping', label: 'Vận chuyển' },
+  { id: 'identity', label: 'Định danh' },
+  { id: 'tax', label: 'Thuế' },
   { id: 'complete', label: 'Hoàn tất' },
 ]
 
@@ -114,11 +109,12 @@ export function SellerRegistrationView() {
     if (currentStep === 'shipping') setCurrentStep('shop-info')
     if (currentStep === 'identity') setCurrentStep('shipping')
     if (currentStep === 'tax') setCurrentStep('identity')
+    if (currentStep === 'complete') setCurrentStep('tax')
   }
 
   const handleComplete = async () => {
     if (!user) {
-      toast.error("Vui long dang nhap")
+      toast.error("Vui lòng đăng nhập")
       navigate("/login")
       return
     }
@@ -139,36 +135,52 @@ export function SellerRegistrationView() {
 
       await applyMutation.mutateAsync({ data: payload })
       markStepCompleted('complete')
-      toast.success("Gui yeu cau mo shop thanh cong")
+      toast.success("Gửi yêu cầu mở shop thành công")
       navigate("/seller", { replace: true })
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || "Dang ky that bai")
+      toast.error(error?.response?.data?.detail || "Đăng ký thất bại")
     } finally {
       setIsLoading(false)
     }
   }
 
   if (isUserLoading) {
-    return <div className="p-8">Dang tai...</div>
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50/50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="animate-pulse font-medium text-slate-500">Đang tải dữ liệu...</p>
+        </div>
+      </div>
+    )
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background px-4 py-16">
-        <div className="mx-auto max-w-3xl rounded-[32px] border bg-card p-10 text-center shadow-sm">
-          <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-3xl bg-primary/10 text-primary">
-            <UserRound className="size-8" />
+      <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] bg-size-[16px_16px] px-4">
+        <div className="w-full max-w-lg overflow-hidden rounded-4xl border bg-white shadow-2xl shadow-slate-200/50 transition-all hover:shadow-primary/5">
+          <div className="bg-primary/5 p-8 text-center border-b border-primary/10">
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-white shadow-xl shadow-primary/10 text-primary ring-1 ring-primary/20">
+              <UserRound className="h-10 w-10" />
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Bắt đầu kinh doanh</h1>
+            <p className="mt-2 text-sm text-slate-500 font-medium">Đăng nhập để khởi tạo gian hàng của bạn</p>
           </div>
-          <h1 className="text-3xl font-semibold">Dang nhap de tro thanh nguoi ban</h1>
-          <p className="mt-3 text-muted-foreground">
-            Chi tai khoan da dang nhap moi co the gui yeu cau mo shop va bat dau dang san pham.
-          </p>
-          <div className="mt-8 flex justify-center gap-3">
-            <Link to="/login">
-              <Button>Dang nhap</Button>
-            </Link>
-            <Link to="/register">
-              <Button variant="outline">Tao tai khoan</Button>
+          <div className="p-8">
+            <p className="text-center text-slate-600 leading-relaxed mb-8">
+              Chỉ tài khoản đã đăng nhập mới có thể gửi yêu cầu mở shop và truy cập các công cụ hỗ trợ người bán chuyên nghiệp.
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Link to="/login" className="w-full">
+                <Button className="w-full rounded-2xl h-12 text-base shadow-lg shadow-primary/20">Đăng nhập</Button>
+              </Link>
+              <Link to="/register" className="w-full">
+                <Button variant="outline" className="w-full rounded-2xl h-12 text-base border-slate-200 hover:bg-slate-50">Tạo tài khoản</Button>
+              </Link>
+            </div>
+            <Link to="/" className="mt-6 flex items-center justify-center gap-2 text-sm font-semibold text-slate-400 hover:text-primary transition-colors">
+              <ArrowLeft className="h-4 w-4" />
+              Quay lại trang chủ
             </Link>
           </div>
         </div>
@@ -178,19 +190,22 @@ export function SellerRegistrationView() {
 
   if (application?.status === "PENDING") {
     return (
-      <div className="min-h-screen bg-background px-4 py-16">
-        <div className="mx-auto max-w-3xl rounded-4xl border bg-card p-10 shadow-sm">
-          <div className="mb-5 flex size-16 items-center justify-center rounded-3xl bg-amber-100 text-amber-700">
-            <Clock3 className="size-8" />
+      <div className="flex min-h-screen items-center justify-center bg-slate-50/50 px-4">
+        <div className="w-full max-w-2xl rounded-[40px] border bg-white p-12 text-center shadow-2xl shadow-amber-200/20 ring-1 ring-amber-100">
+          <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-4xl bg-amber-50 text-amber-600 shadow-inner ring-1 ring-amber-100">
+            <Clock3 className="h-12 w-12 animate-pulse" />
           </div>
-          <h1 className="text-3xl font-semibold">Yêu cầu mở shop đang chờ duyệt</h1>
-          <p className="mt-3 text-muted-foreground">
-            Shop <span className="font-medium text-foreground">{application.shopName}</span> đã được gửi lên admin.
-            Khi được phê duyệt, role của bạn sẽ được đổi sang seller và bạn sẽ vào dashboard người bán.
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Yêu cầu đang được xử lý</h1>
+          <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-2 text-sm font-bold text-amber-700 ring-1 ring-amber-100">
+            <Store className="h-4 w-4" />
+            {application.shopName}
+          </div>
+          <p className="mt-8 text-lg text-slate-500 leading-relaxed max-w-md mx-auto">
+            Hồ sơ của bạn đã được gửi lên ban quản trị. Chúng tôi sẽ phê duyệt trong vòng <span className="font-bold text-slate-900">24h làm việc</span>.
           </p>
-          <div className="mt-8 flex gap-3">
+          <div className="mt-12 flex justify-center gap-4">
             <Link to="/">
-              <Button variant="outline">Về trang chủ</Button>
+              <Button variant="outline" className="rounded-2xl h-12 px-8 font-bold border-slate-200 hover:bg-slate-50">Về trang chủ</Button>
             </Link>
           </div>
         </div>
@@ -200,20 +215,27 @@ export function SellerRegistrationView() {
 
   if (application?.status === "APPROVED") {
     return (
-      <div className="min-h-screen bg-background px-4 py-16">
-        <div className="mx-auto max-w-3xl rounded-4xl border bg-card p-10 shadow-sm">
-          <div className="mb-5 flex size-16 items-center justify-center rounded-3xl bg-emerald-100 text-emerald-700">
-            <CheckCircle2 className="size-8" />
+      <div className="flex min-h-screen items-center justify-center bg-slate-50/50 px-4">
+        <div className="w-full max-w-2xl rounded-[40px] border bg-white p-12 text-center shadow-2xl shadow-emerald-200/20 ring-1 ring-emerald-100">
+          <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-4xl bg-emerald-50 text-emerald-600 shadow-inner ring-1 ring-emerald-100">
+            <CheckCircle2 className="h-12 w-12" />
           </div>
-          <h1 className="text-3xl font-semibold">Shop đã được phê duyệt</h1>
-          <p className="mt-3 text-muted-foreground">
-            Bạn đã có quyền seller. Nếu chưa được chuyển hướng, hãy vào dashboard để bắt đầu đăng sản phẩm.
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Chúc mừng bạn!</h1>
+          <p className="mt-6 text-lg text-slate-500 font-medium">
+            Gian hàng của bạn đã chính thức được phê duyệt.
           </p>
-          <div className="mt-8">
+          <div className="mt-10 p-6 rounded-3xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+            <div className="text-left">
+              <p className="text-xs uppercase tracking-widest text-slate-400 font-bold">Trạng thái hiện tại</p>
+              <p className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-emerald-500" />
+                Đối tác bán hàng
+              </p>
+            </div>
             <Link to="/seller/dashboard">
-              <Button>
-                <Store className="size-4" />
-                Đến seller dashboard
+              <Button className="rounded-2xl h-14 px-8 text-base font-bold shadow-xl shadow-primary/20 group">
+                <Rocket className="mr-2 h-5 w-5 group-hover:animate-bounce" />
+                Bắt đầu ngay
               </Button>
             </Link>
           </div>
@@ -223,65 +245,152 @@ export function SellerRegistrationView() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container py-8">
-        <div className="mx-auto max-w-4xl">
-          <div className="mb-12 text-center">
-            <h1 className="mb-2 text-3xl font-bold">Đăng ký mở gian hàng</h1>
-            <p className="text-muted-foreground">
-              Hoàn thành các bước dưới đây để gửi yêu cầu mở shop.
-            </p>
+    <div className="min-h-screen bg-[#fcfcfd]">
+      {/* Header Bar */}
+      <div className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md">
+        <div className="mx-auto max-w-5xl px-4 flex h-20 items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/20">
+              <Store className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-extrabold tracking-tight text-slate-900">Đăng ký người bán</h1>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Merchant Hub</p>
+            </div>
           </div>
+          <Link 
+            to="/" 
+            className="group flex items-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 hover:text-red-500 transition-all duration-300"
+          >
+            <span className="opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all">Thoát</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 group-hover:ring-red-200">
+              <ArrowLeft className="h-4 w-4 rotate-180 group-hover:text-red-500" />
+            </div>
+          </Link>
+        </div>
+      </div>
 
-          <StepIndicator
-            steps={STEPS}
-            currentStep={currentStep}
-            completedSteps={completedSteps}
-          />
-
-          <div className="rounded-lg border bg-card p-8">
-            {currentStep === 'shop-info' && (
-              <ShopInfoForm
-                data={registration.shopInfo}
-                onNext={handleShopInfoSubmit}
-              />
-            )}
-
-            {currentStep === 'shipping' && (
-              <ShippingSettings
-                data={registration.taxInfo}
-                onNext={handleShippingNext}
-                onPrev={handlePrevStep}
-              />
-            )}
-
-            {currentStep === 'identity' && (
-              <IdentityForm
-                initialData={registration.identityInfo}
-                onSubmit={handleIdentitySubmit}
-                isLoading={isLoading}
-              />
-            )}
-
-            {currentStep === 'tax' && (
-              <TaxForm
-                initialData={registration.taxInfo}
-                onSubmit={handleTaxSubmit}
-                isLoading={isLoading}
-              />
-            )}
-
-            {currentStep === 'complete' && (
-              <div className="py-12 text-center">
-                <h2 className="mb-4 text-2xl font-bold">Xác nhận đăng ký</h2>
-                <p className="mb-6 text-muted-foreground">
-                  Nhấn hoàn tất để gửi yêu cầu đăng ký seller.
-                </p>
-                <Button onClick={handleComplete} disabled={isLoading}>
-                  {isLoading ? "Đang gửi..." : "Hoàn tất đăng ký"}
-                </Button>
+      <div className="container py-12 lg:py-20">
+        <div className="mx-auto max-w-5xl">
+          <div className="grid gap-12 lg:grid-cols-[300px_1fr]">
+            {/* Left Sidebar Info */}
+            <div className="hidden lg:block">
+              <div className="sticky top-32 space-y-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900 leading-tight">Mở rộng kinh doanh cùng chúng tôi</h2>
+                  <p className="mt-4 text-slate-500 leading-relaxed font-medium">
+                    Tiếp cận hàng triệu khách hàng tiềm năng chỉ với vài bước đăng ký đơn giản.
+                  </p>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex items-start gap-4">
+                    <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-700">Duyệt hồ sơ nhanh chóng trong 24h</p>
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-700">Công cụ quản lý bán hàng chuyên nghiệp</p>
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-700">Hỗ trợ vận chuyển đa dạng đơn vị</p>
+                  </div>
+                </div>
               </div>
-            )}
+            </div>
+
+            {/* Main Content */}
+            <div className="space-y-10">
+              <div className="px-4">
+                <StepIndicator
+                  steps={STEPS}
+                  currentStep={currentStep}
+                  completedSteps={completedSteps}
+                />
+              </div>
+
+              <div className="overflow-hidden rounded-[40px] border bg-white shadow-2xl shadow-slate-200/50 ring-1 ring-slate-100">
+                <div className="p-8 lg:p-12">
+                  {currentStep === 'shop-info' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <ShopInfoForm
+                        data={registration.shopInfo}
+                        onNext={handleShopInfoSubmit}
+                      />
+                    </div>
+                  )}
+
+                  {currentStep === 'shipping' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <ShippingSettings
+                        data={registration.taxInfo}
+                        onNext={handleShippingNext}
+                        onPrev={handlePrevStep}
+                      />
+                    </div>
+                  )}
+
+                  {currentStep === 'identity' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <IdentityForm
+                        initialData={registration.identityInfo}
+                        onSubmit={handleIdentitySubmit}
+                        isLoading={isLoading}
+                      />
+                    </div>
+                  )}
+
+                  {currentStep === 'tax' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <TaxForm
+                        initialData={registration.taxInfo}
+                        onSubmit={handleTaxSubmit}
+                        isLoading={isLoading}
+                      />
+                    </div>
+                  )}
+
+                  {currentStep === 'complete' && (
+                    <div className="py-12 text-center animate-in zoom-in duration-500">
+                      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-[28px] bg-primary/10 text-primary shadow-inner">
+                        <CheckCircle2 className="h-10 w-10" />
+                      </div>
+                      <h2 className="text-3xl font-extrabold text-slate-900">Xác nhận thông tin</h2>
+                      <p className="mt-4 text-lg text-slate-500 font-medium max-w-sm mx-auto leading-relaxed">
+                        Bạn đã hoàn thành tất cả các bước. Nhấn "Hoàn tất" để gửi yêu cầu cho chúng tôi.
+                      </p>
+                      <div className="mt-10 flex flex-col items-center gap-4">
+                        <Button 
+                          onClick={handleComplete} 
+                          disabled={isLoading}
+                          className="rounded-2xl h-14 px-12 text-base font-bold shadow-xl shadow-primary/20 w-full sm:w-auto"
+                        >
+                          {isLoading ? (
+                            <span className="flex items-center gap-2">
+                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                              Đang xử lý...
+                            </span>
+                          ) : "Gửi yêu cầu ngay"}
+                        </Button>
+                        <button 
+                          onClick={handlePrevStep}
+                          className="text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors"
+                        >
+                          Kiểm tra lại hồ sơ
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

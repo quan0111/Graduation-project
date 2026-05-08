@@ -7,3 +7,5 @@ python-multipart
 numpy
 joblib
 apscheduler
+redis
+hiredis

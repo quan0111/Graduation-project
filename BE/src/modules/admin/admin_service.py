@@ -194,7 +194,7 @@ class AdminService:
         delivered_items = [
             item
             for item in delivered_items
-            if item.order and item.order.deletedAt is None and item.order.status in ["DELIVERED", "COMPLETED"]
+            if item.order and item.order.deletedAt is None and item.order.status in ["DELIVERED", "COMPLETED"]  # Both COD and prepaid orders
         ]
 
         delivered_order_ids = {item.orderId for item in delivered_items}

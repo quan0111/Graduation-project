@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     VNPAY_RETURN_URL: str = ""
     VNPAY_PAYMENT_URL: str = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
     VNPAY_API_URL: str = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction"
+    
+    # Redis Configuration
+    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_ENABLED: bool = True
+    CACHE_ENABLED: bool = True
 
     model_config = SettingsConfigDict(          # ← dùng SettingsConfigDict
         env_file=".env",

@@ -12,9 +12,9 @@ export const categoryColumns = (
         <p className="font-medium">{c.name}</p>
 
         {/* hiển thị parent */}
-        {c.Parent && (
+        {c.parent && (
           <p className="text-xs text-muted-foreground">
-            Parent: {c.Parent.name}
+            Parent: {c.parent.name}
           </p>
         )}
       </div>
@@ -32,20 +32,12 @@ export const categoryColumns = (
     label: "Danh mục con",
     render: (c: ICategory) => (
       <div className="text-center">
-        {c.Children?.length || 0}
+        {c.children?.length || 0}
       </div>
     ),
   },
 
-  {
-    key: "created_at",
-    label: "Ngày tạo",
-    render: (c: ICategory) => (
-      <div className="text-center">
-        {new Date(c.created_at).toLocaleDateString()}
-      </div>
-    ),
-  },
+
 
   {
     key: "actions",

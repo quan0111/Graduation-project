@@ -34,7 +34,10 @@ ADMIN_TRANSITIONS = {
 }
 
 SELLER_TRANSITIONS = {
-    "PAID": {"PROCESSING"},
+    # COD orders: PENDING → PROCESSING (no payment required)
+    # MOMO/VNPAY orders: PAID → PROCESSING (payment required)
+    "PENDING": {"PROCESSING"},  # For COD orders
+    "PAID": {"PROCESSING"},     # For prepaid orders
     "PROCESSING": {"READY_TO_SHIP", "SHIPPED"},
     "READY_TO_SHIP": {"SHIPPED"},
     "SHIPPED": {"IN_TRANSIT", "DELIVERED"},
@@ -161,7 +164,7 @@ class OrderService:
         order_dict["items"] = filtered_items
         return order_dict
 
-    @staticmethod
+    @staticmethod   
     async def create_order(current_user, order_data: OrderCreate):
         if order_data.userId != current_user.id:
             raise HTTPException(403, "Forbidden")
@@ -187,11 +190,13 @@ class OrderService:
 
             for item in order_data.items:
                 variant = None
+
                 if item.variantId:
                     variant = await tx.productvariant.find_unique(
                         where={"id": item.variantId},
-                        include={"images": True}
+                        include={"images": True},
                     )
+
                     if not variant:
                         raise HTTPException(404, "Variant not found")
 
@@ -200,38 +205,61 @@ class OrderService:
 
                 product = await tx.product.find_unique(
                     where={"id": item.productId},
-                    include={"images": True}
+                    include={"images": True},
                 )
+
                 if not product:
                     raise HTTPException(404, "Product not found")
 
-                # 🚫 Kiểm tra trạng thái sản phẩm tại thời điểm checkout
+                # Check product status
                 if product.status == "BANNED":
                     raise HTTPException(
                         400,
-                        f"Sản phẩm '{product.name}' đã bị cấm và không thể đặt hàng"
+                        f"Sản phẩm '{product.name}' đã bị cấm và không thể đặt hàng",
                     )
+
                 if product.status != "ACTIVE":
                     raise HTTPException(
                         400,
-                        f"Sản phẩm '{product.name}' hiện không khả dụng (trạng thái: {product.status})"
+                        f"Sản phẩm '{product.name}' hiện không khả dụng (trạng thái: {product.status})",
                     )
 
                 price = item.price
                 subtotal += price * item.quantity
 
-                # Get image URL from variant images first, then product images
+                # Get image
                 image_url = None
+
                 if variant and variant.images and len(variant.images) > 0:
                     image_url = variant.images[0].url
+
                 elif product.images and len(product.images) > 0:
                     image_url = product.images[0].url
 
                 order_items_data.append(
                     {
-                        "productId": item.productId,
-                        "variantId": item.variantId,
-                        "shopId": item.shopId,
+                        "product": {
+                            "connect": {
+                                "id": item.productId,
+                            }
+                        },
+
+                        "variant": (
+                            {
+                                "connect": {
+                                    "id": item.variantId,
+                                }
+                            }
+                            if item.variantId
+                            else None
+                        ),
+
+                        "shop": {
+                            "connect": {
+                                "id": item.shopId,
+                            }
+                        },
+
                         "quantity": item.quantity,
                         "price": price,
                         "productName": product.name,
@@ -240,39 +268,98 @@ class OrderService:
                     }
                 )
 
+                # Atomic stock update
                 if variant:
-                    await tx.productvariant.update(
-                        where={"id": variant.id},
-                        data={"stock": variant.stock - item.quantity},
+                    updated = await tx.productvariant.update_many(
+                        where={
+                            "id": variant.id,
+                            "stock": {
+                                "gte": item.quantity,
+                            },
+                        },
+                        data={
+                            "stock": {
+                                "decrement": item.quantity,
+                            }
+                        },
                     )
 
-            order = await tx.order.create(
-                data={
-                    "user": {"connect": {"id": current_user.id}},
-                    "subtotal": subtotal,
-                    "shippingFee": order_data.shippingFee,
-                    "discountAmount": order_data.discountAmount,
-                    "totalAmount": order_data.totalAmount,
-                    "shippingAddressId": order_data.shippingAddressId,
-                    "couponId": order_data.couponId,
-                    "items": {
-                        "create": order_items_data,
-                    },
+                    if updated == 0:
+                        raise HTTPException(
+                            400,
+                            f"Biến thể '{variant.name}' không đủ tồn kho",
+                        )
+
+            # IMPORTANT: prisma-client-py needs relation connect
+            create_data = {
+                "user": {
+                    "connect": {
+                        "id": current_user.id,
+                    }
                 },
+
+                "subtotal": subtotal,
+                "shippingFee": order_data.shippingFee,
+                "discountAmount": order_data.discountAmount,
+                "totalAmount": order_data.totalAmount,
+
+                "items": {
+                    "create": order_items_data,
+                },
+            }
+
+            # Optional shipping address
+            if order_data.shippingAddressId:
+                create_data["shippingAddress"] = {
+                    "connect": {
+                        "id": order_data.shippingAddressId,
+                    }
+                }
+
+            # Optional coupon
+            if order_data.couponId:
+                coupon = await tx.coupon.find_first(
+                    where={
+                        "id": order_data.couponId,
+                    }
+                )
+
+                if not coupon:
+                    raise HTTPException(404, "Coupon not found")
+
+                create_data["coupon"] = {
+                    "connect": {
+                        "id": order_data.couponId,
+                    }
+                }
+
+            # Create order
+            order = await tx.order.create(
+                data=create_data,
                 include=ORDER_INCLUDE,
             )
 
-            # ✅ Tăng usedCount của coupon trong cùng transaction
+            # Increase coupon usage
             if order_data.couponId:
                 await tx.coupon.update(
                     where={"id": order_data.couponId},
-                    data={"usedCount": {"increment": 1}},
+                    data={
+                        "usedCount": {
+                            "increment": 1,
+                        }
+                    },
                 )
 
+            # Create payment
             if order_data.payment:
                 await tx.payment.create(
                     data={
-                        "order": {"connect": {"id": order.id}},
+                        "order": {
+                            "connect": {
+                                "id": order.id,
+                            }
+                        },
+
                         "method": order_data.payment.method,
                         "status": "PENDING",
                         "amount": float(order.totalAmount or 0),
@@ -283,7 +370,6 @@ class OrderService:
                 where={"id": order.id},
                 include=ORDER_INCLUDE,
             )
-
     @staticmethod
     async def get_order(order_id: int, current_user):
         return await OrderService.assert_order_visibility(order_id, current_user)

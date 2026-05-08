@@ -1,4 +1,4 @@
-import { useMutation, type UseMutationOptions } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type UseMutationOptions } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { API_URL_CATEGORY } from "@/constant/config";
 import type { ICategory } from "../types";
@@ -27,8 +27,14 @@ export const useUpdateCategory = (
         { id: string; data: UpdateCategoryDto }
     >,
 ) => {
+    const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ id, data }) => updateCategory(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["categories"],
+            });
+        },
         ...config,
     });
 };

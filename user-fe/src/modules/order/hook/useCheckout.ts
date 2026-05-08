@@ -45,32 +45,36 @@ export const useCheckout = (items: CheckoutPricingItem[]) => {
     useState<IShippingAddress | null>(null);
 
   /* subtotal */
-  const subtotal = useMemo(
-    () =>
-      items.reduce(
-        (sum, i) => sum + i.price * i.quantity,
-        0
-      ),
-    [items]
-  );
+  const subtotal = useMemo(() => {
+    return items.reduce((sum, item) => {
+      const price = Number(item.price || 0);
+      const quantity = Number(item.quantity || 0);
+
+      return sum + price * quantity;
+    }, 0);
+  }, [items]);
 
   /* shipping */
-  const shippingPrice = useMemo(
-    () => SHIPPING_PRICE[shipping],
-    [shipping]
-  );
+  const shippingPrice = useMemo(() => {
+    return SHIPPING_PRICE[shipping] || 0;
+  }, [shipping]);
 
   /* tax */
-  const tax = useMemo(
-    () => Math.round(subtotal * 0.1),
-    [subtotal]
-  );
+  const tax = useMemo(() => {
+    return Math.round(subtotal * 0.1);
+  }, [subtotal]);
 
   /* total */
-  const total = useMemo(
-    () => subtotal + shippingPrice + tax,
-    [subtotal, shippingPrice, tax]
-  );
+  const total = useMemo(() => {
+    return subtotal + shippingPrice + tax;
+  }, [subtotal, shippingPrice, tax]);
+
+  /* total items */
+  const totalItems = useMemo(() => {
+    return items.reduce((sum, item) => {
+      return sum + Number(item.quantity || 0);
+    }, 0);
+  }, [items]);
 
   return {
     step,
@@ -89,5 +93,7 @@ export const useCheckout = (items: CheckoutPricingItem[]) => {
     shippingPrice,
     tax,
     total,
+
+    totalItems,
   };
 };

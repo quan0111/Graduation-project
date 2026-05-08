@@ -71,7 +71,11 @@ export const OrderShipping: React.FC<OrderShippingProps> = ({ order }) => {
                 <PackageSearch className="size-4" />
                 Chưa có thông tin vận chuyển
               </div>
-              Người bán sẽ cập nhật mã vận đơn khi đơn được chuẩn bị giao.
+              {order.payment ? (
+                <p>Đơn hàng đang chờ thanh toán. Sau khi thanh toán thành công, người bán sẽ chuẩn bị và gửi hàng.</p>
+              ) : (
+                <p>Đơn hàng COD. Người bán sẽ chuẩn bị và gửi hàng ngay.</p>
+              )}
             </div>
           )}
         </CardContent>

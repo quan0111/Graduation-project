@@ -28,11 +28,32 @@ export function useStepState(allErrorsByStep: Record<WizardStep, string[]>) {
     if (previousStep) setCurrentStep(previousStep.id);
   }, [currentStepIndex]);
 
+  const canNavigateTo = useCallback(
+    (targetStepId: WizardStep) => {
+      const targetIndex = STEPS.findIndex((step) => step.id === targetStepId);
+      // Only allow navigation to previous steps (completed) or current step
+      return targetIndex <= currentStepIndex;
+    },
+    [currentStepIndex],
+  );
+
+  const handleStepChange = useCallback(
+    (stepId: WizardStep) => {
+      if (canNavigateTo(stepId)) {
+        setCurrentStep(stepId);
+      } else {
+        toast.error("Vui lòng hoàn thành các bước trước trước khi sang bước này");
+      }
+    },
+    [canNavigateTo],
+  );
+
   return {
     currentStep,
     currentStepIndex,
-    setCurrentStep,
+    setCurrentStep: handleStepChange,
     goNext,
     goPrev,
+    canNavigateTo,
   };
 }

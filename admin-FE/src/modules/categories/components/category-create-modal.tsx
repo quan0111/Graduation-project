@@ -32,8 +32,8 @@ export function CategoryCreateModal({ open, onClose }: Props) {
         reset();        // reset form
         onClose();      // đóng modal
       },
-      onError: () => {
-        toast.error("Tạo danh mục thất bại ❌");
+      onError: (error: any) => {
+        toast.error(error?.response?.data?.detail || "Tạo danh mục thất bại ");
       },
     },
   });
@@ -41,9 +41,7 @@ export function CategoryCreateModal({ open, onClose }: Props) {
   const onSubmit = (data: ICategory) => {
     createCategoryMutation.mutate({
       ...data,
-      parent_id: data.parent_id ? Number(data.parent_id) : null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      parentId: data.parentId ? Number(data.parentId) : null,
     });
   };
 
@@ -57,7 +55,7 @@ export function CategoryCreateModal({ open, onClose }: Props) {
         }
       }}
     >
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-125">
         <DialogHeader>
           <DialogTitle>Thêm danh mục</DialogTitle>
         </DialogHeader>
@@ -76,7 +74,7 @@ export function CategoryCreateModal({ open, onClose }: Props) {
 
           <select
             className="w-full border rounded-md px-3 py-2"
-            {...register("parent_id")}
+            {...register("parentId")}
           >
             <option value="">-- Không có danh mục cha --</option>
 

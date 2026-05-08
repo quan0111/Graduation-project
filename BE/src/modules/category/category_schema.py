@@ -1,6 +1,7 @@
-from pydantic import BaseModel
-from typing import Optional, List, ForwardRef
 
+
+from pydantic import BaseModel, Field
+from typing import Optional, List
 
 
 class CategoryBase(BaseModel):
@@ -17,20 +18,23 @@ class CategoryUpdate(BaseModel):
     name: Optional[str] = None
     slug: Optional[str] = None
     parentId: Optional[int] = None
+
+
 class CategoryInDB(CategoryBase):
     id: int
 
     class Config:
         from_attributes = True
 
+
 class CategoryOut(CategoryBase):
     id: int
     parent: Optional["CategoryOut"] = None
-    children: List["CategoryOut"] = []
+    children: Optional[List["CategoryOut"]] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
 
 
-# Fix forward reference
 CategoryOut.model_rebuild()
+

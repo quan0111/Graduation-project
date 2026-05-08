@@ -50,7 +50,7 @@ export const orderStatusMeta: Record<
   { label: string; tone: string; chip: string }
 > = {
   pending: {
-    label: "Chờ thanh toán",
+    label: "Chờ xử lý",
     tone: "text-amber-700",
     chip: "bg-amber-50 text-amber-700 ring-amber-200",
   },
@@ -122,15 +122,11 @@ export const getStatusMeta = (status: OrderStatusType) =>
 export const getOrderVisibleSubtotal = (order: IOrder) =>
   order.items.reduce((sum, item) => sum + item.line_total, 0);
 
-export const getTrackingSteps = (status: OrderStatusType) => {
-  const steps = [
-    "pending",
-    "paid",
-    "processing",
-    "shipped",
-    "delivered",
-    "completed",
-  ] as OrderStatusType[];
+export const getTrackingSteps = (status: OrderStatusType, hasPayment: boolean = true) => {
+  // COD orders skip the 'paid' step since payment happens on delivery
+  const steps = hasPayment
+    ? (["pending", "paid", "processing", "shipped", "delivered", "completed"] as OrderStatusType[])
+    : (["pending", "processing", "shipped", "delivered", "completed"] as OrderStatusType[]);
 
   const index = steps.indexOf(status);
   return steps.map((step, stepIndex) => ({

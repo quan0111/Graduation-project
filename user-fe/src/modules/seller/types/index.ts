@@ -62,6 +62,7 @@ export interface ISellerOrderItem {
   price: number;
 }
 export type RegistrationStep = 'shop-info' | 'shipping' | 'identity' | 'tax' | 'complete'
+
 export interface ShopInfo {
   shopName: string
   pickupAddress: string

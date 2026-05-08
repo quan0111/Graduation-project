@@ -164,7 +164,7 @@ export default function AddProductPage() {
   return (
     <SellerDashboardLayout>
       <div className="space-y-6">
-        <section className="rounded-[32px] bg-[linear-gradient(135deg,#fff7ed_0%,#ffffff_44%,#ffedd5_100%)] p-6 shadow-sm ring-1 ring-orange-100">
+        <section className="rounded-4xl bg-[linear-gradient(135deg,#fff7ed_0%,#ffffff_44%,#ffedd5_100%)] p-6 shadow-sm ring-1 ring-orange-100">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-orange-700">
@@ -191,6 +191,7 @@ export default function AddProductPage() {
             currentStep={stepState.currentStep}
             currentStepIndex={stepState.currentStepIndex}
             onStepChange={stepState.setCurrentStep}
+            canNavigateTo={stepState.canNavigateTo}
           />
 
           <div className="space-y-6">

@@ -14,70 +14,70 @@ const toLowerStatus = <T extends string>(value?: string | null) =>
 const mapUser = (user: any): IOrderUser | null =>
   user
     ? {
-        id: user.id,
-        email: user.email,
-        full_name: user.fullName ?? null,
-      }
+      id: user.id,
+      email: user.email,
+      full_name: user.fullName ?? null,
+    }
     : null;
 
 const mapAddress = (address: any): IOrderAddress | null =>
   address
     ? {
-        id: address.id,
-        user_id: address.userId,
-        full_name: address.fullName,
-        phone: address.phone,
-        address_line: address.addressLine,
-        ward: address.ward ?? null,
-        district: address.district,
-        province: address.province,
-        country: address.country ?? null,
-        postal_code: address.postalCode ?? null,
-        is_default: Boolean(address.isDefault),
-      }
+      id: address.id,
+      user_id: address.userId,
+      full_name: address.fullName,
+      phone: address.phone,
+      address_line: address.addressLine,
+      ward: address.ward ?? null,
+      district: address.district,
+      province: address.province,
+      country: address.country ?? null,
+      postal_code: address.postalCode ?? null,
+      is_default: Boolean(address.isDefault),
+    }
     : null;
 
 const mapShop = (shop: any): IOrderShop | undefined =>
   shop
     ? {
-        id: shop.id,
-        name: shop.name,
-      }
+      id: shop.id,
+      name: shop.name,
+    }
     : undefined;
 
 const mapPayment = (payment: any): IPayment | null =>
   payment
     ? {
-        id: payment.id,
-        order_id: payment.orderId,
-        method: payment.method,
-        status: toLowerStatus<IPayment["status"]>(payment.status),
-        amount: payment.amount ?? null,
-        provider_order_id: payment.providerOrderId ?? null,
-        request_id: payment.requestId ?? null,
-        transaction_id: payment.transactionId ?? null,
-        payment_url: payment.paymentUrl ?? null,
-        qr_code_url: payment.qrCodeUrl ?? null,
-        deeplink: payment.deeplink ?? null,
-        provider_message: payment.providerMessage ?? null,
-        paid_at: payment.paidAt ?? null,
-        created_at: payment.createdAt,
-        updated_at: payment.updatedAt ?? null,
-      }
+      id: payment.id,
+      order_id: payment.orderId,
+      method: payment.method,
+      status: toLowerStatus<IPayment["status"]>(payment.status),
+      amount: payment.amount ?? null,
+      provider_order_id: payment.providerOrderId ?? null,
+      request_id: payment.requestId ?? null,
+      transaction_id: payment.transactionId ?? null,
+      payment_url: payment.paymentUrl ?? null,
+      qr_code_url: payment.qrCodeUrl ?? null,
+      deeplink: payment.deeplink ?? null,
+      provider_message: payment.providerMessage ?? null,
+      paid_at: payment.paidAt ?? null,
+      created_at: payment.createdAt,
+      updated_at: payment.updatedAt ?? null,
+    }
     : null;
 
 const mapShipment = (shipment: any): IShipment | null =>
   shipment
     ? {
-        id: shipment.id,
-        order_id: shipment.orderId,
-        carrier: shipment.carrier ?? null,
-        tracking_number: shipment.trackingNumber ?? null,
-        status: toLowerStatus<IShipment["status"]>(shipment.status),
-        shipped_at: shipment.shippedAt ?? null,
-        delivered_at: shipment.deliveredAt ?? null,
-        created_at: shipment.createdAt,
-      }
+      id: shipment.id,
+      order_id: shipment.orderId,
+      carrier: shipment.carrier ?? null,
+      tracking_number: shipment.trackingNumber ?? null,
+      status: toLowerStatus<IShipment["status"]>(shipment.status),
+      shipped_at: shipment.shippedAt ?? null,
+      delivered_at: shipment.deliveredAt ?? null,
+      created_at: shipment.createdAt,
+    }
     : null;
 
 const mapItem = (item: any): IOrderItem => ({
