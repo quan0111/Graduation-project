@@ -1,4 +1,4 @@
-import { useMutation, type UseMutationOptions } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type UseMutationOptions } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { API_URL_USER } from "@/constant/config";
 import type { IUser } from "../types";
@@ -27,9 +27,37 @@ export const useUpdateUser = (
         { id: string; data: UpdateUserDto }
     >,
 ) => {
+    const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (variables: { id: string; data: UpdateUserDto }) =>
             updateUser(variables.id, variables.data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["users"] });
+        },
+        ...config,
+    });
+};
+
+// Toggle user status (active/inactive)
+const toggleUserStatus = async (id: string, isActive: boolean): Promise<UpdateUserResponse> => {
+    const res = await apiClient.patch(`${API_URL_USER}/${id}`, { isActive });
+    return res.data;
+};
+
+export const useToggleUserStatus = (
+    config?: UseMutationOptions<
+        UpdateUserResponse,
+        Error,
+        { id: string; isActive: boolean }
+    >,
+) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { id: string; isActive: boolean }) =>
+            toggleUserStatus(variables.id, variables.isActive),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["users"] });
+        },
         ...config,
     });
 };

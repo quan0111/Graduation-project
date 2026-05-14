@@ -3,6 +3,10 @@ from datetime import datetime
 from fastapi import HTTPException
 
 from src.core.database import prisma
+from src.modules.audit.audit_service import AuditService
+from src.modules.inventory.inventory_service import InventoryService
+from src.modules.notification.notification_schema import NotificationCreate
+from src.modules.notification.notification_service import NotificationService
 
 
 RETURN_INCLUDE = {
@@ -149,6 +153,16 @@ class ReturnService:
                 data={"status": "RETURN_REQUESTED"},
             )
 
+        await ReturnService._notify_return_update(return_request.id, "REQUESTED", actor_id=user_id)
+        await AuditService.create(
+            actor_id=user_id,
+            action="RETURN.REQUESTED",
+            entity_type="ReturnRequest",
+            entity_id=return_request.id,
+            target_user_id=user_id,
+            severity="INFO",
+            metadata={"orderId": data.orderId},
+        )
         return await ReturnService.get_detail(return_request.id)
 
     @staticmethod
@@ -197,7 +211,69 @@ class ReturnService:
                 include=RETURN_INCLUDE,
             )
 
-            return updated
+        await ReturnService._notify_return_update(return_id, data.status, actor_id=admin_id)
+        await AuditService.create(
+            actor_id=admin_id,
+            action=f"RETURN.{data.status}",
+            entity_type="ReturnRequest",
+            entity_id=return_id,
+            target_user_id=updated.userId,
+            severity="INFO" if data.status == "APPROVED" else "WARNING",
+            metadata={"rejectReason": data.rejectReason},
+        )
+        return updated
+
+    @staticmethod
+    async def mark_picked_up(return_id: int, seller_id: int):
+        shop = await ReturnService._get_seller_shop(seller_id)
+        async with prisma.tx() as tx:
+            return_request = await ReturnService._get_seller_return_for_update(tx, return_id, shop.id)
+            if ReturnService._to_value(return_request.status) != "APPROVED":
+                raise HTTPException(400, "Return must be approved before pickup")
+            updated = await tx.returnrequest.update(
+                where={"id": return_id},
+                data={"status": "PICKED_UP"},
+                include=RETURN_INCLUDE,
+            )
+
+        await ReturnService._notify_return_update(return_id, "PICKED_UP", actor_id=seller_id)
+        await AuditService.create(
+            actor_id=seller_id,
+            action="RETURN.PICKED_UP",
+            entity_type="ReturnRequest",
+            entity_id=return_id,
+            target_user_id=updated.userId,
+            severity="INFO",
+            metadata={"shopId": shop.id},
+        )
+        return updated
+
+    @staticmethod
+    async def mark_received(return_id: int, seller_id: int):
+        shop = await ReturnService._get_seller_shop(seller_id)
+        async with prisma.tx() as tx:
+            return_request = await ReturnService._get_seller_return_for_update(tx, return_id, shop.id)
+            if ReturnService._to_value(return_request.status) not in {"APPROVED", "PICKED_UP"}:
+                raise HTTPException(400, "Return must be approved before seller receives items")
+
+            await ReturnService._restore_return_stock(tx, return_request, seller_id)
+            updated = await tx.returnrequest.update(
+                where={"id": return_id},
+                data={"status": "RECEIVED"},
+                include=RETURN_INCLUDE,
+            )
+
+        await ReturnService._notify_return_update(return_id, "RECEIVED", actor_id=seller_id)
+        await AuditService.create(
+            actor_id=seller_id,
+            action="RETURN.RECEIVED",
+            entity_type="ReturnRequest",
+            entity_id=return_id,
+            target_user_id=updated.userId,
+            severity="INFO",
+            metadata={"shopId": shop.id},
+        )
+        return updated
 
     @staticmethod
     async def mark_refunded(return_id: int, seller_id: int):
@@ -216,8 +292,13 @@ class ReturnService:
             )
             if not return_request:
                 raise HTTPException(404, "Return not found")
-            if ReturnService._to_value(return_request.status) != "APPROVED":
+            current_status = ReturnService._to_value(return_request.status)
+            if current_status == "REQUESTED":
                 raise HTTPException(400, "Admin must approve this return before seller refunds")
+            if current_status in {"APPROVED", "PICKED_UP"}:
+                raise HTTPException(400, "Seller must confirm returned items before refunding")
+            if current_status != "RECEIVED":
+                raise HTTPException(400, "Return is not ready to refund")
             if not return_request.items:
                 raise HTTPException(400, "Return request has no items")
 
@@ -249,7 +330,109 @@ class ReturnService:
                 data={"status": "REFUNDED"},
                 include=RETURN_INCLUDE,
             )
-            return updated
+        await ReturnService._notify_return_update(return_id, "REFUNDED", actor_id=seller_id)
+        await AuditService.create(
+            actor_id=seller_id,
+            action="RETURN.REFUNDED",
+            entity_type="ReturnRequest",
+            entity_id=return_id,
+            target_user_id=updated.userId,
+            severity="INFO",
+            metadata={"shopId": shop.id, "refundAmount": updated.refundAmount},
+        )
+        return updated
+
+    @staticmethod
+    async def _get_seller_return_for_update(client, return_id: int, shop_id: int):
+        return_request = await client.returnrequest.find_unique(
+            where={"id": return_id},
+            include={
+                "items": {
+                    "include": {
+                        "orderItem": True,
+                    }
+                }
+            },
+        )
+        if not return_request:
+            raise HTTPException(404, "Return not found")
+        if not return_request.items:
+            raise HTTPException(400, "Return request has no items")
+        seller_items = [
+            item
+            for item in return_request.items
+            if item.orderItem and item.orderItem.shopId == shop_id
+        ]
+        if not seller_items:
+            raise HTTPException(403, "Return request does not belong to your shop")
+        if len(seller_items) != len(return_request.items):
+            raise HTTPException(400, "Return request contains items from another shop")
+        return return_request
+
+    @staticmethod
+    async def _restore_return_stock(client, return_request, actor_id: int):
+        for item in return_request.items:
+            order_item = item.orderItem
+            if not order_item or not order_item.variantId:
+                continue
+            variant = await client.productvariant.find_unique(where={"id": order_item.variantId})
+            if not variant:
+                continue
+            stock_before = variant.stock or 0
+            stock_after = stock_before + item.quantity
+            await client.productvariant.update(
+                where={"id": variant.id},
+                data={"stock": stock_after},
+            )
+            await InventoryService.record(
+                client,
+                {
+                    "shopId": order_item.shopId,
+                    "productId": order_item.productId,
+                    "variantId": order_item.variantId,
+                    "orderId": return_request.orderId,
+                    "returnRequestId": return_request.id,
+                    "actorId": actor_id,
+                    "type": "RETURN_RESTORE",
+                    "quantityChange": item.quantity,
+                    "stockBefore": stock_before,
+                    "stockAfter": stock_after,
+                    "reason": "Restore stock after seller received returned item",
+                    "metadata": {"orderItemId": order_item.id, "productName": order_item.productName},
+                },
+            )
+
+    @staticmethod
+    async def _notify_return_update(return_id: int, status: str, actor_id: int | None = None):
+        try:
+            return_request = await prisma.returnrequest.find_unique(
+                where={"id": return_id},
+                include={
+                    "items": {"include": {"orderItem": {"include": {"shop": True}}}},
+                    "order": True,
+                },
+            )
+            if not return_request:
+                return None
+            recipients = {return_request.userId}
+            for item in return_request.items:
+                if item.orderItem and item.orderItem.shop and item.orderItem.shop.ownerId:
+                    recipients.add(item.orderItem.shop.ownerId)
+            if actor_id is not None:
+                recipients.discard(actor_id)
+            notification_type = "REFUND_UPDATE" if status == "REFUNDED" else "RETURN_UPDATE"
+            for user_id in recipients:
+                await NotificationService.create(
+                    NotificationCreate(
+                        userId=user_id,
+                        title="Cập nhật đổi trả/hoàn tiền",
+                        content=f"Yêu cầu đổi trả #{return_id} của đơn #{return_request.orderId} đang ở trạng thái {status}.",
+                        type=notification_type,
+                        metadata={"returnId": return_id, "orderId": return_request.orderId, "status": status},
+                    )
+                )
+        except Exception:
+            return None
 
     @staticmethod
     async def get_detail(return_id: int):

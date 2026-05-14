@@ -3,30 +3,18 @@ import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import type { IUser } from "../types";
 import { apiClient } from "@/lib/api";
 
-interface UserApiResponse {
-    data: IUser[];
-    count: number;
-}
-
-interface UserResponse {
-    data: UserApiResponse;
-    error: boolean;
-    message: string;
-    timestamp: string;
-}
-
-const getUser = async (): Promise<UserResponse> => {
+const getUser = async (): Promise<IUser[]> => {
     const res = await apiClient.get(API_URL_USER);
     return res.data;
 };
 
 export const useGetUser = (
     config?: Omit<
-        UseQueryOptions<UserResponse, Error, UserResponse, [string]>,
+        UseQueryOptions<IUser[], Error, IUser[], [string]>,
         "queryKey" | "queryFn"
     >,
 ) => {
-    return useQuery<UserResponse, Error, UserResponse, [string]>({
+    return useQuery<IUser[], Error, IUser[], [string]>({
         queryKey: ["users"],
         queryFn: () => getUser(),
         ...config,

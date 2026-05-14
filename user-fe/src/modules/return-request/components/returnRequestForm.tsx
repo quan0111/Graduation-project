@@ -3,10 +3,10 @@ import { RotateCcw, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 import { useCreateReturnRequest } from "../api/create-return";
 import type { ReturnRequestCreatePayload } from "../api/create-return";
+import { useUploadImage } from "@/modules/upload/api/upload-image";
 
 interface ReturnRequestFormProps {
   orderId: number;
@@ -24,9 +24,9 @@ export const ReturnRequestForm: React.FC<ReturnRequestFormProps> = ({
   const [reason, setReason] = useState("");
   const [selectedItems, setSelectedItems] = useState<Record<number, number>>({});
   const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
-  const [newImageUrl, setNewImageUrl] = useState("");
 
   const createMutation = useCreateReturnRequest();
+  const uploadMutation = useUploadImage();
 
   const handleItemQuantityChange = (itemId: number, quantity: number) => {
     setSelectedItems((prev) => ({
@@ -35,10 +35,27 @@ export const ReturnRequestForm: React.FC<ReturnRequestFormProps> = ({
     }));
   };
 
-  const handleAddImageUrl = () => {
-    if (newImageUrl.trim()) {
-      setEvidenceUrls((prev) => [...prev, newImageUrl.trim()]);
-      setNewImageUrl("");
+  const handleEvidenceUpload = async (files: FileList | null) => {
+    if (!files?.length) return;
+
+    const acceptedFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
+    if (acceptedFiles.length !== files.length) {
+      toast.error("Chỉ hỗ trợ tải lên file ảnh");
+    }
+
+    try {
+      const uploaded = await Promise.all(
+        acceptedFiles.map((file) =>
+          uploadMutation.mutateAsync({
+            file,
+            folder: "returns",
+          }),
+        ),
+      );
+      setEvidenceUrls((prev) => [...prev, ...uploaded.map((item) => item.url)]);
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail;
+      toast.error(typeof detail === "string" ? detail : "Không thể tải ảnh bằng chứng");
     }
   };
 
@@ -159,18 +176,22 @@ export const ReturnRequestForm: React.FC<ReturnRequestFormProps> = ({
 
           {/* Evidence */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Bằng chứng (link ảnh)</label>
-            <div className="flex gap-2">
-              <Input
-                value={newImageUrl}
-                onChange={(e) => setNewImageUrl(e.target.value)}
-                placeholder="Nhập URL ảnh..."
-                className="flex-1"
+            <label className="mb-2 block text-sm font-medium text-slate-700">Bằng chứng hình ảnh</label>
+            <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center transition hover:border-[#ee4d2d] hover:bg-orange-50">
+              <Upload className="mb-2 size-5 text-[#ee4d2d]" />
+              <span className="text-sm font-medium text-slate-900">
+                {uploadMutation.isPending ? "Đang tải ảnh..." : "Tải ảnh từ máy lên Cloudinary"}
+              </span>
+              <span className="mt-1 text-xs text-slate-500">Có thể chọn nhiều ảnh JPG, PNG hoặc WEBP</span>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                disabled={uploadMutation.isPending}
+                onChange={(event) => handleEvidenceUpload(event.target.files)}
               />
-              <Button onClick={handleAddImageUrl} variant="outline" size="icon">
-                <Upload className="size-4" />
-              </Button>
-            </div>
+            </label>
             {evidenceUrls.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
                 {evidenceUrls.map((url, index) => (

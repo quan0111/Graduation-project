@@ -4,6 +4,7 @@ export type OrderStatusType =
   | "PENDING"
   | "CONFIRMED"
   | "PAID"
+  | "PAYMENT_FAILED"
   | "PROCESSING"
   | "READY_TO_SHIP"
   | "SHIPPED"
@@ -16,40 +17,44 @@ export type OrderStatusType =
 
 export interface IOrder {
   id: number
-  user_id: number
+  userId?: number
 
   status: OrderStatusType
 
-  subtotal: number
-  shipping_fee: number
-  discount_amount: number
-  total_amount: number
+  subtotal?: number
+  shippingFee?: number
+  discountAmount?: number
+  totalAmount?: number
 
-  shipping_address_id?: number | null
-  coupon_id?: number | null
+  shippingAddressId?: number | null
+  couponId?: number | null
 
-  created_at: string
-  updated_at: string
-  deleted_at?: string | null
+  createdAt?: string
+  updatedAt?: string
+  deletedAt?: string | null
 
   User?: IUser
+  user?: any
   Items?: IOrderItem[]
+  items?: IOrderItem[]
   Payment?: IPayment
+  payment?: IPayment
+  shop?: any
 }
 export interface IOrderItem {
   id: number
-  order_id: number
-  product_id: number
+  orderId?: number
+  productId?: number
 
   quantity: number
   price: number
 
-  product_name: string
-  variant_name?: string | null
-  product_image?: string | null
+  productName?: string
+  variantName?: string | null
+  productImage?: string | null
 
-  created_at: string
-  deleted_at?: string | null
+  createdAt?: string
+  deletedAt?: string | null
 
   Product?: IProduct
 }
@@ -65,21 +70,21 @@ export type PaymentStatusType =
 
 export interface IPayment {
   id: number
-  order_id: number
+  orderId?: number
 
-  method: PaymentMethodType
-  status: PaymentStatusType
+  method?: PaymentMethodType
+  status?: PaymentStatusType
 
-  created_at: string
-  deleted_at?: string | null
+  createdAt?: string
+  deletedAt?: string | null
 }
 export interface ICreateOrderFormInputs {
-  shipping_address_id: number
-  coupon_id?: number
+  shippingAddressId: number
+  couponId?: number
 
   items: {
-    product_id: number
-    variant_id?: number
+    productId: number
+    variantId?: number
     quantity: number
   }[]
 }

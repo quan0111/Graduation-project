@@ -2,6 +2,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 import math
 from pathlib import Path
+import time
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 import joblib
@@ -15,9 +16,12 @@ class RecommendationEngine:
     BEHAVIOR_WEIGHTS = {"VIEW": 1.0, "CLICK": 2.0, "ADD_TO_CART": 4.0, "PURCHASE": 6.0}
     ORDER_WEIGHT = 7.0
     MAX_TOP_K = 30
+    CACHE_TTL_SECONDS = 90
 
     _model: Optional[ItemBasedRecommendationModel] = None
     _model_mtime: Optional[float] = None
+    _active_products_cache: Optional[Tuple[float, List]] = None
+    _popularity_scores_cache: Optional[Tuple[float, Dict[int, float]]] = None
 
     @classmethod
     def _load_model_if_needed(cls) -> Optional[ItemBasedRecommendationModel]:
@@ -74,6 +78,13 @@ class RecommendationEngine:
 
         products = await cls._get_active_products()
         popularity_scores = await cls._get_popularity_scores()
+        context_related_scores = (
+            await cls._get_context_related_scores(context_product_id, excluded_ids)
+            if context_product_id
+            else {}
+        )
+        if context_related_scores:
+            algorithms.append("co_purchase")
 
         for product in products:
             product_id = product.id
@@ -81,6 +92,7 @@ class RecommendationEngine:
                 continue
 
             scores[product_id] += popularity_scores.get(product_id, 0.0) * 0.35
+            scores[product_id] += context_related_scores.get(product_id, 0.0) * 1.4
             scores[product_id] += cls._score_product_affinity(product, user_profile, category_weight=1.4, shop_weight=0.7)
             scores[product_id] += cls._score_product_affinity(product, context_profile, category_weight=2.2, shop_weight=1.0)
 
@@ -205,20 +217,32 @@ class RecommendationEngine:
 
         return score
 
-    @staticmethod
-    async def _get_active_products():
-        return await prisma.product.find_many(
+    @classmethod
+    async def _get_active_products(cls):
+        now = time.monotonic()
+        if cls._active_products_cache and now - cls._active_products_cache[0] < cls.CACHE_TTL_SECONDS:
+            return cls._active_products_cache[1]
+
+        products = await prisma.product.find_many(
             where={"status": "ACTIVE", "deletedAt": None},
             include={"tags": True},
             take=250,
         )
+        cls._active_products_cache = (now, products)
+        return products
 
     @classmethod
     async def _get_popularity_scores(cls) -> Dict[int, float]:
+        now = time.monotonic()
+        if cls._popularity_scores_cache and now - cls._popularity_scores_cache[0] < cls.CACHE_TTL_SECONDS:
+            return cls._popularity_scores_cache[1]
+
         popularity_scores: Dict[int, float] = defaultdict(float)
         since = datetime.now(timezone.utc) - timedelta(days=45)
 
-        order_items = await prisma.orderitem.find_many(where={"deletedAt": None})
+        order_items = await prisma.orderitem.find_many(
+            where={"deletedAt": None, "createdAt": {"gte": since}},
+        )
         for order_item in order_items:
             quantity = max(order_item.quantity or 1, 1)
             popularity_scores[order_item.productId] += float(quantity) * cls.ORDER_WEIGHT
@@ -232,7 +256,32 @@ class RecommendationEngine:
                 behavior.createdAt
             )
 
+        cls._popularity_scores_cache = (now, dict(popularity_scores))
         return popularity_scores
+
+    @classmethod
+    async def _get_context_related_scores(cls, context_product_id: int, exclude_ids: Set[int]) -> Dict[int, float]:
+        seed_items = await prisma.orderitem.find_many(
+            where={"productId": context_product_id, "deletedAt": None},
+            order={"createdAt": "desc"},
+            take=80,
+        )
+        order_ids = list(dict.fromkeys(item.orderId for item in seed_items))
+        if not order_ids:
+            return {}
+
+        related_items = await prisma.orderitem.find_many(
+            where={"orderId": {"in": order_ids}, "deletedAt": None},
+        )
+
+        scores: Dict[int, float] = defaultdict(float)
+        for item in related_items:
+            if item.productId == context_product_id or item.productId in exclude_ids:
+                continue
+            quantity = max(item.quantity or 1, 1)
+            scores[item.productId] += quantity * cls.ORDER_WEIGHT * cls._recency_multiplier(item.createdAt)
+
+        return scores
 
     @staticmethod
     async def _filter_active_ids(product_ids: Iterable[int], excluded_ids: Optional[Set[int]] = None) -> List[int]:

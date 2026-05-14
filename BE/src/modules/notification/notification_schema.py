@@ -4,11 +4,15 @@ from datetime import datetime
 from enum import Enum
 
 class NotificationType(str, Enum):
-    ORDER = "ORDER"
-    PAYMENT = "PAYMENT"
+    ORDER_UPDATE = "ORDER_UPDATE"
+    PAYMENT_UPDATE = "PAYMENT_UPDATE"
+    RETURN_UPDATE = "RETURN_UPDATE"
+    REFUND_UPDATE = "REFUND_UPDATE"
     SYSTEM = "SYSTEM"
     PROMOTION = "PROMOTION"
+    CHAT = "CHAT"
     PRODUCT_BANNED = "PRODUCT_BANNED"
+    SUPPORT_TICKET = "SUPPORT_TICKET"
 
 class NotificationCreate(BaseModel):  
     userId: int

@@ -88,13 +88,10 @@ async def delete_user(user_id: int, admin=Depends(require_admin)):
 @router.patch("/{user_id}/ban")
 async def ban_user(user_id: int, body: BanUserRequest, admin=Depends(require_admin)):
     """Admin ban user: khóa tài khoản + tất cả shop của user đó"""
-    _ = admin
-    return await UserService.ban_user(user_id, body.reason)
+    return await UserService.ban_user(user_id, body.reason, admin_id=admin.id)
 
 
 @router.patch("/{user_id}/unban")
 async def unban_user(user_id: int, admin=Depends(require_admin)):
     """Admin mở khóa tài khoản user"""
-    _ = admin
-    return await UserService.unban_user(user_id)
-
+    return await UserService.unban_user(user_id, admin_id=admin.id)

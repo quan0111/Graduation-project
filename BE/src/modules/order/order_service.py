@@ -2,6 +2,10 @@ from fastapi import HTTPException
 
 from src.core.database import prisma
 from src.core.dependencies import get_role_value
+from src.modules.audit.audit_service import AuditService
+from src.modules.inventory.inventory_service import InventoryService
+from src.modules.notification.notification_schema import NotificationCreate
+from src.modules.notification.notification_service import NotificationService
 from src.modules.order.order_schema import OrderCreate, OrderUpdate
 
 
@@ -22,25 +26,25 @@ ORDER_STATUSES = {
 }
 
 ADMIN_TRANSITIONS = {
-    "PENDING": {"PAID", "PAYMENT_FAILED", "CANCELLED"},
+    "PENDING": {"PAID", "PAYMENT_FAILED", "CONFIRMED", "CANCELLED"},
     "PAYMENT_FAILED": {"PENDING", "CANCELLED"},
-    "PAID": {"PROCESSING", "CANCELLED"},
-    "PROCESSING": {"READY_TO_SHIP", "SHIPPED", "CANCELLED"},
+    "PAID": {"CONFIRMED", "CANCELLED"},
+    "CONFIRMED": {"PROCESSING", "CANCELLED"},
+    "PROCESSING": {"READY_TO_SHIP", "CANCELLED"},
     "READY_TO_SHIP": {"SHIPPED", "CANCELLED"},
-    "SHIPPED": {"IN_TRANSIT", "DELIVERED"},
+    "SHIPPED": {"IN_TRANSIT"},
     "IN_TRANSIT": {"DELIVERED"},
     "DELIVERED": {"COMPLETED", "RETURN_REQUESTED"},
     "COMPLETED": {"RETURN_REQUESTED"},
 }
 
 SELLER_TRANSITIONS = {
-    # COD orders: PENDING → PROCESSING (no payment required)
-    # MOMO/VNPAY orders: PAID → PROCESSING (payment required)
-    "PENDING": {"PROCESSING"},  # For COD orders
-    "PAID": {"PROCESSING"},     # For prepaid orders
-    "PROCESSING": {"READY_TO_SHIP", "SHIPPED"},
+    "PENDING": {"CONFIRMED"},
+    "PAID": {"CONFIRMED", "PROCESSING"},
+    "CONFIRMED": {"PROCESSING"},
+    "PROCESSING": {"READY_TO_SHIP"},
     "READY_TO_SHIP": {"SHIPPED"},
-    "SHIPPED": {"IN_TRANSIT", "DELIVERED"},
+    "SHIPPED": {"IN_TRANSIT"},
     "IN_TRANSIT": {"DELIVERED"},
 }
 
@@ -48,7 +52,7 @@ CUSTOMER_TRANSITIONS = {
     "DELIVERED": {"COMPLETED"},
 }
 
-CANCELLABLE_STATUSES = {"PENDING", "PAYMENT_FAILED"}
+CANCELLABLE_STATUSES = {"PENDING", "PAYMENT_FAILED", "PAID", "CONFIRMED"}
 
 ORDER_INCLUDE = {
     "items": {
@@ -187,6 +191,7 @@ class OrderService:
 
             subtotal = 0
             order_items_data = []
+            inventory_logs = []
 
             for item in order_data.items:
                 variant = None
@@ -290,6 +295,21 @@ class OrderService:
                             f"Biến thể '{variant.name}' không đủ tồn kho",
                         )
 
+                    inventory_logs.append(
+                        {
+                            "shopId": item.shopId,
+                            "productId": item.productId,
+                            "variantId": variant.id,
+                            "actorId": current_user.id,
+                            "type": "ORDER_DEDUCT",
+                            "quantityChange": -item.quantity,
+                            "stockBefore": variant.stock,
+                            "stockAfter": variant.stock - item.quantity,
+                            "reason": "Deduct stock for checkout",
+                            "metadata": {"productName": product.name, "variantName": variant.name},
+                        }
+                    )
+
             # IMPORTANT: prisma-client-py needs relation connect
             create_data = {
                 "user": {
@@ -338,6 +358,9 @@ class OrderService:
                 data=create_data,
                 include=ORDER_INCLUDE,
             )
+            for inventory_log in inventory_logs:
+                inventory_log["orderId"] = order.id
+                await InventoryService.record(tx, inventory_log)
 
             # Increase coupon usage
             if order_data.couponId:
@@ -366,10 +389,12 @@ class OrderService:
                     }
                 )
 
-            return await tx.order.find_unique(
+            created_order = await tx.order.find_unique(
                 where={"id": order.id},
                 include=ORDER_INCLUDE,
             )
+        await OrderService._notify_order_update(created_order.id, "CREATED", actor_id=current_user.id)
+        return created_order
     @staticmethod
     async def get_order(order_id: int, current_user):
         return await OrderService.assert_order_visibility(order_id, current_user)
@@ -430,6 +455,51 @@ class OrderService:
         return OrderService._filter_order_items_for_shop(order, shop.id)
 
     @staticmethod
+    async def _restore_stock(
+        order_id: int,
+        tx,
+        actor_id: int | None = None,
+        ledger_type: str = "CANCEL_RESTORE",
+        return_request_id: int | None = None,
+    ):
+        order = await tx.order.find_first(
+            where={"id": order_id},
+            include={"items": True}
+        )
+        if not order:
+            return
+
+        for item in order.items:
+            if item.variantId:
+                variant = await tx.productvariant.find_unique(
+                    where={"id": item.variantId}
+                )
+                if variant:
+                    stock_before = variant.stock or 0
+                    stock_after = stock_before + item.quantity
+                    await tx.productvariant.update(
+                        where={"id": variant.id},
+                        data={"stock": stock_after},
+                    )
+                    await InventoryService.record(
+                        tx,
+                        {
+                            "shopId": item.shopId,
+                            "productId": item.productId,
+                            "variantId": item.variantId,
+                            "orderId": order_id,
+                            "returnRequestId": return_request_id,
+                            "actorId": actor_id,
+                            "type": ledger_type,
+                            "quantityChange": item.quantity,
+                            "stockBefore": stock_before,
+                            "stockAfter": stock_after,
+                            "reason": "Restore stock after cancellation or return",
+                            "metadata": {"orderItemId": item.id, "productName": item.productName},
+                        },
+                    )
+
+    @staticmethod
     async def update_order(order_id: int, current_user, order_data: OrderUpdate):
         order = await OrderService.assert_order_visibility(order_id, current_user)
         data = order_data.model_dump(exclude_unset=True)
@@ -453,11 +523,39 @@ class OrderService:
 
         OrderService._assert_transition(current_status, next_status, transitions)
 
-        return await prisma.order.update(
-            where={"id": order_id},
-            data={"status": next_status},
-            include=ORDER_INCLUDE,
+        # Shopee-like flow: online payments must be paid before seller confirms.
+        if current_status == "PENDING" and next_status == "CONFIRMED":
+            payment_method = "COD"
+            if order.payment:
+                payment_method = OrderService._to_value(order.payment.method)
+
+            if payment_method != "COD":
+                raise HTTPException(
+                    400,
+                    f"Không thể xác nhận đơn hàng {payment_method} khi chưa thanh toán thành công."
+                )
+
+        async with prisma.tx() as tx:
+            if next_status == "CANCELLED" and current_status != "CANCELLED":
+                await OrderService._restore_stock(order_id, tx, actor_id=current_user.id)
+
+            updated = await tx.order.update(
+                where={"id": order_id},
+                data={"status": next_status},
+                include=ORDER_INCLUDE,
+            )
+
+        await AuditService.create(
+            actor_id=current_user.id,
+            action="ORDER.STATUS_UPDATED",
+            entity_type="Order",
+            entity_id=order_id,
+            target_user_id=order.userId,
+            severity="INFO",
+            metadata={"from": current_status, "to": next_status, "role": role},
         )
+        await OrderService._notify_order_update(order_id, next_status, actor_id=current_user.id)
+        return updated
 
     @staticmethod
     async def cancel_order(order_id: int, current_user):
@@ -467,8 +565,7 @@ class OrderService:
                     "id": order_id,
                     "userId": current_user.id,
                     "deletedAt": None,
-                },
-                include={"items": True},
+                }
             )
 
             if not order:
@@ -480,26 +577,57 @@ class OrderService:
                 return {"message": "Already cancelled"}
 
             if order_status not in CANCELLABLE_STATUSES:
-                raise HTTPException(400, "Only pending or failed-payment orders can be cancelled")
+                raise HTTPException(400, "Chỉ có thể hủy đơn trước khi người bán bàn giao cho vận chuyển")
 
-            for item in order.items:
-                if item.variantId:
-                    variant = await tx.productvariant.find_unique(
-                        where={"id": item.variantId}
-                    )
-
-                    if variant:
-                        await tx.productvariant.update(
-                            where={"id": variant.id},
-                            data={"stock": variant.stock + item.quantity},
-                        )
+            await OrderService._restore_stock(order_id, tx, actor_id=current_user.id)
 
             await tx.order.update(
                 where={"id": order_id},
                 data={"status": "CANCELLED"},
             )
 
-            return {"message": "Order cancelled"}
+        await AuditService.create(
+            actor_id=current_user.id,
+            action="ORDER.CANCELLED",
+            entity_type="Order",
+            entity_id=order_id,
+            target_user_id=current_user.id,
+            severity="INFO",
+            metadata={"from": order_status},
+        )
+        await OrderService._notify_order_update(order_id, "CANCELLED", actor_id=current_user.id)
+
+        return {"message": "Order cancelled"}
+
+    @staticmethod
+    async def _notify_order_update(order_id: int, status: str, actor_id: int | None = None):
+        try:
+            order = await prisma.order.find_unique(
+                where={"id": order_id},
+                include={"items": {"include": {"shop": True}}},
+            )
+            if not order:
+                return None
+
+            recipients = {order.userId}
+            for item in order.items:
+                if item.shop and item.shop.ownerId:
+                    recipients.add(item.shop.ownerId)
+            if actor_id is not None:
+                recipients.discard(actor_id)
+
+            for user_id in recipients:
+                await NotificationService.create(
+                    NotificationCreate(
+                        userId=user_id,
+                        title="Cập nhật đơn hàng",
+                        content=f"Đơn hàng #{order_id} vừa chuyển sang trạng thái {status}.",
+                        type="ORDER_UPDATE",
+                        metadata={"orderId": order_id, "status": status},
+                    )
+                )
+        except Exception:
+            return None
 
     @staticmethod
     async def update_payment(order_id: int, status: str):

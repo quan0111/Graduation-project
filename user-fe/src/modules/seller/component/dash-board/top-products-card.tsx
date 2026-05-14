@@ -1,9 +1,11 @@
-import { PackageCheck } from "lucide-react";
+import { useState } from "react";
+import { PackageCheck, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useUpdateProduct } from "@/modules/product/api/update-product";
 import { useUpdateVariantStock } from "@/modules/product/api/update-variant-stock";
 import { cn } from "@/lib/utils";
@@ -22,6 +24,10 @@ interface SellerDashboardInventoryCardProps {
 export function SellerDashboardTopProductsCard({ products }: SellerDashboardTopProductsCardProps) {
   const updateProductMutation = useUpdateProduct();
   const updateStockMutation = useUpdateVariantStock();
+  const [stockTarget, setStockTarget] = useState<SellerDashboardTopProduct | null>(null);
+  const [stockQuantity, setStockQuantity] = useState("10");
+  const [priceTarget, setPriceTarget] = useState<SellerDashboardTopProduct | null>(null);
+  const [nextPrice, setNextPrice] = useState("");
 
   const handleToggleStatus = async (product: SellerDashboardTopProduct) => {
     try {
@@ -42,21 +48,22 @@ export function SellerDashboardTopProductsCard({ products }: SellerDashboardTopP
       return;
     }
 
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      toast.error("So luong tang kho khong hop le");
+      return;
+    }
+
     try {
       await updateStockMutation.mutateAsync({ variantId: product.variantId, quantity });
       toast.success(`Da tang kho +${quantity} cho ${product.name}`);
+      setStockTarget(null);
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || "Khong the cap nhat ton kho");
     }
   };
 
-  const handleEditPrice = async (product: SellerDashboardTopProduct) => {
-    const rawValue = window.prompt("Nhap gia moi (VND)", String(product.price || 1000));
-    if (!rawValue) {
-      return;
-    }
-    const nextPrice = Number(rawValue);
-    if (!Number.isFinite(nextPrice) || nextPrice <= 0) {
+  const handleEditPrice = async (product: SellerDashboardTopProduct, value: number) => {
+    if (!Number.isFinite(value) || value <= 0) {
       toast.error("Gia khong hop le");
       return;
     }
@@ -64,9 +71,10 @@ export function SellerDashboardTopProductsCard({ products }: SellerDashboardTopP
     try {
       await updateProductMutation.mutateAsync({
         id: product.id,
-        data: { price: nextPrice },
+        data: { price: value },
       });
       toast.success("Da cap nhat gia san pham");
+      setPriceTarget(null);
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || "Khong the cap nhat gia");
     }
@@ -121,10 +129,24 @@ export function SellerDashboardTopProductsCard({ products }: SellerDashboardTopP
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => handleIncreaseStock(product, 10)}>
-                        +10 kho
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setStockTarget(product);
+                          setStockQuantity("10");
+                        }}
+                      >
+                        Tang kho
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleEditPrice(product)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setPriceTarget(product);
+                          setNextPrice(String(product.price || ""));
+                        }}
+                      >
                         Sua gia
                       </Button>
                       <Button size="sm" onClick={() => handleToggleStatus(product)}>
@@ -138,22 +160,58 @@ export function SellerDashboardTopProductsCard({ products }: SellerDashboardTopP
           </table>
         </div>
       </CardContent>
+
+      {stockTarget && (
+        <NumberInputModal
+          title="Tang ton kho"
+          description={`Nhap so luong muon cong them cho ${stockTarget.name}.`}
+          label="So luong tang them"
+          value={stockQuantity}
+          onChange={setStockQuantity}
+          confirmLabel="Cap nhat kho"
+          isPending={updateStockMutation.isPending}
+          onCancel={() => setStockTarget(null)}
+          onConfirm={() => handleIncreaseStock(stockTarget, Number(stockQuantity))}
+        />
+      )}
+
+      {priceTarget && (
+        <NumberInputModal
+          title="Sua gia san pham"
+          description={`Nhap gia moi cho ${priceTarget.name}.`}
+          label="Gia moi (VND)"
+          value={nextPrice}
+          onChange={setNextPrice}
+          confirmLabel="Luu gia"
+          isPending={updateProductMutation.isPending}
+          onCancel={() => setPriceTarget(null)}
+          onConfirm={() => handleEditPrice(priceTarget, Number(nextPrice))}
+        />
+      )}
     </Card>
   );
 }
 
 export function SellerDashboardInventoryCard({ inventory }: SellerDashboardInventoryCardProps) {
   const updateStockMutation = useUpdateVariantStock();
+  const [stockTarget, setStockTarget] = useState<SellerDashboardInventoryItem | null>(null);
+  const [stockQuantity, setStockQuantity] = useState("10");
 
-  const handleIncreaseStock = async (item: SellerDashboardInventoryItem) => {
+  const handleIncreaseStock = async (item: SellerDashboardInventoryItem, quantity: number) => {
     if (!item.variantId) {
       toast.error("San pham nay chua co bien the de cap nhat kho");
       return;
     }
 
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      toast.error("So luong tang kho khong hop le");
+      return;
+    }
+
     try {
-      await updateStockMutation.mutateAsync({ variantId: item.variantId, quantity: 10 });
-      toast.success(`Da tang kho +10 cho ${item.name}`);
+      await updateStockMutation.mutateAsync({ variantId: item.variantId, quantity });
+      toast.success(`Da tang kho +${quantity} cho ${item.name}`);
+      setStockTarget(null);
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || "Khong the cap nhat ton kho");
     }
@@ -181,12 +239,90 @@ export function SellerDashboardInventoryCard({ inventory }: SellerDashboardInven
               <span className="text-slate-500">Ton kho: {item.stock}</span>
               <span className="font-semibold text-slate-900">{formatCurrency(item.price)}</span>
             </div>
-            <Button className="mt-3 w-full" size="sm" variant="outline" onClick={() => handleIncreaseStock(item)}>
-              Tang kho +10
+            <Button
+              className="mt-3 w-full"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setStockTarget(item);
+                setStockQuantity("10");
+              }}
+            >
+              Tang kho
             </Button>
           </div>
         ))}
       </CardContent>
+
+      {stockTarget && (
+        <NumberInputModal
+          title="Tang ton kho"
+          description={`Nhap so luong muon cong them cho ${stockTarget.name}.`}
+          label="So luong tang them"
+          value={stockQuantity}
+          onChange={setStockQuantity}
+          confirmLabel="Cap nhat kho"
+          isPending={updateStockMutation.isPending}
+          onCancel={() => setStockTarget(null)}
+          onConfirm={() => handleIncreaseStock(stockTarget, Number(stockQuantity))}
+        />
+      )}
     </Card>
+  );
+}
+
+function NumberInputModal({
+  title,
+  description,
+  label,
+  value,
+  onChange,
+  confirmLabel,
+  isPending,
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  description: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  confirmLabel: string;
+  isPending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
+          </div>
+          <button onClick={onCancel} className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+            <X className="size-5" />
+          </button>
+        </div>
+
+        <label className="mb-2 block text-sm font-medium text-slate-700">{label}</label>
+        <Input
+          type="number"
+          min="1"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="Nhap so"
+        />
+
+        <div className="mt-6 flex justify-end gap-3">
+          <Button variant="outline" onClick={onCancel} disabled={isPending}>
+            Huy
+          </Button>
+          <Button onClick={onConfirm} disabled={isPending} className="bg-[#ee4d2d] hover:bg-[#d93f21]">
+            {isPending ? "Dang luu..." : confirmLabel}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

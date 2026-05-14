@@ -1,22 +1,24 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Eye, Search, X } from "lucide-react";
+import { CheckCircle2, Eye, PackageCheck, Search, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useRefundReturnRequest } from "@/modules/return-request/api/create-return";
+import { useMarkReturnReceived, useRefundReturnRequest } from "@/modules/return-request/api/create-return";
 import { type ReturnRequest, useSellerReturnRequests } from "@/modules/return-request/api/get-return";
 import { SellerDashboardLayout } from "@/modules/seller/component/shop-layout";
 
-type ReturnStatusFilter = "ALL" | "REQUESTED" | "APPROVED" | "REJECTED" | "REFUNDED";
+type ReturnStatusFilter = "ALL" | "REQUESTED" | "APPROVED" | "PICKED_UP" | "RECEIVED" | "REJECTED" | "REFUNDED";
 
 const statusOptions: Array<{ value: ReturnStatusFilter; label: string }> = [
   { value: "ALL", label: "Tất cả trạng thái" },
   { value: "REQUESTED", label: "Chờ admin duyệt" },
   { value: "APPROVED", label: "Chờ seller hoàn tiền" },
+  { value: "PICKED_UP", label: "Đang chuyển hoàn" },
+  { value: "RECEIVED", label: "Đã nhận hàng hoàn" },
   { value: "REFUNDED", label: "Đã hoàn tiền" },
   { value: "REJECTED", label: "Bị từ chối" },
 ];
@@ -24,6 +26,8 @@ const statusOptions: Array<{ value: ReturnStatusFilter; label: string }> = [
 const statusMeta: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   REQUESTED: { label: "Chờ admin duyệt", variant: "secondary" },
   APPROVED: { label: "Admin đã duyệt", variant: "default" },
+  PICKED_UP: { label: "Đang chuyển hoàn", variant: "secondary" },
+  RECEIVED: { label: "Đã nhận hàng hoàn", variant: "default" },
   REJECTED: { label: "Bị từ chối", variant: "destructive" },
   REFUNDED: { label: "Đã hoàn tiền", variant: "outline" },
 };
@@ -46,10 +50,12 @@ export default function SellerReturnsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<ReturnStatusFilter>("ALL");
   const [selectedReturn, setSelectedReturn] = useState<ReturnRequest | null>(null);
+  const [refundCandidate, setRefundCandidate] = useState<ReturnRequest | null>(null);
   const queryClient = useQueryClient();
 
   const { data: returns = [], isLoading, isError } = useSellerReturnRequests();
   const refundMutation = useRefundReturnRequest();
+  const receivedMutation = useMarkReturnReceived();
 
   const filteredReturns = useMemo(
     () =>
@@ -66,17 +72,33 @@ export default function SellerReturnsPage() {
   );
 
   const handleRefund = (returnId: number) => {
-    if (!confirm("Xác nhận seller đã hoàn tiền cho user?")) return;
 
     refundMutation.mutate(returnId, {
       onSuccess: async () => {
         toast.success("Đã xác nhận hoàn tiền cho user");
         setSelectedReturn(null);
+        setRefundCandidate(null);
         await queryClient.invalidateQueries({ queryKey: ["returns", "seller"] });
       },
       onError: (error: any) => {
         const detail = error?.response?.data?.detail;
         toast.error(typeof detail === "string" ? detail : "Không thể xác nhận hoàn tiền");
+      },
+    });
+  };
+
+  const handleReceived = (returnId: number) => {
+    receivedMutation.mutate(returnId, {
+      onSuccess: async () => {
+        toast.success("Đã xác nhận nhận hàng hoàn và cập nhật tồn kho");
+        setSelectedReturn(null);
+        await queryClient.invalidateQueries({ queryKey: ["returns", "seller"] });
+        await queryClient.invalidateQueries({ queryKey: ["seller", "dashboard"] });
+        await queryClient.invalidateQueries({ queryKey: ["inventory", "seller"] });
+      },
+      onError: (error: any) => {
+        const detail = error?.response?.data?.detail;
+        toast.error(typeof detail === "string" ? detail : "Không thể xác nhận nhận hàng hoàn");
       },
     });
   };
@@ -158,10 +180,21 @@ export default function SellerReturnsPage() {
                             <Button size="sm" variant="ghost" onClick={() => setSelectedReturn(returnReq)}>
                               <Eye className="size-4" />
                             </Button>
-                            {returnReq.status === "APPROVED" && (
+                            {["APPROVED", "PICKED_UP"].includes(returnReq.status) && (
                               <Button
                                 size="sm"
-                                onClick={() => handleRefund(returnReq.id)}
+                                variant="outline"
+                                onClick={() => handleReceived(returnReq.id)}
+                                disabled={receivedMutation.isPending}
+                              >
+                                <PackageCheck className="mr-2 size-4" />
+                                Đã nhận hàng
+                              </Button>
+                            )}
+                            {returnReq.status === "RECEIVED" && (
+                              <Button
+                                size="sm"
+                                onClick={() => setRefundCandidate(returnReq)}
                                 disabled={refundMutation.isPending}
                                 className="bg-emerald-600 hover:bg-emerald-700"
                               >
@@ -202,6 +235,8 @@ export default function SellerReturnsPage() {
                 <Info label="Ngày tạo" value={new Date(selectedReturn.createdAt).toLocaleString("vi-VN")} />
               </div>
 
+              <ReturnTimeline status={selectedReturn.status} />
+
               <div>
                 <p className="text-slate-500">Lý do trả hàng</p>
                 <p className="mt-1 text-slate-900">{selectedReturn.reason}</p>
@@ -237,10 +272,23 @@ export default function SellerReturnsPage() {
                 </div>
               )}
 
-              {selectedReturn.status === "APPROVED" && (
+              {["APPROVED", "PICKED_UP"].includes(selectedReturn.status) && (
                 <div className="flex justify-end border-t pt-4">
                   <Button
-                    onClick={() => handleRefund(selectedReturn.id)}
+                    variant="outline"
+                    onClick={() => handleReceived(selectedReturn.id)}
+                    disabled={receivedMutation.isPending}
+                  >
+                    <PackageCheck className="mr-2 size-4" />
+                    Xác nhận đã nhận hàng hoàn
+                  </Button>
+                </div>
+              )}
+
+              {selectedReturn.status === "RECEIVED" && (
+                <div className="flex justify-end border-t pt-4">
+                  <Button
+                    onClick={() => setRefundCandidate(selectedReturn)}
                     disabled={refundMutation.isPending}
                     className="bg-emerald-600 hover:bg-emerald-700"
                   >
@@ -249,6 +297,41 @@ export default function SellerReturnsPage() {
                   </Button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {refundCandidate && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-950">Xác nhận hoàn tiền?</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Vui lòng chỉ xác nhận khi shop đã hoàn tiền cho đơn #{refundCandidate.orderId}.
+                  Số tiền hoàn là {formatCurrency(getRefundAmount(refundCandidate))}.
+                </p>
+              </div>
+              <button
+                onClick={() => setRefundCandidate(null)}
+                className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setRefundCandidate(null)} disabled={refundMutation.isPending}>
+                Hủy
+              </Button>
+              <Button
+                onClick={() => handleRefund(refundCandidate.id)}
+                disabled={refundMutation.isPending}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                {refundMutation.isPending ? "Đang xác nhận..." : "Đã hoàn tiền"}
+              </Button>
             </div>
           </div>
         </div>
@@ -262,6 +345,43 @@ function Info({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-slate-500">{label}</p>
       <p className="mt-1 font-medium text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function ReturnTimeline({ status }: { status: string }) {
+  const steps = [
+    { key: "REQUESTED", label: "User gửi yêu cầu" },
+    { key: "APPROVED", label: "Admin duyệt" },
+    { key: "RECEIVED", label: "Seller nhận hàng hoàn" },
+    { key: "REFUNDED", label: "Seller hoàn tiền" },
+  ];
+  const order = ["REQUESTED", "APPROVED", "PICKED_UP", "RECEIVED", "REFUNDED"];
+  const currentIndex = order.indexOf(status);
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <p className="mb-3 text-sm font-semibold text-slate-900">Tiến trình đổi trả</p>
+      <div className="grid gap-3 md:grid-cols-4">
+        {steps.map((step) => {
+          const stepIndex = order.indexOf(step.key);
+          const done = currentIndex >= stepIndex && currentIndex !== -1;
+          return (
+            <div key={step.key} className="flex items-center gap-2">
+              <span
+                className={`flex size-7 items-center justify-center rounded-full text-xs font-bold ${
+                  done ? "bg-emerald-600 text-white" : "bg-white text-slate-400 ring-1 ring-slate-200"
+                }`}
+              >
+                {done ? "✓" : stepIndex + 1}
+              </span>
+              <span className={done ? "text-sm font-medium text-slate-900" : "text-sm text-slate-500"}>
+                {step.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

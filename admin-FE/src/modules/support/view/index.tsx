@@ -1,100 +1,79 @@
-import { useMemo, useState } from 'react';
-import { Check, Eye, MoreVertical, Search, X } from 'lucide-react';
-import { toast } from 'sonner';
+import { useMemo, useState } from "react";
+import { CheckCircle2, Eye, MessageSquare, Search, Send, X } from "lucide-react";
+import { toast } from "sonner";
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { useAdminReturnRequests, useReviewReturnRequest } from '@/modules/returns/api/returns';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  type SupportTicket,
+  useAddSupportMessage,
+  useAdminSupportTickets,
+  useUpdateSupportTicket,
+} from "@/modules/support/api/support";
 
-const statusMap: Record<string, { label: string; className: string }> = {
-  REQUESTED: { label: 'Mở', className: 'bg-warning text-warning-foreground' },
-  APPROVED: { label: 'Đang xử lý', className: 'bg-primary text-primary-foreground' },
-  REJECTED: { label: 'Đã đóng', className: 'bg-muted text-muted-foreground' },
-  REFUNDED: { label: 'Đã đóng', className: 'bg-success text-success-foreground' },
-};
-
-const priorityMap: Record<string, { label: string; className: string }> = {
-  high: { label: 'Cao', className: 'bg-destructive text-destructive-foreground' },
-  medium: { label: 'Trung bình', className: 'bg-warning text-warning-foreground' },
-  low: { label: 'Thấp', className: 'bg-muted text-muted-foreground' },
-};
-
-const toTicketStatus = (status: string) => {
-  if (status === 'REQUESTED') return 'open';
-  if (status === 'APPROVED') return 'in_progress';
-  return 'closed';
+const statusMeta: Record<string, { label: string; className: string }> = {
+  OPEN: { label: "Mở", className: "bg-blue-100 text-blue-700" },
+  WAITING_SELLER: { label: "Chờ seller", className: "bg-amber-100 text-amber-700" },
+  WAITING_CUSTOMER: { label: "Chờ khách", className: "bg-orange-100 text-orange-700" },
+  RESOLVED: { label: "Đã xử lý", className: "bg-emerald-100 text-emerald-700" },
+  CLOSED: { label: "Đã đóng", className: "bg-slate-100 text-slate-700" },
 };
 
 export default function SupportPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const { data: returns = [], isLoading, isError, refetch } = useAdminReturnRequests();
-  const reviewMutation = useReviewReturnRequest();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [reply, setReply] = useState("");
+  const { data: tickets = [], isLoading, isError } = useAdminSupportTickets();
+  const addMessage = useAddSupportMessage();
+  const updateTicket = useUpdateSupportTicket();
 
-  const tickets = useMemo(
+  const filteredTickets = useMemo(
     () =>
-      returns.map((item) => ({
-        id: `RT-${item.id}`,
-        returnId: item.id,
-        subject: item.reason,
-        customer: item.user?.fullName || `User #${item.userId}`,
-        email: item.user?.email || '-',
-        category: 'Hoàn tiền / trả hàng',
-        status: toTicketStatus(item.status),
-        rawStatus: item.status,
-        priority: item.refundAmount && item.refundAmount > 1_000_000 ? 'high' : 'medium',
-        created: item.createdAt,
-        updated: item.reviewedAt || item.createdAt,
-      })),
-    [returns],
+      tickets.filter((ticket) => {
+        const keyword = searchTerm.trim().toLowerCase();
+        return (
+          !keyword ||
+          ticket.subject.toLowerCase().includes(keyword) ||
+          ticket.user?.email?.toLowerCase().includes(keyword) ||
+          ticket.shop?.name?.toLowerCase().includes(keyword) ||
+          ticket.id.toString().includes(keyword)
+        );
+      }),
+    [searchTerm, tickets],
   );
 
-  const filteredTickets = tickets.filter((ticket) => {
-    const matchesSearch =
-      ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || ticket.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
-
-  const handleReview = async (returnId: number, status: 'APPROVED' | 'REJECTED') => {
-    const rejectReason =
-      status === 'REJECTED' ? window.prompt('Nhập lý do từ chối yêu cầu hỗ trợ') || undefined : undefined;
-    if (status === 'REJECTED' && !rejectReason) return;
-
-    await reviewMutation.mutateAsync({
-      returnId,
-      payload: { status, rejectReason },
-    });
-    toast.success(status === 'APPROVED' ? 'Đã tiếp nhận yêu cầu' : 'Đã đóng yêu cầu');
-    await refetch();
+  const sendReply = async () => {
+    if (!selectedTicket || !reply.trim()) return;
+    await addMessage.mutateAsync({ ticketId: selectedTicket.id, message: reply.trim() });
+    toast.success("Đã gửi phản hồi");
+    setReply("");
   };
 
-  const getStatusBadge = (status: string) => {
-    const meta = statusMap[status] || { label: status, className: 'bg-muted text-muted-foreground' };
-    return <Badge className={meta.className}>{meta.label}</Badge>;
+  const closeTicket = async (ticket: SupportTicket) => {
+    await updateTicket.mutateAsync({ ticketId: ticket.id, status: "RESOLVED" });
+    toast.success("Đã đánh dấu ticket xử lý xong");
+    setSelectedTicket(null);
   };
 
-  const getPriorityBadge = (priority: string) => {
-    const meta = priorityMap[priority] || priorityMap.low;
+  const badge = (status: string) => {
+    const meta = statusMeta[status] ?? { label: status, className: "bg-slate-100 text-slate-700" };
     return <Badge className={meta.className}>{meta.label}</Badge>;
   };
 
   return (
     <main className="flex-1 overflow-auto p-6">
       <div className="mb-8">
-        <h1 className="mb-2 text-3xl font-bold text-foreground">Hỗ trợ khách hàng</h1>
-        <p className="text-muted-foreground">Ticket lấy từ yêu cầu trả hàng/hoàn tiền thật</p>
+        <h1 className="mb-2 text-3xl font-bold text-foreground">Tin nhắn hỗ trợ</h1>
+        <p className="text-muted-foreground">Ticket thật từ người mua, seller và các luồng đổi trả.</p>
       </div>
 
       <div className="mb-6 flex gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
           <Input
-            placeholder="Tìm kiếm theo ID, khách hàng, chủ đề..."
+            placeholder="Tìm theo mã ticket, khách hàng, shop, chủ đề..."
             className="pl-10"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
@@ -102,29 +81,9 @@ export default function SupportPage() {
         </div>
       </div>
 
-      <div className="mb-6 flex gap-2">
-        {[
-          ['all', 'Tất cả'],
-          ['open', 'Mở'],
-          ['in_progress', 'Đang xử lý'],
-          ['closed', 'Đã đóng'],
-        ].map(([value, label]) => (
-          <Button
-            key={value}
-            variant={filterStatus === value ? 'default' : 'outline'}
-            onClick={() => setFilterStatus(value)}
-          >
-            {label} ({value === 'all' ? tickets.length : tickets.filter((ticket) => ticket.status === value).length})
-          </Button>
-        ))}
-      </div>
-
       <Card>
         <CardHeader>
-          <CardTitle>Danh sách ticket hỗ trợ</CardTitle>
-          <CardDescription>
-            {isLoading ? 'Đang tải dữ liệu...' : `Tổng cộng ${filteredTickets.length} ticket`}
-          </CardDescription>
+          <CardTitle>{isLoading ? "Đang tải ticket..." : `${filteredTickets.length} ticket hỗ trợ`}</CardTitle>
         </CardHeader>
         <CardContent>
           {isError ? (
@@ -136,68 +95,33 @@ export default function SupportPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">ID</th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">Chủ đề</th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">Khách hàng</th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">Danh mục</th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">Ưu tiên</th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">Trạng thái</th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">Ngày tạo</th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">Cập nhật</th>
-                    <th className="px-4 py-3 text-left font-semibold text-foreground">Thao tác</th>
+                    <th className="px-4 py-3 text-left font-semibold">ID</th>
+                    <th className="px-4 py-3 text-left font-semibold">Chủ đề</th>
+                    <th className="px-4 py-3 text-left font-semibold">Khách hàng</th>
+                    <th className="px-4 py-3 text-left font-semibold">Shop</th>
+                    <th className="px-4 py-3 text-left font-semibold">Ưu tiên</th>
+                    <th className="px-4 py-3 text-left font-semibold">Trạng thái</th>
+                    <th className="px-4 py-3 text-left font-semibold">Cập nhật</th>
+                    <th className="px-4 py-3 text-left font-semibold">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredTickets.map((ticket) => (
-                    <tr key={ticket.id} className="border-b border-border transition hover:bg-card/50">
-                      <td className="px-4 py-4 font-mono font-semibold text-primary">{ticket.id}</td>
+                    <tr key={ticket.id} className="border-b border-border hover:bg-card/50">
+                      <td className="px-4 py-4 font-mono font-semibold text-primary">TK-{ticket.id}</td>
                       <td className="px-4 py-4">
-                        <div>
-                          <p className="font-medium text-foreground">{ticket.subject}</p>
-                          <p className="text-xs text-muted-foreground">{ticket.email}</p>
-                        </div>
+                        <p className="font-medium">{ticket.subject}</p>
+                        <p className="text-xs text-muted-foreground">{ticket.category || "GENERAL"}</p>
                       </td>
-                      <td className="px-4 py-4 text-foreground">{ticket.customer}</td>
-                      <td className="px-4 py-4 text-xs text-foreground">{ticket.category}</td>
-                      <td className="px-4 py-4">{getPriorityBadge(ticket.priority)}</td>
-                      <td className="px-4 py-4">{getStatusBadge(ticket.rawStatus)}</td>
-                      <td className="px-4 py-4 text-xs text-foreground">
-                        {new Date(ticket.created).toLocaleDateString('vi-VN')}
-                      </td>
-                      <td className="px-4 py-4 text-xs text-foreground">
-                        {new Date(ticket.updated).toLocaleDateString('vi-VN')}
-                      </td>
+                      <td className="px-4 py-4">{ticket.user?.email || "-"}</td>
+                      <td className="px-4 py-4">{ticket.shop?.name || "-"}</td>
+                      <td className="px-4 py-4">{ticket.priority}</td>
+                      <td className="px-4 py-4">{badge(ticket.status)}</td>
+                      <td className="px-4 py-4 text-xs">{new Date(ticket.updatedAt).toLocaleString("vi-VN")}</td>
                       <td className="px-4 py-4">
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="ghost" className="h-9 w-9 p-0">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {ticket.rawStatus === 'REQUESTED' && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-9 w-9 p-0 text-success"
-                                disabled={reviewMutation.isPending}
-                                onClick={() => handleReview(ticket.returnId, 'APPROVED')}
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-9 w-9 p-0 text-destructive"
-                                disabled={reviewMutation.isPending}
-                                onClick={() => handleReview(ticket.returnId, 'REJECTED')}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                          <Button size="sm" variant="ghost" className="h-9 w-9 p-0">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <Button size="sm" variant="ghost" onClick={() => setSelectedTicket(ticket)}>
+                          <Eye className="size-4" />
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -207,6 +131,62 @@ export default function SupportPage() {
           )}
         </CardContent>
       </Card>
+
+      {selectedTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-2xl bg-background shadow-xl">
+            <div className="flex items-start justify-between gap-4 border-b p-5">
+              <div>
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="size-5 text-orange-600" />
+                  <h2 className="text-lg font-semibold">TK-{selectedTicket.id}: {selectedTicket.subject}</h2>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {selectedTicket.user?.email} · {selectedTicket.shop?.name || "Không gắn shop"}
+                </p>
+              </div>
+              <button onClick={() => setSelectedTicket(null)} className="text-muted-foreground hover:text-foreground">
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 space-y-3 overflow-y-auto p-5">
+              {selectedTicket.messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`max-w-[82%] rounded-2xl p-3 text-sm ${
+                    message.senderRole === "ADMIN" ? "ml-auto bg-orange-600 text-white" : "bg-muted text-foreground"
+                  }`}
+                >
+                  <p className="mb-1 text-xs opacity-70">{message.senderRole} · {message.sender?.email || "Hệ thống"}</p>
+                  <p>{message.message}</p>
+                  <p className="mt-2 text-[11px] opacity-70">{new Date(message.createdAt).toLocaleString("vi-VN")}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t p-5">
+              <textarea
+                value={reply}
+                onChange={(event) => setReply(event.target.value)}
+                rows={3}
+                className="mb-3 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                placeholder="Nhập phản hồi cho ticket..."
+              />
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => closeTicket(selectedTicket)} disabled={updateTicket.isPending}>
+                  <CheckCircle2 className="mr-2 size-4" />
+                  Đã xử lý
+                </Button>
+                <Button onClick={sendReply} disabled={!reply.trim() || addMessage.isPending}>
+                  <Send className="mr-2 size-4" />
+                  Gửi phản hồi
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

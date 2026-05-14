@@ -1,12 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { API_URL_ORDER } from "@/constant/config";
+import { API_URL_ADMIN } from "@/constant/config";
 import { apiClient } from "@/lib/api";
 import type { QueryConfig } from "@/lib/react-query";
 import type { IOrder } from "../types";
 
 export const getAllOrders = async (): Promise<IOrder[]> => {
-  const res = await apiClient.get(`${API_URL_ORDER}`);
-  return res.data;
+  const res = await apiClient.post(`${API_URL_ADMIN}/orders`, {
+    filter_data: {},
+    pagination: { page: 1, page_size: 100 }
+  });
+  return res.data.data || res.data;
 };
 
 type UseGetAllOrdersOptions = {

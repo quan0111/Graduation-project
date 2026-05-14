@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 from typing import Dict, List, Optional
 from urllib.error import URLError
 from urllib.request import Request, urlopen
@@ -12,6 +13,10 @@ class OllamaUnavailable(RuntimeError):
 
 
 class OllamaClient:
+    _resolved_model: Optional[str] = None
+    _resolved_model_checked_at: float = 0.0
+    _MODEL_CACHE_SECONDS = 60
+
     @classmethod
     async def chat(cls, messages: List[Dict[str, str]]) -> str:
         model = await cls._resolve_model()
@@ -43,12 +48,19 @@ class OllamaClient:
         if configured:
             return configured
 
+        now = time.monotonic()
+        if cls._resolved_model_checked_at and now - cls._resolved_model_checked_at < cls._MODEL_CACHE_SECONDS:
+            return cls._resolved_model
+
         data = await cls._get_json("/api/tags")
         models = data.get("models") or []
+        cls._resolved_model_checked_at = now
         if not models:
+            cls._resolved_model = None
             return None
         first_model = models[0]
-        return first_model.get("name") or first_model.get("model")
+        cls._resolved_model = first_model.get("name") or first_model.get("model")
+        return cls._resolved_model
 
     @classmethod
     async def _get_json(cls, path: str):

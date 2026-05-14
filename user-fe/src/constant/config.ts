@@ -16,6 +16,10 @@ export const API_URL_BEHAVIOR = API_URL_ANALYTICS
 export const API_URL_CHATBOT = `${API_URL}chatbot`
 export const API_URL_ORDER = `${API_URL}orders`
 export const API_URL_SHIPMENT = `${API_URL}shipments`
+export const API_URL_MODERATION = `${API_URL}moderation`
+export const API_URL_FINANCE = `${API_URL}finance`
+export const API_URL_INVENTORY = `${API_URL}inventory`
+export const API_URL_SUPPORT = `${API_URL}support`
 
 
 

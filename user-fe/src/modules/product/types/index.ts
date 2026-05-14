@@ -9,6 +9,7 @@ export type ProductStatusType =
 
 export interface IProduct {
   stock: number;
+  recommendationReason?: string;
   id: number;
 
   name: string;

@@ -40,6 +40,16 @@ const refundReturnRequest = async (returnId: number) => {
   return response.data;
 };
 
+const markReturnPickedUp = async (returnId: number) => {
+  const response = await apiClient.patch(`${API_URL_RETURN}/${returnId}/pickup`);
+  return response.data;
+};
+
+const markReturnReceived = async (returnId: number) => {
+  const response = await apiClient.patch(`${API_URL_RETURN}/${returnId}/received`);
+  return response.data;
+};
+
 export const useCreateReturnRequest = (
   config?: UseMutationOptions<any, Error, ReturnRequestCreatePayload>,
 ) => {
@@ -72,6 +82,24 @@ export const useRefundReturnRequest = (
 ) => {
   return useMutation({
     mutationFn: refundReturnRequest,
+    ...config,
+  });
+};
+
+export const useMarkReturnPickedUp = (
+  config?: UseMutationOptions<any, Error, number>,
+) => {
+  return useMutation({
+    mutationFn: markReturnPickedUp,
+    ...config,
+  });
+};
+
+export const useMarkReturnReceived = (
+  config?: UseMutationOptions<any, Error, number>,
+) => {
+  return useMutation({
+    mutationFn: markReturnReceived,
     ...config,
   });
 };

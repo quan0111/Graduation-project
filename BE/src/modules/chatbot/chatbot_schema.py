@@ -15,13 +15,15 @@ class ChatbotProductOut(BaseModel):
     imageUrl: Optional[str] = None
     shopName: Optional[str] = None
     categoryName: Optional[str] = None
+    reason: Optional[str] = None
+    relationType: Optional[str] = None
 
 
 class ChatbotMessageOut(BaseModel):
     answer: str
     intent: str
-    suggestions: List[str] = []
-    products: List[ChatbotProductOut] = []
+    suggestions: List[str] = Field(default_factory=list)
+    products: List[ChatbotProductOut] = Field(default_factory=list)
 
 
 class ChatRequest(ChatbotMessageIn):

@@ -17,6 +17,8 @@ import ProtectedRoute from "./protectedGuard"
 import SellerApplicationsPage from "@/modules/shop/view/sellerAplication"
 import AdminProfilePage from "@/modules/auth/view/me"
 import ReturnsPage from "@/modules/returns/view"
+import ViolationsPage from "@/modules/violations/view"
+import AuditPage from "@/modules/audit/view"
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -69,6 +71,14 @@ export const router = createBrowserRouter([
       {
         path: "returns",
         element: <ReturnsPage />,
+      },
+      {
+        path: "violations",
+        element: <ViolationsPage />,
+      },
+      {
+        path: "audit",
+        element: <AuditPage />,
       },
       {
         path: "categories",

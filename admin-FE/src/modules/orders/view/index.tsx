@@ -8,7 +8,9 @@ import { OrderFilter } from "../components/search-filter-order";
 import { OrderDetailModal } from "../components/order-detail-modal";
 import { useGetAllOrders } from "../api/get-all-orders";
 import { useCancelOrder } from "../api/cancel-order";
+import { useUpdateOrder } from "../api/update-order";
 import { toast } from "sonner";
+import type { OrderStatusType } from "../types";
 
 export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
@@ -16,8 +18,14 @@ export default function OrdersPage() {
   const [search, setSearch] = useState("");
 
   // 👇 CALL API
-  const { data: orders = [], isLoading, isError } = useGetAllOrders();
+  const { data: orders = [], isLoading, isError, error } = useGetAllOrders();
   const cancelMutation = useCancelOrder();
+  const updateStatusMutation = useUpdateOrder();
+
+  console.log("orders:", orders);
+  console.log("isLoading:", isLoading);
+  console.log("isError:", isError);
+  console.log("error:", error);
 
   // ================= HANDLERS =================
 
@@ -36,8 +44,13 @@ export default function OrdersPage() {
   };
 
   const handleUpdateStatus = (id: string, status: string) => {
-    console.log("update status", id, status);
-    // 👉 sau này bạn có API update thì gọi ở đây
+    updateStatusMutation.mutate(
+      { id: Number(id), data: { status: status as OrderStatusType } },
+      {
+        onSuccess: () => toast.success("Cập nhật trạng thái thành công"),
+        onError: () => toast.error("Cập nhật trạng thái thất bại"),
+      }
+    );
   };
 
   // ================= MAP DATA =================
@@ -46,11 +59,11 @@ export default function OrdersPage() {
     id: o.id,
     orderId: `#${o.id}`,
     shop: o.shop?.name || "N/A",
-    customer: o.user?.fullName || "N/A",
+    customer: o.user?.fullName || o.User?.fullName || "N/A",
     total: o.totalAmount || 0,
-    items: o.items?.length || 0,
-    status: mapStatus(o.status),
-    date: o.createdAt,
+    items: o.items?.length || o.Items?.length || 0,
+    status: o.status,
+    date: o.createdAt || o.created_at,
   }));
 
   // ================= FILTER =================
@@ -96,20 +109,3 @@ export default function OrdersPage() {
   );
 }
 
-
-function mapStatus(status: string) {
-  switch (status) {
-    case "PENDING":
-      return "Chưa thanh toán";
-    case "PROCESSING":
-      return "Đang xử lý";
-    case "SHIPPING":
-      return "Đang giao";
-    case "COMPLETED":
-      return "Đã giao";
-    case "CANCELLED":
-      return "Đã hủy";
-    default:
-      return status;
-  }
-}

@@ -41,7 +41,7 @@ const upsertShipment = async ({
       trackingNumber,
     });
 
-    if (!status || status === "processing" || status === "ready_to_ship") {
+    if (!status || status === "ready_to_ship") {
       return mapShipment(createRes.data);
     }
   }

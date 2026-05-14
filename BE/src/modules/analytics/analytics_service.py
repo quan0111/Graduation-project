@@ -4,6 +4,7 @@ from src.ai.recommendation_engine import RecommendationEngine
 from src.ai.train import train_model
 from src.core.database import prisma
 from src.modules.analytics.analytics_schema import BehaviorTrackPayload, BehaviorType
+from src.modules.security.security_service import SecurityService
 
 
 class AnalyticsService:
@@ -27,7 +28,9 @@ class AnalyticsService:
         }
         if data.metadata is not None:
             create_data["metadata"] = data.metadata
-        return await prisma.userbehavior.create(data=create_data)
+        behavior = await prisma.userbehavior.create(data=create_data)
+        await SecurityService.inspect_behavior(data.userId)
+        return behavior
 
     @staticmethod
     async def track_event_for_user(user_id: int, payload: BehaviorTrackPayload):
@@ -40,7 +43,9 @@ class AnalyticsService:
         }
         if payload.metadata is not None:
             create_data["metadata"] = payload.metadata
-        return await prisma.userbehavior.create(data=create_data)
+        behavior = await prisma.userbehavior.create(data=create_data)
+        await SecurityService.inspect_behavior(user_id)
+        return behavior
 
     @staticmethod
     async def get_product_analytics(product_id: int):
@@ -92,6 +97,7 @@ class AnalyticsService:
         user_id: Optional[int],
         top_k: int = 10,
         context_product_id: Optional[int] = None,
+        explain: bool = False,
     ):
         product_ids, algorithm = await RecommendationEngine.recommend_product_ids(
             user_id=user_id,
@@ -103,6 +109,11 @@ class AnalyticsService:
         if user_id is not None and product_ids:
             await AnalyticsService._persist_recommendation(user_id=user_id, product_ids=product_ids, algorithm=algorithm)
 
+        if explain:
+            return {
+                "algorithm": algorithm,
+                "products": AnalyticsService._attach_reasons(products, algorithm, user_id, context_product_id),
+            }
         return products
 
     @staticmethod
@@ -151,3 +162,24 @@ class AnalyticsService:
             )
         except Exception:
             return
+
+    @staticmethod
+    def _attach_reasons(products: List, algorithm: str, user_id: Optional[int], context_product_id: Optional[int]):
+        reason = "Sản phẩm đang được nhiều người quan tâm trên MarketHub."
+        if context_product_id:
+            reason = "Gợi ý vì liên quan đến sản phẩm bạn đang xem."
+        elif user_id is not None and "behavior_profile" in algorithm:
+            reason = "Gợi ý vì bạn đã xem, thêm giỏ hoặc mua sản phẩm tương tự."
+        elif "co_purchase" in algorithm:
+            reason = "Gợi ý vì thường được mua cùng các sản phẩm tương tự."
+
+        enriched = []
+        for product in products:
+            data = product.model_dump() if hasattr(product, "model_dump") else dict(product)
+            category = getattr(getattr(product, "category", None), "name", None)
+            if category and user_id is not None:
+                data["recommendationReason"] = f"Gợi ý vì bạn quan tâm nhóm {category}."
+            else:
+                data["recommendationReason"] = reason
+            enriched.append(data)
+        return enriched

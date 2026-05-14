@@ -15,17 +15,19 @@ export type BehaviorType =
 export interface IUser {
   id: number
   email: string
-  password: string
-  full_name?: string | null
-  avatar_url?: string | null
+  password?: string
+  fullName?: string | null
+  avatarUrl?: string | null
   role: UserRoleType
-  is_active: boolean
+  isActive: boolean
 
-  created_at: string
-  updated_at: string
-  deleted_at?: string | null
+  createdAt: string
+  updatedAt: string
+  deletedAt?: string | null
 
-  Addresses?: IAddress[]
+  phone?: string | null
+  addresses?: IAddress[]
+  cart?: any
   Shops?: IShop[]
 }
 export interface IUserBehavior {

@@ -22,12 +22,10 @@ import {
 } from "@/modules/order/utils/order";
 
 const shipmentStatuses: Array<{ value: ShipmentStatusType; label: string }> = [
-  { value: "processing", label: "Đang xử lý" },
   { value: "ready_to_ship", label: "Sẵn sàng giao" },
   { value: "shipped", label: "Đã gửi hàng" },
   { value: "in_transit", label: "Đang vận chuyển" },
   { value: "delivered", label: "Đã giao hàng" },
-  { value: "completed", label: "Hoàn tất" },
 ];
 
 export default function SellerOrderDetailPage() {
@@ -40,7 +38,7 @@ export default function SellerOrderDetailPage() {
 
   const [carrier, setCarrier] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
-  const [status, setStatus] = useState<ShipmentStatusType>("processing");
+  const [status, setStatus] = useState<ShipmentStatusType>("ready_to_ship");
 
   useEffect(() => {
     if (!order?.shipment) {
@@ -174,11 +172,30 @@ export default function SellerOrderDetailPage() {
                     onChange={(event) => setStatus(event.target.value as ShipmentStatusType)}
                     className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-[#ee4d2d]"
                   >
-                    {shipmentStatuses.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
+                    {(() => {
+                      // Normalize current status for transition check (matching backend logic)
+                      const normalize = (s: string) => s.toUpperCase();
+
+                      const currentBase = normalize(order.shipment?.status || "ready_to_ship");
+                      const transitions: Record<string, string[]> = {
+                        READY_TO_SHIP: ["SHIPPED"],
+                        SHIPPED: ["IN_TRANSIT"],
+                        IN_TRANSIT: ["DELIVERED"],
+                      };
+
+                      const allowedNextBase = transitions[currentBase] || [];
+                      
+                      return shipmentStatuses.filter(option => {
+                        if (option.value === status) return true; // Keep current selection
+                        const optionBase = normalize(option.value);
+                        if (optionBase === currentBase) return true; // Allow same base status
+                        return allowedNextBase.includes(optionBase);
+                      }).map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ));
+                    })()}
                   </select>
                 </div>
 

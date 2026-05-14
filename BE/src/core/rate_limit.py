@@ -1,8 +1,8 @@
 import time
 from fastapi import Request, HTTPException
 
-RATE_LIMIT = 60  # requests
-TIME_WINDOW = 60  # seconds
+RATE_LIMIT = 120  
+TIME_WINDOW = 60  
 
 request_logs = {}
 

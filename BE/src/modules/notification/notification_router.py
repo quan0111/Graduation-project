@@ -1,4 +1,4 @@
-from fastapi import APIRouter, WebSocket, Depends
+from fastapi import APIRouter, WebSocket, Depends, HTTPException
 from src.modules.notification.notification_service import NotificationService
 from src.modules.notification.notification_schema import NotificationCreate
 from src.modules.notification.notification_websocket import notification_ws
@@ -25,5 +25,34 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
 
 
 @router.get("/")
-async def get_notifications(current_user=Depends(get_current_user)):
-    return await service.get_notifications_by_user(current_user.id)
+async def get_notifications(type: str | None = None, current_user=Depends(get_current_user)):
+    return await service.get_notifications_by_user_and_type(current_user.id, type)
+
+
+@router.get("/unread/count")
+async def get_unread_count(current_user=Depends(get_current_user)):
+    return {"count": await service.get_unread_notifications_count(current_user.id)}
+
+
+@router.patch("/{notification_id}/read")
+async def mark_read(notification_id: int, current_user=Depends(get_current_user)):
+    existing = await service.get_notification(notification_id)
+    if existing.userId != current_user.id:
+        raise HTTPException(403, "Forbidden")
+    notification = await service.mark_notification_as_read(notification_id)
+    return notification
+
+
+@router.patch("/read-all")
+async def mark_all_read(current_user=Depends(get_current_user)):
+    await service.mark_all_notifications_as_read_for_user(current_user.id)
+    return {"message": "All notifications marked as read"}
+
+
+@router.delete("/{notification_id}")
+async def delete_notification(notification_id: int, current_user=Depends(get_current_user)):
+    notification = await service.get_notification(notification_id)
+    if notification.userId != current_user.id:
+        raise HTTPException(403, "Forbidden")
+    await service.delete_notification(notification_id)
+    return {"message": "Notification deleted"}

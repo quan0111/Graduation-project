@@ -123,10 +123,13 @@ export const getOrderVisibleSubtotal = (order: IOrder) =>
   order.items.reduce((sum, item) => sum + item.line_total, 0);
 
 export const getTrackingSteps = (status: OrderStatusType, hasPayment: boolean = true) => {
-  // COD orders skip the 'paid' step since payment happens on delivery
+  if (["cancelled", "payment_failed", "return_requested", "returned"].includes(status)) {
+    return [{ key: status, active: true, ...getStatusMeta(status) }];
+  }
+
   const steps = hasPayment
-    ? (["pending", "paid", "processing", "shipped", "delivered", "completed"] as OrderStatusType[])
-    : (["pending", "processing", "shipped", "delivered", "completed"] as OrderStatusType[]);
+    ? (["pending", "paid", "confirmed", "processing", "ready_to_ship", "shipped", "in_transit", "delivered", "completed"] as OrderStatusType[])
+    : (["pending", "confirmed", "processing", "ready_to_ship", "shipped", "in_transit", "delivered", "completed"] as OrderStatusType[]);
 
   const index = steps.indexOf(status);
   return steps.map((step, stepIndex) => ({

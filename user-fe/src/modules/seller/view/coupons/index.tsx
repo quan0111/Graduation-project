@@ -10,17 +10,19 @@ import { useGetCoupon } from "@/modules/coupon/api/get-coupon";
 import { useCreateCoupon } from "@/modules/coupon/api/create-coupon";
 import { useActivateCoupon, useDeactivateCoupon } from "@/modules/coupon/api/update-coupon";
 import { CouponForm } from "@/modules/coupon/components/couponForm";
+import { useGetShopByOwnerId } from "@/modules/shop/api/myshop";
 
 export default function SellerCouponsPage() {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const { data: couponsData, isLoading, refetch } = useGetCoupon();
+  const { data: myShop, isLoading: isShopLoading } = useGetShopByOwnerId();
   const createMutation = useCreateCoupon();
   const activateMutation = useActivateCoupon();
   const deactivateMutation = useDeactivateCoupon();
 
   const coupons = couponsData?.data?.data || [];
-  const shopId = 1; // TODO: Get from auth/context
+  const shopId = myShop?.id;
 
   const filteredCoupons = coupons.filter(
     (coupon: any) =>
@@ -62,7 +64,7 @@ export default function SellerCouponsPage() {
             <h1 className="text-2xl font-bold text-slate-900">Quản lý Coupon Shop</h1>
             <p className="text-sm text-slate-500">Tạo và quản lý mã khuyến mãi cho shop của bạn</p>
           </div>
-          <Button onClick={() => setShowForm(true)} className="bg-[#ee4d2d] hover:bg-[#d93f21]">
+          <Button onClick={() => setShowForm(true)} disabled={!shopId} className="bg-[#ee4d2d] hover:bg-[#d93f21]">
             <Plus className="mr-2 size-4" />
             Tạo Coupon Mới
           </Button>
@@ -82,7 +84,7 @@ export default function SellerCouponsPage() {
               </div>
             </div>
 
-            {isLoading ? (
+            {isLoading || isShopLoading ? (
               <div className="text-center py-8 text-slate-500">Đang tải...</div>
             ) : (
               <div className="overflow-x-auto">
@@ -171,7 +173,7 @@ export default function SellerCouponsPage() {
       {showForm && (
         <CouponForm
           isAdmin={false}
-          shopId={shopId}
+          shopId={shopId ?? 0}
           onCancel={() => setShowForm(false)}
           onSubmit={handleCreateCoupon}
         />

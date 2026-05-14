@@ -74,3 +74,23 @@ async def get_shop_payouts(shop_id: int, user=Depends(require_seller_or_admin)):
 async def shop_revenue(shop_id: int, user=Depends(require_seller_or_admin)):
     await assert_shop_finance_access(shop_id, user)
     return await FinanceService.get_shop_revenue(shop_id)
+
+
+@router.get("/seller/wallet")
+async def seller_wallet(user=Depends(require_seller_or_admin)):
+    if get_role_value(user) == "ADMIN":
+        raise HTTPException(400, "Use shop wallet endpoint for admin")
+    return await FinanceService.get_seller_wallet(user.id)
+
+
+@router.get("/seller/report")
+async def seller_report(days: int = 30, user=Depends(require_seller_or_admin)):
+    if get_role_value(user) == "ADMIN":
+        raise HTTPException(400, "Use shop report endpoint for admin")
+    return await FinanceService.get_seller_report(user.id, days=days)
+
+
+@router.get("/shop/{shop_id}/wallet")
+async def shop_wallet(shop_id: int, user=Depends(require_seller_or_admin)):
+    await assert_shop_finance_access(shop_id, user)
+    return await FinanceService.get_shop_wallet(shop_id)

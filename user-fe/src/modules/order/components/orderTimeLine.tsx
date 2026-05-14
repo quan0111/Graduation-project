@@ -11,8 +11,11 @@ interface OrderTimelineProps {
 const stepDescriptions: Record<string, string> = {
   pending: "Đơn hàng đã được tạo",
   paid: "Đơn hàng đã thanh toán thành công",
+  confirmed: "Shop đã xác nhận đơn hàng",
   processing: "Shop đang chuẩn bị đơn hàng",
+  ready_to_ship: "Đơn đã đóng gói và chờ đơn vị vận chuyển lấy hàng",
   shipped: "Đơn hàng đã được bàn giao cho đơn vị vận chuyển",
+  in_transit: "Đơn hàng đang trên đường giao đến bạn",
   delivered: "Đơn hàng đã giao đến địa chỉ nhận hàng",
   completed: "Đơn hàng đã hoàn tất thành công",
 };

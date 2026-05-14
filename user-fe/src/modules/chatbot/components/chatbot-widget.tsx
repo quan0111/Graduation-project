@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useSendChatbotMessage } from "@/modules/chatbot/api/send-message";
 import type { ChatbotProduct } from "@/modules/chatbot/types";
+import { useTrackProductBehavior } from "@/modules/recommendation/hooks/useTrackProductBehavior";
 
 interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  intent?: string;
   suggestions?: string[];
   products?: ChatbotProduct[];
 }
@@ -19,8 +21,8 @@ const initialMessages: ChatMessage[] = [
   {
     id: "welcome",
     role: "assistant",
-    content: "Chào bạn! Tôi là trợ lý MarketHub AI. Tôi có thể giúp bạn tìm sản phẩm, trả lời câu hỏi về đơn hàng, giỏ hàng, và giới thiệu thông tin sản phẩm.",
-    suggestions: ["Gợi ý sản phẩm cho tôi", "Kiểm tra giỏ hàng", "Đơn hàng của tôi", "Chính sách đổi trả"],
+    content: "Chào bạn, mình là trợ lý MarketHub. Mình có thể gợi ý sản phẩm theo thói quen mua sắm, tìm sản phẩm liên quan hoặc hỗ trợ giỏ hàng và đơn hàng.",
+    suggestions: ["Gợi ý sản phẩm cho tôi", "Sản phẩm hợp thói quen của tôi", "Kiểm tra giỏ hàng", "Chính sách đổi trả"],
   },
 ];
 
@@ -41,11 +43,11 @@ const localKnowledgeBase: Record<string, { answer: string; suggestions?: string[
     suggestions: ["Chính sách đổi trả"],
   },
   "vận chuyển": {
-    answer: "MarketHub miễn phí vận chuyển cho đơn hàng từ 300.000đ trên toàn quốc. Thời gian giao hàng tiêu chuẩn 2-3 ngày, giao nhanh 2-4 giờ.",
+    answer: "MarketHub hiển thị phí vận chuyển ở bước checkout theo địa chỉ và đơn hàng. Hệ thống đang có thông điệp miễn phí vận chuyển cho đơn từ 500.000đ.",
     suggestions: ["Phí vận chuyển", "Theo dõi đơn hàng"],
   },
   "phí vận chuyển": {
-    answer: "Miễn phí vận chuyển cho đơn từ 300.000đ. Dưới 300.000đ: Giao tiêu chuẩn 30.000đ, Giao nhanh 50.000đ, Giao trong ngày 99.000đ.",
+    answer: "Phí vận chuyển được tính tại checkout theo địa chỉ nhận hàng và sản phẩm trong đơn. Bạn kiểm tra lại ở bước thanh toán để thấy số tiền chính xác.",
     suggestions: ["Vận chuyển"],
   },
   "thanh toán": {
@@ -108,6 +110,46 @@ const getLocalAnswer = (query: string): { answer: string; suggestions?: string[]
   return null;
 };
 
+const normalizeChatText = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/đ/g, "d")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+const backendProductTerms = [
+  "goi y",
+  "de xuat",
+  "tu van",
+  "phu hop",
+  "san pham",
+  "gia",
+  "gia tot",
+  "gia re",
+  "duoi",
+  "toi da",
+  "shop",
+  "danh muc",
+  "mua",
+  "tim",
+  "tuong tu",
+  "lien quan",
+  "con hang",
+  "ton kho",
+  "so sanh",
+  "hop thoi quen",
+];
+
+const currentProductTerms = ["cai nay", "san pham nay", "mau nay", "mon nay", "co tot", "nen mua"];
+
+const shouldUseBackend = (query: string, productId?: number) => {
+  const normalized = normalizeChatText(query);
+  if (backendProductTerms.some((term) => normalized.includes(term))) {
+    return true;
+  }
+  return Boolean(productId) && currentProductTerms.some((term) => normalized.includes(term));
+};
+
 const makeId = () => {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
@@ -124,6 +166,7 @@ export function ChatbotWidget() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const mutation = useSendChatbotMessage();
+  const { trackClick } = useTrackProductBehavior();
 
   const currentProductId = useMemo(() => {
     const match = location.pathname.match(/^\/product\/(\d+)/);
@@ -146,9 +189,9 @@ export function ChatbotWidget() {
     setMessages((current) => [...current, { id: makeId(), role: "user", content: text }]);
     setDraft("");
 
-    // Check local knowledge base first
-    const localAnswer = getLocalAnswer(text);
-    if (localAnswer) {
+    const shouldAskBackend = shouldUseBackend(text, currentProductId);
+    const localAnswer = shouldAskBackend ? null : getLocalAnswer(text);
+    if (!shouldAskBackend && localAnswer) {
       setMessages((current) => [
         ...current,
         {
@@ -161,7 +204,6 @@ export function ChatbotWidget() {
       return;
     }
 
-    // If not in local knowledge, call API
     mutation.mutate(
       { message: text, productId: currentProductId },
       {
@@ -172,6 +214,7 @@ export function ChatbotWidget() {
               id: makeId(),
               role: "assistant",
               content: response.answer,
+              intent: response.intent,
               suggestions: response.suggestions,
               products: response.products,
             },
@@ -218,7 +261,7 @@ export function ChatbotWidget() {
                 <p className="text-xs text-slate-500">Trợ lý thông minh 24/7</p>
               </div>
             </div>
-            <Button variant="ghost" size="icon-sm" onClick={() => setOpen(false)} aria-label="Dong chatbot">
+            <Button variant="ghost" size="icon-sm" onClick={() => setOpen(false)} aria-label="Đóng chatbot">
               <X className="size-4" />
             </Button>
           </div>
@@ -245,7 +288,15 @@ export function ChatbotWidget() {
                         <Link
                           key={product.id}
                           to={`/product/${product.id}`}
-                          onClick={() => setOpen(false)}
+                          onClick={() => {
+                            trackClick(product.id, {
+                              page: "chatbot",
+                              source: "chatbot_recommendation",
+                              intent: message.intent,
+                              relationType: product.relationType,
+                            });
+                            setOpen(false);
+                          }}
                           className="flex gap-2 rounded-xl bg-white p-2 text-slate-900 shadow-sm ring-1 ring-orange-100 transition hover:ring-orange-300"
                         >
                           <img
@@ -256,7 +307,8 @@ export function ChatbotWidget() {
                           <div className="min-w-0 flex-1">
                             <p className="line-clamp-1 text-xs font-semibold">{product.name}</p>
                             <p className="text-xs text-slate-500">{product.categoryName || product.shopName || "MarketHub"}</p>
-                            <p className="text-xs font-bold text-orange-600">{priceFormatter.format(product.price)}d</p>
+                            {product.reason && <p className="line-clamp-2 text-[11px] leading-4 text-slate-600">{product.reason}</p>}
+                            <p className="text-xs font-bold text-orange-600">{priceFormatter.format(product.price)}đ</p>
                           </div>
                         </Link>
                       ))}
@@ -299,7 +351,7 @@ export function ChatbotWidget() {
               placeholder="Hỏi về sản phẩm, đơn hàng, chính sách..."
               className="max-h-24 min-h-10 rounded-2xl py-2"
             />
-            <Button type="submit" size="icon" disabled={!draft.trim() || mutation.isPending} aria-label="Gui tin nhan">
+            <Button type="submit" size="icon" disabled={!draft.trim() || mutation.isPending} aria-label="Gửi tin nhắn">
               {mutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
             </Button>
           </form>
@@ -310,7 +362,7 @@ export function ChatbotWidget() {
         type="button"
         size="icon-lg"
         onClick={() => setOpen((current) => !current)}
-        aria-label={open ? "Dong chatbot" : "Mo chatbot"}
+        aria-label={open ? "Đóng chatbot" : "Mở chatbot"}
         className="size-13 rounded-full bg-orange-600 text-white shadow-xl hover:bg-orange-700"
       >
         {open ? <X className="size-5" /> : <MessageCircle className="size-5" />}

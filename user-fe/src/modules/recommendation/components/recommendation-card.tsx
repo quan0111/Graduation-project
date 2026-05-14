@@ -40,6 +40,11 @@ export const RecommendationCard = ({ product, onClick }: RecommendationCardProps
       <div className="flex flex-1 flex-col gap-2 p-3">
         <p className="text-xs uppercase tracking-[0.14em] text-orange-500">{product.category?.name ?? "Gợi ý cho bạn"}</p>
         <h3 className="line-clamp-2 min-h-10 text-sm font-semibold text-slate-900">{product.name}</h3>
+        {product.recommendationReason && (
+          <p className="line-clamp-2 rounded-lg bg-orange-50 px-2 py-1 text-xs leading-5 text-orange-700">
+            {product.recommendationReason}
+          </p>
+        )}
 
         <div className="mt-auto flex items-center justify-between">
           <div className="flex items-center gap-1 text-xs text-amber-500">

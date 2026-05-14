@@ -3,6 +3,7 @@ from fastapi import HTTPException
 from src.core.database import prisma
 from src.modules.users.user_schema import UserCreate, UserProfileUpdate, UserUpdate
 from src.core.security import hash_password
+from src.modules.audit.audit_service import AuditService
 from src.modules.notification.notification_schema import NotificationCreate
 from src.modules.notification.notification_service import NotificationService
 
@@ -102,7 +103,7 @@ class UserService:
         return updated_user
 
     @staticmethod
-    async def ban_user(user_id: int, reason: str):
+    async def ban_user(user_id: int, reason: str, admin_id: int | None = None):
         """
         Ban user: vô hiệu hoá tài khoản + ban toàn bộ shop của họ
         + gửi notification cho user
@@ -127,7 +128,7 @@ class UserService:
         # 2. Ban toàn bộ shop của user đó
         shop_ids = []
         if user.shops:
-            shop_ids = [shop.id for shop in user.shops]
+            shop_ids = [user.shops.id]
             await prisma.shop.update_many(
                 where={"ownerId": user_id},
                 data={"isActive": False},
@@ -150,6 +151,16 @@ class UserService:
             )
         )
 
+        await AuditService.create(
+            actor_id=admin_id,
+            action="USER.LOCKED",
+            entity_type="User",
+            entity_id=user_id,
+            target_user_id=user_id,
+            severity="WARNING",
+            metadata={"reason": reason, "bannedShopIds": shop_ids},
+        )
+
         return {
             "message": "User và shop liên quan đã bị khóa",
             "userId": user_id,
@@ -157,7 +168,7 @@ class UserService:
         }
 
     @staticmethod
-    async def unban_user(user_id: int):
+    async def unban_user(user_id: int, admin_id: int | None = None):
         """Mở khóa tài khoản user (không tự động mở shop)"""
         user = await prisma.user.find_unique(where={"id": user_id})
 
@@ -181,6 +192,16 @@ class UserService:
                 type="SYSTEM",
                 metadata={"unbanned": True},
             )
+        )
+
+        await AuditService.create(
+            actor_id=admin_id,
+            action="USER.UNLOCKED",
+            entity_type="User",
+            entity_id=user_id,
+            target_user_id=user_id,
+            severity="INFO",
+            metadata={"unbanned": True},
         )
 
         return {"message": "Tài khoản đã được mở khóa", "userId": user_id}

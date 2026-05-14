@@ -8,13 +8,14 @@ from src.modules.admin.admin_schema import (
     Pagination,
     SellerFilter,
 )
+from src.modules.audit.audit_service import AuditService
 from src.modules.notification.notification_schema import NotificationCreate
 from src.modules.notification.notification_service import NotificationService
 
 
 class AdminService:
     @staticmethod
-    async def set_product_status(product_id: int, status: str, ban_reason: str = ""):
+    async def set_product_status(product_id: int, status: str, ban_reason: str = "", admin_id: int | None = None):
         allowed = {"ACTIVE", "DRAFT", "REJECT", "BANNED", "OUT_OF_STOCK", "APROVAL"}
         if status not in allowed:
             raise HTTPException(400, "Invalid product status")
@@ -29,10 +30,22 @@ class AdminService:
         if not product or product.deletedAt:
             raise HTTPException(404, "Product not found")
 
-        updated = await prisma.product.update(
-            where={"id": product_id},
-            data={"status": status},
-        )
+        async with prisma.tx() as tx:
+            updated = await tx.product.update(
+                where={"id": product_id},
+                data={"status": status},
+            )
+            moderation_case = None
+            if status in {"BANNED", "REJECT"}:
+                moderation_case = await tx.productmoderationcase.create(
+                    data={
+                        "productId": product_id,
+                        "sellerId": product.shop.ownerId if product.shop else None,
+                        "status": "OPEN",
+                        "reason": ban_reason,
+                        "reviewedById": admin_id,
+                    }
+                )
 
         # 🔔 Gửi notification cho shop owner khi sản phẩm bị BANNED hoặc REJECT
         if status in {"BANNED", "REJECT"} and product.shop and product.shop.ownerId:
@@ -54,9 +67,24 @@ class AdminService:
                         "shopId": product.shop.id,
                         "status": status,
                         "banReason": ban_reason,
+                        "caseId": moderation_case.id if moderation_case else None,
                     },
                 )
             )
+
+        await AuditService.create(
+            actor_id=admin_id,
+            action="PRODUCT.STATUS_UPDATED",
+            entity_type="Product",
+            entity_id=product_id,
+            target_user_id=product.shop.ownerId if product.shop else None,
+            severity="WARNING" if status in {"BANNED", "REJECT"} else "INFO",
+            metadata={
+                "status": status,
+                "reason": ban_reason,
+                "caseId": moderation_case.id if status in {"BANNED", "REJECT"} and moderation_case else None,
+            },
+        )
 
         return updated
 

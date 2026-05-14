@@ -30,7 +30,9 @@ class NotificationService:
                 "id": notification.id,
                 "title": notification.title,
                 "content": notification.content,
-                "type": notification.type
+                "type": notification.type,
+                "metadata": notification.metadata,
+                "createdAt": notification.createdAt.isoformat() if notification.createdAt else None,
             }
         )
 
@@ -59,7 +61,8 @@ class NotificationService:
                 {
                     "title": data.title,
                     "content": data.content,
-                    "type": data.type
+                    "type": data.type,
+                    "metadata": data.metadata,
                 }
             )
 
@@ -69,6 +72,16 @@ class NotificationService:
 
         return await prisma.notification.find_many(
             where={"userId": user_id},
+            include={"user": True},
+            order={"createdAt": "desc"}
+        )
+    @staticmethod
+    async def get_notifications_by_user_and_type(user_id: int, notification_type: str | None = None):
+        where = {"userId": user_id}
+        if notification_type:
+            where["type"] = notification_type
+        return await prisma.notification.find_many(
+            where=where,
             include={"user": True},
             order={"createdAt": "desc"}
         )
@@ -86,6 +99,12 @@ class NotificationService:
             where={"id": notification_id},
             data={"isRead": True}
         )
+    @staticmethod
+    async def get_notification(notification_id: int):
+        notification = await prisma.notification.find_unique(where={"id": notification_id})
+        if not notification:
+            raise HTTPException(404, "Notification not found")
+        return notification
     @staticmethod
     async def delete_notification(notification_id: int):
 

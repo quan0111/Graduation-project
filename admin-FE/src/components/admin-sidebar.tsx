@@ -58,7 +58,7 @@ const systemNavItems = [
   { title: "Thông báo", icon: Bell, href: "/notifications", badge: 23 },
   { title: "Tin nhắn hỗ trợ", icon: MessageSquare, href: "/support", badge: 8 },
   { title: "Khuyến mãi", icon: Tag, href: "/promotions" },
-  { title: "Báo cáo", icon: FileText, href: "/reports" },
+  { title: "Audit log", icon: FileText, href: "/audit" },
   { title: "Cài đặt", icon: Settings, href: "/settings" },
 ]
 

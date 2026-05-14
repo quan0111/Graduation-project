@@ -5,6 +5,7 @@ import { DataTable } from "@/components/common/data-table";
 import { Button } from "@/components/ui/button";
 
 import { useProducts } from "../api/get-all-product";
+import { useReportProductViolation } from "../api/report-product-violation";
 import { useUpdateProduct } from "../api/update-product-id";
 import { productColumns } from "../component/product-collum";
 import { ProductFilter } from "../component/filter-search-product";
@@ -15,6 +16,7 @@ type ProductStatus = "ACTIVE" | "REJECT" | "BANNED";
 export default function ProductsPage() {
   const { data: products = [] } = useProducts();
   const updateProductMutation = useUpdateProduct();
+  const reportViolationMutation = useReportProductViolation();
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
@@ -56,8 +58,26 @@ export default function ProductsPage() {
   };
 
   const handleApprove = (product: any) => patchStatus(product.id, "ACTIVE", "Da duyet san pham");
-  const handleReject = (product: any) => patchStatus(product.id, "REJECT", "Da tu choi san pham");
-  const handleBan = (product: any) => patchStatus(product.id, "BANNED", "Da cam ban san pham vi pham");
+  const handleReject = async (product: any) => {
+    const reason = window.prompt("Nhập lý do từ chối sản phẩm");
+    if (!reason?.trim()) return;
+    try {
+      await reportViolationMutation.mutateAsync({ id: product.id, status: "REJECT", reason });
+      toast.success("Đã từ chối sản phẩm và tạo hồ sơ vi phạm");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || "Từ chối sản phẩm thất bại");
+    }
+  };
+  const handleBan = async (product: any) => {
+    const reason = window.prompt("Nhập lý do khóa sản phẩm vi phạm");
+    if (!reason?.trim()) return;
+    try {
+      await reportViolationMutation.mutateAsync({ id: product.id, status: "BANNED", reason });
+      toast.success("Đã khóa sản phẩm và tạo hồ sơ vi phạm");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || "Khóa sản phẩm thất bại");
+    }
+  };
   const handleView = (product: any) => {
     setSelected(product);
     setOpen(true);

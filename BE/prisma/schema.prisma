@@ -37,6 +37,16 @@ model User {
   returnRequests             ReturnRequest[]     @relation("ReturnRequestUser")
   reviewedReturns            ReturnRequest[]     @relation("ReturnReviewedBy")
   createdBanners             Banner[]            @relation("BannerCreatedBy")
+  auditLogsAsActor           AuditLog[]          @relation("AuditActor")
+  auditLogsAsTarget          AuditLog[]          @relation("AuditTargetUser")
+  inventoryLedgers           InventoryLedger[]   @relation("InventoryActor")
+  supportTickets             SupportTicket[]     @relation("SupportTicketUser")
+  assignedSupportTickets     SupportTicket[]     @relation("SupportTicketAssignee")
+  supportMessages            SupportMessage[]    @relation("SupportMessageSender")
+  securityIncidents          SecurityIncident[]  @relation("SecurityIncidentUser")
+  resolvedSecurityIncidents  SecurityIncident[]  @relation("SecurityIncidentResolvedBy")
+  moderationCasesAsSeller    ProductModerationCase[] @relation("ProductModerationSeller")
+  reviewedModerationCases    ProductModerationCase[] @relation("ProductModerationReviewer")
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -97,6 +107,8 @@ model Shop {
   commissions      PlatformCommission[]
   commissionConfig ShopCommissionConfig?
   cartitems        CartItem[]
+  inventoryLedgers InventoryLedger[]
+  supportTickets   SupportTicket[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -155,6 +167,8 @@ model Product {
   cartItems  CartItem[]
   attributes ProductAttribute[]
   tags       Tag[]              @relation("ProductTags")
+  moderationCases ProductModerationCase[]
+  inventoryLedgers InventoryLedger[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -179,6 +193,7 @@ model ProductVariant {
   images     VariantImage[]
   cartItems  CartItem[]
   orderItems OrderItem[]
+  inventoryLedgers InventoryLedger[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -258,6 +273,9 @@ model Order {
   cancellation   OrderCancellation?
   returnRequests ReturnRequest[]
   commissions    PlatformCommission[]
+  inventoryLedgers InventoryLedger[]
+  paymentEvents  PaymentEvent[]
+  supportTickets SupportTicket[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -329,7 +347,8 @@ model Payment {
   rawCallback     Json?
   paidAt          DateTime?
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order  Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  events PaymentEvent[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -350,6 +369,40 @@ enum PaymentStatus {
   PENDING
   SUCCESS
   FAILED
+}
+
+enum PaymentEventType {
+  CREATED
+  RETRY_CREATED
+  CALLBACK_RECEIVED
+  STATUS_SYNCED
+  MANUAL_UPDATE
+}
+
+model PaymentEvent {
+  id              Int              @id @default(autoincrement())
+  paymentId       Int?
+  orderId         Int?
+  provider        String?
+  eventType       PaymentEventType
+  status          PaymentStatus?
+  providerOrderId String?
+  requestId       String?
+  transactionId   String?
+  message         String?
+  retryCount      Int              @default(0)
+  payload         Json?
+
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  order   Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([paymentId])
+  @@index([orderId])
+  @@index([providerOrderId])
+  @@index([eventType])
+  @@index([createdAt(sort: Desc)])
 }
 
 model Coupon {
@@ -455,12 +508,108 @@ model Recommendation {
   @@index([timestamp(sort: Desc)])
 }
 
+enum AuditSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+model AuditLog {
+  id           Int           @id @default(autoincrement())
+  actorId      Int?
+  targetUserId Int?
+  action       String
+  entityType   String
+  entityId     Int?
+  severity     AuditSeverity @default(INFO)
+  ipAddress    String?
+  userAgent    String?
+  metadata     Json?
+
+  actor     User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  targetUser User? @relation("AuditTargetUser", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([targetUserId, createdAt(sort: Desc)])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([severity])
+}
+
+enum SecurityIncidentStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+model SecurityIncident {
+  id           Int                    @id @default(autoincrement())
+  userId       Int
+  severity     AuditSeverity          @default(WARNING)
+  reason       String
+  status       SecurityIncidentStatus @default(OPEN)
+  actionTaken  String?
+  metadata     Json?
+  detectedAt   DateTime               @default(now())
+  resolvedAt   DateTime?
+  resolvedById Int?
+  resolutionNote String?
+
+  user       User  @relation("SecurityIncidentUser", fields: [userId], references: [id], onDelete: Cascade)
+  resolvedBy User? @relation("SecurityIncidentResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, detectedAt(sort: Desc)])
+  @@index([status])
+  @@index([severity])
+}
+
+enum ProductModerationCaseStatus {
+  OPEN
+  SELLER_SUBMITTED
+  UNDER_REVIEW
+  APPROVED_RESTORED
+  REJECTED_UPHELD
+  CLOSED
+}
+
+model ProductModerationCase {
+  id            Int                         @id @default(autoincrement())
+  productId     Int
+  sellerId      Int?
+  status        ProductModerationCaseStatus @default(OPEN)
+  violationType String?
+  reason        String
+  adminNote     String?
+  sellerNote    String?
+  evidence      Json?
+  reviewedById  Int?
+  resolvedAt    DateTime?
+
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  seller     User?   @relation("ProductModerationSeller", fields: [sellerId], references: [id], onDelete: SetNull)
+  reviewedBy User?   @relation("ProductModerationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId])
+  @@index([sellerId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+}
+
 enum NotificationType {
   ORDER_UPDATE
+  PAYMENT_UPDATE
+  RETURN_UPDATE
+  REFUND_UPDATE
   PROMOTION
   SYSTEM
   CHAT
   PRODUCT_BANNED
+  SUPPORT_TICKET
 }
 
 
@@ -723,6 +872,8 @@ model ReturnRequest {
 
   items     ReturnItem[]
   evidences ReturnEvidence[]
+  inventoryLedgers InventoryLedger[]
+  supportTickets   SupportTicket[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -765,6 +916,114 @@ enum ReturnStatus {
   RECEIVED
   REFUNDED
   CANCELLED
+}
+
+enum InventoryLedgerType {
+  MANUAL_ADJUSTMENT
+  ORDER_DEDUCT
+  CANCEL_RESTORE
+  RETURN_RESTORE
+}
+
+model InventoryLedger {
+  id              Int                 @id @default(autoincrement())
+  shopId          Int
+  productId       Int?
+  variantId       Int?
+  orderId         Int?
+  returnRequestId Int?
+  actorId         Int?
+  type            InventoryLedgerType
+  quantityChange  Int
+  stockBefore     Int?
+  stockAfter      Int?
+  reason          String?
+  metadata        Json?
+
+  shop          Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  product       Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variant       ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  order         Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  returnRequest ReturnRequest?  @relation(fields: [returnRequestId], references: [id], onDelete: SetNull)
+  actor         User?           @relation("InventoryActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([shopId, createdAt(sort: Desc)])
+  @@index([productId])
+  @@index([variantId])
+  @@index([orderId])
+  @@index([returnRequestId])
+  @@index([type])
+}
+
+enum SupportTicketStatus {
+  OPEN
+  WAITING_SELLER
+  WAITING_CUSTOMER
+  RESOLVED
+  CLOSED
+}
+
+enum SupportTicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum SupportSenderRole {
+  CUSTOMER
+  SELLER
+  ADMIN
+  SYSTEM
+}
+
+model SupportTicket {
+  id              Int                   @id @default(autoincrement())
+  userId          Int
+  shopId          Int?
+  orderId         Int?
+  returnRequestId Int?
+  assignedAdminId Int?
+  subject         String
+  category        String?
+  priority        SupportTicketPriority @default(MEDIUM)
+  status          SupportTicketStatus   @default(OPEN)
+
+  user          User           @relation("SupportTicketUser", fields: [userId], references: [id], onDelete: Cascade)
+  shop          Shop?          @relation(fields: [shopId], references: [id], onDelete: SetNull)
+  order         Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  returnRequest ReturnRequest? @relation(fields: [returnRequestId], references: [id], onDelete: SetNull)
+  assignedAdmin User?          @relation("SupportTicketAssignee", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+  messages      SupportMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([shopId])
+  @@index([orderId])
+  @@index([returnRequestId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+}
+
+model SupportMessage {
+  id            Int               @id @default(autoincrement())
+  ticketId      Int
+  senderId      Int?
+  senderRole    SupportSenderRole
+  message       String
+  attachmentUrl String?
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender User?         @relation("SupportMessageSender", fields: [senderId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId, createdAt(sort: Asc)])
+  @@index([senderId])
 }
 
 model OrderCancellation {

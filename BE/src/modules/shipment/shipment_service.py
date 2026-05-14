@@ -3,18 +3,20 @@ from datetime import datetime
 from fastapi import HTTPException
 
 from src.core.database import prisma
+from src.modules.audit.audit_service import AuditService
 
 
 TRACKING_ORDER_STATUSES = {
-    "PROCESSING",
+    "READY_TO_SHIP",
     "SHIPPED",
+    "IN_TRANSIT",
     "DELIVERED",
 }
 
 SHIPMENT_TRANSITIONS = {
-    "PROCESSING": {"SHIPPED"},
     "READY_TO_SHIP": {"SHIPPED"},
-    "SHIPPED": {"DELIVERED"},
+    "SHIPPED": {"IN_TRANSIT"},
+    "IN_TRANSIT": {"DELIVERED"},
 }
 
 
@@ -26,10 +28,6 @@ class ShipmentService:
     @staticmethod
     def _normalize_status(status: str) -> str:
         normalized = status.upper()
-        if normalized == "IN_TRANSIT":
-            return "SHIPPED"
-        if normalized == "READY_TO_SHIP":
-            return "PROCESSING"
         if normalized not in TRACKING_ORDER_STATUSES:
             raise HTTPException(400, "Invalid shipment status")
         return normalized
@@ -119,11 +117,13 @@ class ShipmentService:
         order = await ShipmentService._assert_mutation_access(data.orderId, current_user)
         order_status = ShipmentService._to_value(order.status)
 
-        # COD orders can be shipped without payment (PENDING status)
-        # MOMO/VNPAY orders must be PAID before shipping
+        if order_status not in {"PENDING", "PAID", "CONFIRMED", "PROCESSING", "READY_TO_SHIP"}:
+            raise HTTPException(400, "Order cannot be arranged for pickup from current status")
+
         payment = await prisma.payment.find_unique(where={"orderId": data.orderId})
-        if payment and order_status != "PAID":
-            raise HTTPException(400, "Only paid orders can move to processing")
+        payment_method = ShipmentService._to_value(payment.method) if payment else "COD"
+        if payment and payment_method != "COD" and order_status not in {"PAID", "CONFIRMED", "PROCESSING", "READY_TO_SHIP"}:
+            raise HTTPException(400, "Only paid online orders can be arranged for pickup")
 
         existing = await prisma.shipment.find_unique(where={"orderId": data.orderId})
         if existing:
@@ -134,13 +134,23 @@ class ShipmentService:
                 "orderId": data.orderId,
                 "carrier": data.carrier,
                 "trackingNumber": data.trackingNumber,
-                "status": "PROCESSING",
+                "status": "READY_TO_SHIP",
             }
         )
 
         await prisma.order.update(
             where={"id": data.orderId},
-            data={"status": "PROCESSING"},
+            data={"status": "READY_TO_SHIP"},
+        )
+
+        await AuditService.create(
+            actor_id=current_user.id,
+            action="SHIPMENT.CREATED",
+            entity_type="Order",
+            entity_id=data.orderId,
+            target_user_id=order.userId,
+            severity="INFO",
+            metadata={"shipmentId": shipment.id, "status": "READY_TO_SHIP"},
         )
 
         return shipment
@@ -157,7 +167,7 @@ class ShipmentService:
 
     @staticmethod
     async def update_shipment(order_id: int, current_user, data):
-        await ShipmentService._assert_mutation_access(order_id, current_user)
+        order = await ShipmentService._assert_mutation_access(order_id, current_user)
 
         shipment = await prisma.shipment.find_unique(where={"orderId": order_id})
         if not shipment:
@@ -187,6 +197,17 @@ class ShipmentService:
             await prisma.order.update(
                 where={"id": order_id},
                 data={"status": status},
+            )
+
+        if status:
+            await AuditService.create(
+                actor_id=current_user.id,
+                action="SHIPMENT.STATUS_UPDATED",
+                entity_type="Order",
+                entity_id=order_id,
+                target_user_id=order.userId,
+                severity="INFO",
+                metadata={"status": status, "shipmentId": updated.id},
             )
 
         return updated

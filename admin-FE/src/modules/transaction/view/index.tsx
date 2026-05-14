@@ -53,11 +53,20 @@ const statusMeta: Record<string, { label: string; className: string }> = {
 
 export default function TransactionsPage() {
   const [search, setSearch] = useState('');
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const { data: payments = [], isLoading, isError } = useQuery({
     queryKey: ['admin', 'payments'],
     queryFn: async () => {
       const res = await apiClient.get<Payment[]>(`${API_URL_ORDER}/payment`);
       return res.data;
+    },
+  });
+  const { data: paymentEvents = [] } = useQuery({
+    queryKey: ['admin', 'payment-events', selectedPayment?.id],
+    enabled: Boolean(selectedPayment),
+    queryFn: async () => {
+      const res = await apiClient.get(`${API_URL_ORDER}/payment/${selectedPayment?.id}/events`);
+      return res.data as Array<any>;
     },
   });
 
@@ -184,7 +193,7 @@ export default function TransactionsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="border-border bg-card">
-                              <DropdownMenuItem className="cursor-pointer text-foreground">
+                              <DropdownMenuItem className="cursor-pointer text-foreground" onClick={() => setSelectedPayment(payment)}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 Xem chi tiết
                               </DropdownMenuItem>
@@ -200,6 +209,44 @@ export default function TransactionsPage() {
           )}
         </CardContent>
       </Card>
+      {selectedPayment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-card p-6 shadow-xl">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">Đối soát payment #{selectedPayment.id}</h2>
+                <p className="text-sm text-muted-foreground">
+                  Đơn #{selectedPayment.orderId} · {selectedPayment.method} · {selectedPayment.status}
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedPayment(null)}>
+                Đóng
+              </Button>
+            </div>
+            <div className="space-y-3">
+              {paymentEvents.length === 0 ? (
+                <div className="rounded-lg border p-4 text-sm text-muted-foreground">Chưa có log callback/retry.</div>
+              ) : (
+                paymentEvents.map((event) => (
+                  <div key={event.id} className="rounded-xl border border-border bg-background p-4 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="font-semibold text-foreground">{event.eventType}</p>
+                      <Badge variant="outline">{event.status || '-'}</Badge>
+                    </div>
+                    <p className="mt-1 text-muted-foreground">
+                      {new Date(event.createdAt).toLocaleString('vi-VN')} · Retry #{event.retryCount}
+                    </p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Provider: {event.providerOrderId || '-'} · Transaction: {event.transactionId || '-'}
+                    </p>
+                    {event.message && <p className="mt-2 text-xs text-foreground">{event.message}</p>}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -22,6 +22,12 @@ import AddProductPage from "@/modules/seller/view/new-product";
 import SellerOrdersPage from "@/modules/seller/view/orders";
 import SellerOrderDetailPage from "@/modules/seller/view/order-detail";
 import SellerReturnsPage from "@/modules/seller/view/returns";
+import SellerViolationsPage from "@/modules/seller/view/violations";
+import SellerProductsPage from "@/modules/seller/view/products";
+import SellerFinancePage from "@/modules/seller/view/finance";
+import SellerCouponsPage from "@/modules/seller/view/coupons";
+import SellerSupportPage from "@/modules/seller/view/support";
+import { RequireAuth, RequireSeller } from "./guards";
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -30,18 +36,18 @@ export const router = createBrowserRouter([
       { index: true, element: <Home /> },
 
 
-      { path: "cart", element: <CartPage /> },
+      { path: "cart", element: <RequireAuth><CartPage /></RequireAuth> },
 
       { path: "products", element: <ProductPage /> },
       { path: "product/:id", element: <ProductDetailPage /> },
 
-      { path: "checkout", element: <CheckOutPage /> },
+      { path: "checkout", element: <RequireAuth><CheckOutPage /></RequireAuth> },
 
-      { path: "orders", element: <OrderPage /> },
-      { path: "orders/:id", element: <OrderDetailPage /> },
+      { path: "orders", element: <RequireAuth><OrderPage /></RequireAuth> },
+      { path: "orders/:id", element: <RequireAuth><OrderDetailPage /></RequireAuth> },
 
-      { path: "account", element: <AccountPage /> },
-      { path: "profile", element: <AccountPage /> },
+      { path: "account", element: <RequireAuth><AccountPage /></RequireAuth> },
+      { path: "profile", element: <RequireAuth><AccountPage /></RequireAuth> },
 
       { path: "promotions", element: <PromotionPage /> },
       { path: "shop/:id", element: <ShopPage /> },
@@ -52,26 +58,46 @@ export const router = createBrowserRouter([
 
   {
     path: "/seller",
-    element: <SellerRegistrationView />,
+    element: <RequireAuth><SellerRegistrationView /></RequireAuth>,
   },
   {
     path: "/seller/dashboard",
-    element: <SellerDashboardPage />,
+    element: <RequireSeller><SellerDashboardPage /></RequireSeller>,
   },
   {
     path: "/seller/orders",
-    element: <SellerOrdersPage />,
+    element: <RequireSeller><SellerOrdersPage /></RequireSeller>,
   },
   {
     path: "/seller/orders/:id",
-    element: <SellerOrderDetailPage />,
+    element: <RequireSeller><SellerOrderDetailPage /></RequireSeller>,
   },
   {
     path: "/seller/returns",
-    element: <SellerReturnsPage />,
+    element: <RequireSeller><SellerReturnsPage /></RequireSeller>,
+  },
+  {
+    path: "/seller/violations",
+    element: <RequireSeller><SellerViolationsPage /></RequireSeller>,
+  },
+  {
+    path: "/seller/products",
+    element: <RequireSeller><SellerProductsPage /></RequireSeller>,
   },
   {
     path: "/seller/products/new",
-    element: <AddProductPage />,
+    element: <RequireSeller><AddProductPage /></RequireSeller>,
+  },
+  {
+    path: "/seller/finance",
+    element: <RequireSeller><SellerFinancePage /></RequireSeller>,
+  },
+  {
+    path: "/seller/coupons",
+    element: <RequireSeller><SellerCouponsPage /></RequireSeller>,
+  },
+  {
+    path: "/seller/support",
+    element: <RequireSeller><SellerSupportPage /></RequireSeller>,
   },
 ]);

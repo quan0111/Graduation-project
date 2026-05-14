@@ -13,12 +13,14 @@ import {
   useReviewReturnRequest,
 } from "@/modules/returns/api/returns";
 
-type ReturnStatusFilter = "ALL" | "REQUESTED" | "APPROVED" | "REJECTED" | "REFUNDED";
+type ReturnStatusFilter = "ALL" | "REQUESTED" | "APPROVED" | "PICKED_UP" | "RECEIVED" | "REJECTED" | "REFUNDED";
 
 const statusOptions: Array<{ value: ReturnStatusFilter; label: string }> = [
   { value: "ALL", label: "Tất cả" },
   { value: "REQUESTED", label: "Chờ duyệt" },
   { value: "APPROVED", label: "Đã duyệt" },
+  { value: "PICKED_UP", label: "Đang chuyển hoàn" },
+  { value: "RECEIVED", label: "Seller đã nhận hàng" },
   { value: "REFUNDED", label: "Đã hoàn tiền" },
   { value: "REJECTED", label: "Từ chối" },
 ];
@@ -26,6 +28,8 @@ const statusOptions: Array<{ value: ReturnStatusFilter; label: string }> = [
 const statusMeta: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   REQUESTED: { label: "Chờ admin duyệt", variant: "secondary" },
   APPROVED: { label: "Đã duyệt - chờ seller hoàn tiền", variant: "default" },
+  PICKED_UP: { label: "Đang chuyển hoàn", variant: "secondary" },
+  RECEIVED: { label: "Seller đã nhận hàng", variant: "default" },
   REJECTED: { label: "Từ chối", variant: "destructive" },
   REFUNDED: { label: "Đã hoàn tiền", variant: "outline" },
 };
@@ -45,6 +49,8 @@ export default function ReturnsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<ReturnStatusFilter>("ALL");
   const [selectedReturn, setSelectedReturn] = useState<ReturnRequest | null>(null);
+  const [rejectCandidate, setRejectCandidate] = useState<ReturnRequest | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
   const queryClient = useQueryClient();
 
   const { data: returns = [], isLoading, isError } = useAdminReturnRequests();
@@ -65,10 +71,7 @@ export default function ReturnsPage() {
     [returns, searchTerm, statusFilter],
   );
 
-  const handleReview = (returnId: number, status: "APPROVED" | "REJECTED") => {
-    const rejectReasonInput = status === "REJECTED" ? prompt("Nhập lý do từ chối yêu cầu hoàn tiền") : undefined;
-    if (status === "REJECTED" && rejectReasonInput === null) return;
-
+  const handleReview = (returnId: number, status: "APPROVED" | "REJECTED", rejectReasonInput?: string) => {
     reviewMutation.mutate(
       {
         returnId,
@@ -78,6 +81,8 @@ export default function ReturnsPage() {
         onSuccess: async () => {
           toast.success(status === "APPROVED" ? "Đã duyệt yêu cầu hoàn tiền" : "Đã từ chối yêu cầu hoàn tiền");
           setSelectedReturn(null);
+          setRejectCandidate(null);
+          setRejectReason("");
           await queryClient.invalidateQueries({ queryKey: ["returns", "admin"] });
         },
         onError: (error: any) => {
@@ -175,7 +180,7 @@ export default function ReturnsPage() {
                               <Button
                                 size="sm"
                                 variant="destructive"
-                                onClick={() => handleReview(returnReq.id, "REJECTED")}
+                                onClick={() => setRejectCandidate(returnReq)}
                                 disabled={reviewMutation.isPending}
                               >
                                 <X className="size-4" />
@@ -248,7 +253,7 @@ export default function ReturnsPage() {
 
               {selectedReturn.status === "REQUESTED" && (
                 <div className="flex justify-end gap-3 border-t pt-4">
-                  <Button variant="destructive" onClick={() => handleReview(selectedReturn.id, "REJECTED")}>
+                  <Button variant="destructive" onClick={() => setRejectCandidate(selectedReturn)}>
                     Từ chối
                   </Button>
                   <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handleReview(selectedReturn.id, "APPROVED")}>
@@ -256,6 +261,43 @@ export default function ReturnsPage() {
                   </Button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rejectCandidate && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-lg rounded-2xl bg-background p-6 shadow-xl">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold">Từ chối yêu cầu hoàn tiền</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Nhập lý do rõ ràng để người mua và seller theo dõi lại quyết định.
+                </p>
+              </div>
+              <button onClick={() => setRejectCandidate(null)} className="text-muted-foreground hover:text-foreground">
+                <X className="size-5" />
+              </button>
+            </div>
+            <textarea
+              value={rejectReason}
+              onChange={(event) => setRejectReason(event.target.value)}
+              rows={4}
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Ví dụ: Bằng chứng không đủ rõ, sản phẩm không thuộc điều kiện đổi trả..."
+            />
+            <div className="mt-5 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setRejectCandidate(null)} disabled={reviewMutation.isPending}>
+                Hủy
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={!rejectReason.trim() || reviewMutation.isPending}
+                onClick={() => handleReview(rejectCandidate.id, "REJECTED", rejectReason.trim())}
+              >
+                Xác nhận từ chối
+              </Button>
             </div>
           </div>
         </div>

@@ -65,5 +65,6 @@ export const normalizeProduct = (product: UnknownRecord): IProduct => {
     attributes: product.attributes ?? [],
     tags: product.tags ?? [],
     stock: Number(product.stock ?? product.totalStock ?? 0),
+    recommendationReason: product.recommendationReason,
   };
 };

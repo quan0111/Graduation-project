@@ -3,7 +3,6 @@ import { Link, useLocation } from "react-router-dom";
 import {
   BadgeDollarSign,
   BarChart3,
-  Bell,
   ChevronDown,
   ClipboardList,
   HelpCircle,
@@ -17,6 +16,7 @@ import {
   Settings,
   ShieldCheck,
   Store,
+  TicketPercent,
   Truck,
   UserRound,
 } from "lucide-react";
@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "@/modules/notification/components/notification-bell";
 
 const menuGroups = [
   {
@@ -32,7 +33,8 @@ const menuGroups = [
       { label: "Tổng quan", href: "/seller/dashboard", icon: LayoutDashboard, match: "/seller/dashboard" },
       { label: "Đơn hàng", href: "/seller/orders", icon: ClipboardList, match: "/seller/orders" },
       { label: "Trả hàng / hoàn tiền", href: "/seller/returns", icon: RefreshCcw, match: "/seller/returns" },
-      { label: "Sản phẩm", href: "/seller/products/new", icon: Package, match: "/seller/products" },
+      { label: "Vi phạm sản phẩm", href: "/seller/violations", icon: ShieldCheck, match: "/seller/violations" },
+      { label: "Sản phẩm", href: "/seller/products", icon: Package, match: "/seller/products" },
       { label: "Vận chuyển", href: "/seller/orders", icon: Truck, match: "/seller/orders" },
     ],
   },
@@ -40,15 +42,16 @@ const menuGroups = [
     label: "Tăng trưởng",
     items: [
       { label: "Marketing", href: "/seller/dashboard#campaigns", icon: Megaphone, match: "/seller/dashboard" },
+      { label: "Coupon shop", href: "/seller/coupons", icon: TicketPercent, match: "/seller/coupons" },
       { label: "Phân tích", href: "/seller/dashboard#analytics", icon: BarChart3, match: "/seller/dashboard" },
-      { label: "Tài chính", href: "/seller/dashboard#finance", icon: BadgeDollarSign, match: "/seller/dashboard" },
+      { label: "Tài chính", href: "/seller/finance", icon: BadgeDollarSign, match: "/seller/finance" },
     ],
   },
   {
     label: "Hệ thống",
     items: [
       { label: "Cài đặt shop", href: "/seller/dashboard#settings", icon: Settings, match: "/seller/dashboard" },
-      { label: "Trợ giúp", href: "/seller/dashboard#support", icon: HelpCircle, match: "/seller/dashboard" },
+      { label: "Trợ giúp", href: "/seller/support", icon: HelpCircle, match: "/seller/support" },
     ],
   },
 ] as const;
@@ -138,9 +141,7 @@ export function SellerDashboardLayout({ children }: SellerDashboardLayoutProps) 
               <Button variant="ghost" size="icon" aria-label="Tin nhắn">
                 <MessageCircle className="size-5 text-slate-600" />
               </Button>
-              <Button variant="ghost" size="icon" aria-label="Thông báo">
-                <Bell className="size-5 text-slate-600" />
-              </Button>
+              <NotificationBell />
               <Button variant="outline" className="hidden gap-2 rounded-full md:inline-flex">
                 <Home className="size-4" />
                 Xem shop

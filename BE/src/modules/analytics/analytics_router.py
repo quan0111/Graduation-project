@@ -41,12 +41,14 @@ async def top_products(limit: int = 10):
 async def recommend_me(
     top_k: int = 10,
     product_id: int | None = None,
+    explain: bool = False,
     user=Depends(get_optional_current_user),
 ):
     return await AnalyticsService.recommend_products_for_optional_user(
         user_id=user.id if user else None,
         top_k=top_k,
         context_product_id=product_id,
+        explain=explain,
     )
 
 

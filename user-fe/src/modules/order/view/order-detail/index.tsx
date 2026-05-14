@@ -91,7 +91,7 @@ export default function OrderDetailPage() {
                   {completeMutation.isPending ? "Đang xác nhận..." : "Đã nhận hàng"}
                 </Button>
               )}
-              {order.status === "pending" && (
+              {["pending", "paid", "confirmed", "payment_failed"].includes(order.status) && (
                 <button
                   onClick={() => setShowCancelModal(true)}
                   className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-red-300 py-2 text-sm font-medium text-red-600 hover:bg-red-50"

@@ -11,6 +11,7 @@ const getRecommendations = async ({ topK = 10, productId }: RecommendationQuery 
     params: {
       top_k: topK,
       product_id: productId,
+      explain: true,
     },
   });
 

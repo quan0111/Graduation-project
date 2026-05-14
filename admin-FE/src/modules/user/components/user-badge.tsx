@@ -1,11 +1,13 @@
 import { Badge } from "@/components/ui/badge";
 
 export const RoleBadge = ({ role }: { role: string }) => {
-  return role === "seller" ? (
-    <Badge className="bg-primary text-primary-foreground">Người bán</Badge>
-  ) : (
-    <Badge className="bg-accent text-accent-foreground">Người mua</Badge>
-  );
+  if (role === "admin") {
+    return <Badge className="bg-purple-600 text-white">Admin</Badge>;
+  }
+  if (role === "seller") {
+    return <Badge className="bg-primary text-primary-foreground">Người bán</Badge>
+  }
+  return <Badge className="bg-accent text-accent-foreground">Người mua</Badge>
 };
 
 export const StatusBadge = ({ status }: { status: string }) => {

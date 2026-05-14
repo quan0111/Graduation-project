@@ -12,25 +12,27 @@ security = HTTPBearer()
 
 
 @router.post("/register", response_model=AuthResponse)
-async def register(data: RegisterRequest, response: Response):
-    return await AuthService.register(data, response)
+async def register(data: RegisterRequest, response: Response, request: Request):
+    return await AuthService.register(data, response, request=request)
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(data: LoginRequest, response: Response):
+async def login(data: LoginRequest, response: Response, request: Request):
     return await AuthService.login(
         data,
         response,
+        request=request,
         scope=AUTH_SCOPE_STOREFRONT,
         cookie_name=AuthService.STOREFRONT_COOKIE,
     )
 
 
 @router.post("/admin/login", response_model=AuthResponse)
-async def admin_login(data: LoginRequest, response: Response):
+async def admin_login(data: LoginRequest, response: Response, request: Request):
     return await AuthService.login(
         data,
         response,
+        request=request,
         scope=AUTH_SCOPE_ADMIN,
         cookie_name=AuthService.ADMIN_COOKIE,
     )

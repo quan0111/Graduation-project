@@ -14,6 +14,8 @@ from src.core.security import (
     verify_refresh_token,
 )
 from src.modules.auth.schema import LoginRequest, RegisterRequest
+from src.modules.audit.audit_service import AuditService
+from src.modules.security.security_service import SecurityService
 
 
 def hash_token(token: str):
@@ -23,6 +25,14 @@ def hash_token(token: str):
 class AuthService:
     STOREFRONT_COOKIE = "refresh_token"
     ADMIN_COOKIE = "admin_refresh_token"
+
+    @staticmethod
+    def _request_meta(request: Request | None):
+        if not request:
+            return None, None
+        ip_address = request.client.host if request.client else None
+        user_agent = request.headers.get("user-agent")
+        return ip_address, user_agent
 
     @staticmethod
     def _build_user(user):
@@ -84,7 +94,7 @@ class AuthService:
         }
 
     @staticmethod
-    async def register(data: RegisterRequest, response: Response):
+    async def register(data: RegisterRequest, response: Response, request: Request | None = None):
         existing = await prisma.user.find_unique(where={"email": data.email})
         if existing:
             raise HTTPException(400, "Email already registered")
@@ -99,6 +109,19 @@ class AuthService:
             }
         )
 
+        ip_address, user_agent = AuthService._request_meta(request)
+        await AuditService.create(
+            actor_id=user.id,
+            action="AUTH.REGISTER",
+            entity_type="User",
+            entity_id=user.id,
+            target_user_id=user.id,
+            severity="INFO",
+            metadata={"email": user.email},
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
         return await AuthService._issue_session(
             user=user,
             response=response,
@@ -110,21 +133,47 @@ class AuthService:
     async def login(
         data: LoginRequest,
         response: Response,
+        request: Request | None = None,
         scope: str = AUTH_SCOPE_STOREFRONT,
         cookie_name: str = STOREFRONT_COOKIE,
     ):
+        ip_address, user_agent = AuthService._request_meta(request)
         user = await prisma.user.find_unique(where={"email": data.email})
 
         if not user or user.deletedAt:
+            await SecurityService.record_failed_login(
+                data.email,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                scope=scope,
+            )
             raise HTTPException(401, "Invalid credentials")
 
         if not user.isActive:
             raise HTTPException(403, "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ hỗ trợ.")
 
-        if not verify_password(data.password, user.password):
+        if not user.password or not verify_password(data.password, user.password):
+            await SecurityService.record_failed_login(
+                data.email,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                scope=scope,
+            )
             raise HTTPException(401, "Invalid credentials")
 
         AuthService._validate_scope_access(user, scope)
+
+        await AuditService.create(
+            actor_id=user.id,
+            action="AUTH.LOGIN_SUCCESS",
+            entity_type="User",
+            entity_id=user.id,
+            target_user_id=user.id,
+            severity="INFO",
+            metadata={"scope": scope},
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
 
         return await AuthService._issue_session(
             user=user,

@@ -34,14 +34,14 @@ export function UserFilters({
         {/* Role */}
         <div className="flex gap-2">
           <span className="text-sm font-medium text-muted-foreground self-center">Vai trò:</span>
-          {["all", "buyer", "seller"].map(r => (
+          {["all", "customer", "seller", "admin"].map(r => (
             <Button
               key={r}
               size="sm"
               variant={filterRole === r ? "default" : "outline"}
               onClick={() => setFilterRole(r)}
             >
-              {r === "all" ? "Tất cả" : r === "buyer" ? "Người mua" : "Người bán"}
+              {r === "all" ? "Tất cả" : r === "customer" ? "Người mua" : r === "seller" ? "Người bán" : "Admin"}
             </Button>
           ))}
         </div>

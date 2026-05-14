@@ -9,7 +9,16 @@ export interface Notification {
     userId: number;
     title: string;
     content: string;
-    type: "ORDER_UPDATE" | "PROMOTION" | "SYSTEM" | "CHAT";
+    type:
+        | "ORDER_UPDATE"
+        | "PAYMENT_UPDATE"
+        | "RETURN_UPDATE"
+        | "REFUND_UPDATE"
+        | "PROMOTION"
+        | "SYSTEM"
+        | "CHAT"
+        | "PRODUCT_BANNED"
+        | "SUPPORT_TICKET";
     isRead: boolean;
     metadata?: any;
     createdAt: string;
@@ -19,7 +28,7 @@ export interface CreateNotificationRequest {
     userId: number;
     title: string;
     content: string;
-    type: "ORDER_UPDATE" | "PROMOTION" | "SYSTEM" | "CHAT";
+    type: Notification["type"];
     metadata?: any;
 }
 

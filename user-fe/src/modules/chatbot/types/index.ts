@@ -5,6 +5,8 @@ export interface ChatbotProduct {
   imageUrl?: string | null;
   shopName?: string | null;
   categoryName?: string | null;
+  reason?: string | null;
+  relationType?: string | null;
 }
 
 export interface ChatbotMessagePayload {

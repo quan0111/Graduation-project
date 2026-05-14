@@ -97,4 +97,5 @@ async def update_product_status(
         product_id,
         body.status,
         ban_reason=body.banReason or "",
+        admin_id=user.id,
     )

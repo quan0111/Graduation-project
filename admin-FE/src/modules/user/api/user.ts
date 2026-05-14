@@ -28,7 +28,7 @@ export interface UpdatePasswordRequest {
     newPassword: string;
 }
 
-// Get current user profile
+
 export const getCurrentUser = async (): Promise<User> => {
     const response = await apiClient.get(`${API_URL_USER}/me`);
     return response.data;

@@ -4,6 +4,9 @@ from fastapi import HTTPException
 
 from src.core.database import prisma
 from src.core.dependencies import get_role_value
+from src.modules.audit.audit_service import AuditService
+from src.modules.notification.notification_schema import NotificationCreate
+from src.modules.notification.notification_service import NotificationService
 from src.modules.order.momo_service import MoMoService
 from src.modules.order.order_schema import PaymentCreate, PaymentGatewayCreate, PaymentGatewayOut, PaymentOut
 from src.modules.order.vnpay_service import VNPayService
@@ -93,6 +96,7 @@ class PaymentService:
 
         if existing:
             payment = await prisma.payment.update(where={"id": existing.id}, data=payment_payload)
+            event_type = "RETRY_CREATED"
         else:
             payment = await prisma.payment.create(
                 data={
@@ -100,6 +104,15 @@ class PaymentService:
                     "order": {"connect": {"id": order.id}},
                 }
             )
+            event_type = "CREATED"
+
+        await PaymentService._create_event(
+            payment=payment,
+            event_type=event_type,
+            status="PENDING",
+            payload=response_data,
+            message=provider_message,
+        )
 
         return PaymentGatewayOut(
             payment=PaymentService._to_out(payment),
@@ -183,6 +196,13 @@ class PaymentService:
             },
         )
         await PaymentService._sync_order_payment_status(payment.orderId, status)
+        await PaymentService._create_event(
+            payment=updated,
+            event_type="MANUAL_UPDATE",
+            status=status,
+            message=f"Payment manually updated to {status}",
+        )
+        await PaymentService._notify_payment_update(updated, status)
         return PaymentService._to_out(updated)
 
     @staticmethod
@@ -197,6 +217,16 @@ class PaymentService:
     async def get_all_payments() -> list[PaymentOut]:
         payments = await prisma.payment.find_many()
         return [PaymentService._to_out(payment) for payment in payments]
+
+    @staticmethod
+    async def get_payment_events(payment_id: int):
+        payment = await prisma.payment.find_unique(where={"id": payment_id})
+        if not payment:
+            raise HTTPException(404, "Payment not found")
+        return await prisma.paymentevent.find_many(
+            where={"paymentId": payment_id},
+            order={"createdAt": "desc"},
+        )
 
     @staticmethod
     async def get_payments_by_status(status: str) -> list[PaymentOut]:
@@ -226,7 +256,31 @@ class PaymentService:
             },
         )
         await PaymentService._sync_order_payment_status(payment.orderId, status)
+        await PaymentService._create_event(
+            payment=updated,
+            event_type="CALLBACK_RECEIVED",
+            status=status,
+            payload=callback_data,
+            transaction_id=transaction_id,
+            message=provider_message,
+        )
+        await PaymentService._notify_payment_update(updated, status)
         return updated
+
+    @staticmethod
+    async def retry_payment(payment_id: int, current_user, ip_address: str) -> PaymentGatewayOut:
+        payment = await prisma.payment.find_unique(where={"id": payment_id}, include={"order": True})
+        if not payment:
+            raise HTTPException(404, "Payment not found")
+        if payment.order.userId != current_user.id and get_role_value(current_user) != "ADMIN":
+            raise HTTPException(403, "Forbidden")
+        if PaymentService._to_value(payment.status) == "SUCCESS":
+            raise HTTPException(400, "Payment is already successful")
+        return await PaymentService.create_gateway_payment(
+            PaymentGatewayCreate(orderId=payment.orderId, method=PaymentService._to_value(payment.method)),
+            current_user,
+            ip_address,
+        )
 
     @staticmethod
     async def _sync_order_payment_status(order_id: int, payment_status: str):
@@ -238,6 +292,65 @@ class PaymentService:
             order = await prisma.order.find_unique(where={"id": order_id})
             if order and PaymentService._to_value(order.status) == "PENDING":
                 await prisma.order.update(where={"id": order_id}, data={"status": "PAYMENT_FAILED"})
+
+    @staticmethod
+    async def _create_event(payment, event_type: str, status: str | None = None, payload: dict | None = None, transaction_id: str | None = None, message: str | None = None):
+        try:
+            retry_count = await prisma.paymentevent.count(where={"paymentId": payment.id})
+            await prisma.paymentevent.create(
+                data={
+                    "paymentId": payment.id,
+                    "orderId": payment.orderId,
+                    "provider": PaymentService._to_value(payment.method),
+                    "eventType": event_type,
+                    "status": status or PaymentService._to_value(payment.status),
+                    "providerOrderId": payment.providerOrderId,
+                    "requestId": payment.requestId,
+                    "transactionId": transaction_id or payment.transactionId,
+                    "message": message,
+                    "retryCount": retry_count,
+                    "payload": payload,
+                }
+            )
+            await AuditService.create(
+                action=f"PAYMENT.{event_type}",
+                entity_type="Payment",
+                entity_id=payment.id,
+                target_user_id=None,
+                severity="INFO" if status != "FAILED" else "WARNING",
+                metadata={
+                    "orderId": payment.orderId,
+                    "status": status,
+                    "providerOrderId": payment.providerOrderId,
+                    "transactionId": transaction_id,
+                },
+            )
+        except Exception:
+            return None
+
+    @staticmethod
+    async def _notify_payment_update(payment, status: str):
+        try:
+            order = await prisma.order.find_unique(where={"id": payment.orderId})
+            if not order:
+                return
+            title = "Thanh toán thành công" if status == "SUCCESS" else "Thanh toán chưa thành công"
+            content = (
+                f"Đơn hàng #{payment.orderId} đã được thanh toán thành công."
+                if status == "SUCCESS"
+                else f"Thanh toán đơn hàng #{payment.orderId} thất bại hoặc bị từ chối. Bạn có thể thử lại."
+            )
+            await NotificationService.create(
+                NotificationCreate(
+                    userId=order.userId,
+                    title=title,
+                    content=content,
+                    type="PAYMENT_UPDATE",
+                    metadata={"orderId": payment.orderId, "paymentId": payment.id, "status": status},
+                )
+            )
+        except Exception:
+            return None
 
     @staticmethod
     def _to_out(payment) -> PaymentOut:

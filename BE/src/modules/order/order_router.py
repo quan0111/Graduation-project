@@ -69,6 +69,18 @@ async def get_payment(payment_id: int, user=Depends(get_current_user)):
     return await PaymentService.get_payment(payment_id, user)
 
 
+@router.get("/payment/{payment_id}/events")
+async def get_payment_events(payment_id: int, user=Depends(require_admin)):
+    _ = user
+    return await PaymentService.get_payment_events(payment_id)
+
+
+@router.post("/payment/{payment_id}/retry", response_model=PaymentGatewayOut)
+async def retry_payment(payment_id: int, request: Request, user=Depends(get_current_user)):
+    client_host = request.client.host if request.client else "127.0.0.1"
+    return await PaymentService.retry_payment(payment_id, user, client_host)
+
+
 @router.patch("/payment/{payment_id}")
 async def update_payment_by_id(
     payment_id: int,

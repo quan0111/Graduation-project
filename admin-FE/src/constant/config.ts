@@ -18,6 +18,9 @@ export const API_URL_RETURN = `${API_URL}returns`
 export const API_URL_FINANCE = `${API_URL}finance`
 export const API_URL_MARKETING = `${API_URL}marketing`
 export const API_URL_SHIPMENT = `${API_URL}shipments`
+export const API_URL_AUDIT = `${API_URL}audit`
+export const API_URL_SECURITY = `${API_URL}security`
+export const API_URL_MODERATION = `${API_URL}moderation`
 
 
 

@@ -12,8 +12,11 @@ interface OrdersFilterTabsProps {
 const tabs: { label: string; value: OrderFilterType }[] = [
   { label: "Tất cả", value: "ALL" },
   { label: getStatusMeta("pending").label, value: "pending" },
+  { label: getStatusMeta("confirmed").label, value: "confirmed" },
   { label: getStatusMeta("processing").label, value: "processing" },
+  { label: getStatusMeta("ready_to_ship").label, value: "ready_to_ship" },
   { label: getStatusMeta("shipped").label, value: "shipped" },
+  { label: getStatusMeta("in_transit").label, value: "in_transit" },
   { label: getStatusMeta("delivered").label, value: "delivered" },
   { label: getStatusMeta("cancelled").label, value: "cancelled" },
 ];

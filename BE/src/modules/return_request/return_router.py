@@ -68,6 +68,16 @@ async def refund(return_id: int, user=Depends(require_seller)):
     return await ReturnService.mark_refunded(return_id, user.id)
 
 
+@router.patch("/{return_id}/pickup", response_model=ReturnOut)
+async def pickup(return_id: int, user=Depends(require_seller)):
+    return await ReturnService.mark_picked_up(return_id, user.id)
+
+
+@router.patch("/{return_id}/received", response_model=ReturnOut)
+async def received(return_id: int, user=Depends(require_seller)):
+    return await ReturnService.mark_received(return_id, user.id)
+
+
 @router.get("/user/{user_id}", response_model=List[ReturnOut])
 async def get_user_returns(user_id: int, user=Depends(get_current_user)):
     if user.id != user_id and get_role_value(user) != "ADMIN":
