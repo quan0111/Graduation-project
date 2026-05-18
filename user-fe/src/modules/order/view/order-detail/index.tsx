@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { ChevronLeft, RotateCcw } from "lucide-react";
 
@@ -20,6 +21,7 @@ import { OrderTimeline } from "../../components/orderTimeLine";
 export default function OrderDetailPage() {
   const { id } = useParams();
   const orderId = Number(id);
+  const queryClient = useQueryClient();
   const { data: order, isLoading, isError } = useGetOrderById(orderId, {
     enabled: !!orderId,
   });
@@ -42,7 +44,8 @@ export default function OrderDetailPage() {
       id: String(order.id),
       data: { status: "completed" },
     });
-    window.location.reload();
+    await queryClient.invalidateQueries({ queryKey: ["orders", "detail", order.id] });
+    await queryClient.invalidateQueries({ queryKey: ["orders"] });
   };
 
   return (
@@ -121,7 +124,8 @@ export default function OrderDetailPage() {
           onCancel={() => setShowReturnForm(false)}
           onSuccess={() => {
             setShowReturnForm(false);
-            window.location.reload();
+            queryClient.invalidateQueries({ queryKey: ["orders", "detail", orderId] });
+            queryClient.invalidateQueries({ queryKey: ["orders"] });
           }}
         />
       )}
@@ -133,7 +137,8 @@ export default function OrderDetailPage() {
           onClose={() => setShowCancelModal(false)}
           onSuccess={() => {
             setShowCancelModal(false);
-            window.location.reload();
+            queryClient.invalidateQueries({ queryKey: ["orders", "detail", orderId] });
+            queryClient.invalidateQueries({ queryKey: ["orders"] });
           }}
         />
       )}

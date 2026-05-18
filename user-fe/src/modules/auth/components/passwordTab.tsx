@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useChangePassword } from "../api/change-password";
+import { toast } from "sonner";
 
 type FormState = {
   oldPassword: string;
@@ -11,6 +13,7 @@ type FormState = {
 };
 
 export const PasswordTab: React.FC = () => {
+  const changePasswordMutation = useChangePassword();
   const [form, setForm] = useState<FormState>({
     oldPassword: "",
     newPassword: "",
@@ -24,7 +27,7 @@ export const PasswordTab: React.FC = () => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.oldPassword || !form.newPassword) {
       alert("Vui lòng nhập đầy đủ");
       return;
@@ -35,8 +38,16 @@ export const PasswordTab: React.FC = () => {
       return;
     }
 
-    // TODO: call API
-    console.log("Change password:", form);
+    try {
+      await changePasswordMutation.mutateAsync({
+        oldPassword: form.oldPassword,
+        newPassword: form.newPassword,
+      });
+      toast.success("Đã cập nhật mật khẩu");
+      setForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || "Không thể cập nhật mật khẩu");
+    }
   };
 
   return (
@@ -68,8 +79,8 @@ export const PasswordTab: React.FC = () => {
         }
       />
 
-      <Button onClick={handleSubmit}>
-        Cập nhật mật khẩu
+      <Button onClick={handleSubmit} disabled={changePasswordMutation.isPending}>
+        {changePasswordMutation.isPending ? "Đang cập nhật..." : "Cập nhật mật khẩu"}
       </Button>
     </div>
   );

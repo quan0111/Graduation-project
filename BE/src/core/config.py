@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     REDIS_ENABLED: bool = True
     CACHE_ENABLED: bool = True
+    COOKIE_SECURE: Optional[bool] = None
 
     model_config = SettingsConfigDict(          # ← dùng SettingsConfigDict
         env_file=".env",

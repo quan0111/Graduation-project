@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import HTTPException
 
 from src.core.database import prisma
@@ -15,6 +17,7 @@ class ReviewService:
             where={
                 "userId": current_user.id,
                 "productId": data.productId,
+                "deletedAt": None,
             }
         )
         if existing:
@@ -30,19 +33,32 @@ class ReviewService:
 
         # COD orders don't require payment record, so check order status directly
         # MOMO/VNPAY orders require payment record
-        payload = data.dict()
+        payload = data.dict(exclude={"mediaUrls"})
         payload["userId"] = current_user.id
         payload["isVerifiedPurchase"] = bool(paid_order)
+        if data.mediaUrls:
+            payload["media"] = {
+                "create": [
+                    {
+                        "url": url,
+                        "type": "VIDEO" if url.lower().split("?")[0].endswith((".mp4", ".mov", ".webm")) else "IMAGE",
+                        "position": index,
+                    }
+                    for index, url in enumerate(data.mediaUrls)
+                ]
+            }
 
-        return await prisma.review.create(data=payload)
+        return await prisma.review.create(data=payload, include={"user": True, "product": True, "media": True, "replies": True})
 
     @staticmethod
     async def get_reviews_by_product(product_id: int):
         return await prisma.review.find_many(
-            where={"productId": product_id},
+            where={"productId": product_id, "deletedAt": None},
             include={
                 "user": True,
                 "product": True,
+                "media": True,
+                "replies": {"where": {"deletedAt": None}},
             },
             order={"createdAt": "desc"},
         )
@@ -50,9 +66,12 @@ class ReviewService:
     @staticmethod
     async def get_all_review():
         return await prisma.review.find_many(
+            where={"deletedAt": None},
             include={
                 "user": True,
                 "product": True,
+                "media": True,
+                "replies": {"where": {"deletedAt": None}},
             },
             order={"createdAt": "desc"},
         )
@@ -64,16 +83,18 @@ class ReviewService:
             include={
                 "user": True,
                 "product": True,
+                "media": True,
+                "replies": {"where": {"deletedAt": None}},
             },
         )
-        if not review:
+        if not review or review.deletedAt:
             raise HTTPException(404, "Review not found")
         return review
 
     @staticmethod
     async def update_review(review_id: int, data: ReviewUpdate, current_user):
         existing = await prisma.review.find_unique(where={"id": review_id})
-        if not existing:
+        if not existing or existing.deletedAt:
             raise HTTPException(404, "Review not found")
         if existing.userId != current_user.id and get_role_value(current_user) != "ADMIN":
             raise HTTPException(403, "Forbidden")
@@ -81,22 +102,26 @@ class ReviewService:
         return await prisma.review.update(
             where={"id": review_id},
             data=data.dict(exclude_unset=True),
+            include={"user": True, "product": True, "media": True, "replies": {"where": {"deletedAt": None}}},
         )
 
     @staticmethod
     async def delete_review(review_id: int, current_user):
         existing = await prisma.review.find_unique(where={"id": review_id})
-        if not existing:
+        if not existing or existing.deletedAt:
             raise HTTPException(404, "Review not found")
         if existing.userId != current_user.id and get_role_value(current_user) != "ADMIN":
             raise HTTPException(403, "Forbidden")
 
-        return await prisma.review.delete(where={"id": review_id})
+        return await prisma.review.update(
+            where={"id": review_id},
+            data={"deletedAt": datetime.utcnow()},
+        )
 
     @staticmethod
     async def get_reviews_by_user(user_id: int):
         return await prisma.review.find_many(
-            where={"userId": user_id},
+            where={"userId": user_id, "deletedAt": None},
             include={"product": True},
             order={"createdAt": "desc"},
         )
@@ -104,7 +129,7 @@ class ReviewService:
     @staticmethod
     async def get_reviews_with_pagination(product_id: int, skip: int = 0, limit: int = 10):
         return await prisma.review.find_many(
-            where={"productId": product_id},
+            where={"productId": product_id, "deletedAt": None},
             include={"user": True},
             skip=skip,
             take=limit,
@@ -116,6 +141,7 @@ class ReviewService:
         return await prisma.review.find_many(
             where={
                 "productId": product_id,
+                "deletedAt": None,
                 "rating": {"gte": min_rating},
             },
             include={"user": True},
@@ -127,6 +153,7 @@ class ReviewService:
         return await prisma.review.find_many(
             where={
                 "productId": product_id,
+                "deletedAt": None,
                 "comment": {
                     "contains": keyword,
                     "mode": "insensitive",
@@ -139,7 +166,7 @@ class ReviewService:
     @staticmethod
     async def get_top_rated_reviews(product_id: int, top_n: int = 5):
         return await prisma.review.find_many(
-            where={"productId": product_id},
+            where={"productId": product_id, "deletedAt": None},
             include={"user": True},
             order={"rating": "desc", "createdAt": "desc"},
             take=top_n,
@@ -148,7 +175,7 @@ class ReviewService:
     @staticmethod
     async def get_recent_reviews(product_id: int, recent_n: int = 5):
         return await prisma.review.find_many(
-            where={"productId": product_id},
+            where={"productId": product_id, "deletedAt": None},
             include={"user": True},
             order={"createdAt": "desc"},
             take=recent_n,
@@ -157,7 +184,7 @@ class ReviewService:
     @staticmethod
     async def get_review_statistics_for_product(product_id: int):
         result = await prisma.review.aggregate(
-            where={"productId": product_id},
+            where={"productId": product_id, "deletedAt": None},
             _avg={"rating": True},
             _count={"id": True},
         )
@@ -166,3 +193,29 @@ class ReviewService:
             "averageRating": result["_avg"]["rating"] or 0,
             "reviewCount": result["_count"]["id"],
         }
+
+    @staticmethod
+    async def reply_review(review_id: int, data, current_user):
+        if get_role_value(current_user) != "SELLER":
+            raise HTTPException(403, "Only sellers can reply to reviews")
+
+        review = await prisma.review.find_unique(
+            where={"id": review_id},
+            include={"product": True},
+        )
+        if not review or review.deletedAt:
+            raise HTTPException(404, "Review not found")
+
+        shop = await prisma.shop.find_first(
+            where={"ownerId": current_user.id, "deletedAt": None},
+        )
+        if not shop or review.product.shopId != shop.id:
+            raise HTTPException(403, "Forbidden")
+
+        return await prisma.reviewreply.create(
+            data={
+                "review": {"connect": {"id": review_id}},
+                "seller": {"connect": {"id": current_user.id}},
+                "content": data.content,
+            }
+        )

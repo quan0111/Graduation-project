@@ -1,8 +1,10 @@
 import hashlib
 import hmac
+import base64
+from io import BytesIO
 import json
 import uuid
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from fastapi import HTTPException
@@ -16,6 +18,8 @@ class MoMoService:
     @staticmethod
     def create_payment(order_id: int, amount: int, provider_order_id: str | None = None, request_id: str | None = None):
         MoMoService._assert_configured()
+        if int(amount) < 1000:
+            raise HTTPException(400, "MoMo payment amount must be at least 1000 VND")
 
         request_id = request_id or str(uuid.uuid4())
         provider_order_id = provider_order_id or f"ORDER-{order_id}-{uuid.uuid4().hex[:12]}"
@@ -52,11 +56,15 @@ class MoMoService:
         }
 
         response = MoMoService._post_json(settings.MOMO_ENDPOINT, payload)
+        qr_code_raw = response.get("qrCodeUrl") or response.get("deeplink") or response.get("payUrl")
+        qr_code_image = MoMoService.create_qr_code_data_uri(qr_code_raw) if qr_code_raw else None
         return {
             "providerOrderId": provider_order_id,
             "requestId": request_id,
             "requestData": payload,
             "responseData": response,
+            "qrCodeRawData": qr_code_raw,
+            "qrCodeImage": qr_code_image,
         }
 
     @staticmethod
@@ -84,6 +92,37 @@ class MoMoService:
         return str(data.get("resultCode")) == "0"
 
     @staticmethod
+    def create_qr_code_data_uri(qr_data: str) -> str:
+        if not qr_data:
+            raise HTTPException(502, "MoMo did not return QR data")
+
+        try:
+            import qrcode
+
+            image = qrcode.make(qr_data)
+            buffer = BytesIO()
+            image.save(buffer, format="PNG")
+            encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+            return f"data:image/png;base64,{encoded}"
+        except ImportError:
+            pass
+
+        try:
+            import cv2
+
+            encoder = cv2.QRCodeEncoder_create()
+            image = encoder.encode(qr_data)
+            success, buffer = cv2.imencode(".png", image)
+            if not success:
+                raise RuntimeError("OpenCV could not encode QR PNG")
+            encoded = base64.b64encode(buffer.tobytes()).decode("ascii")
+            return f"data:image/png;base64,{encoded}"
+        except ImportError as exc:
+            raise HTTPException(500, "QR generation dependency is missing. Install qrcode[pil].") from exc
+        except Exception as exc:
+            raise HTTPException(500, "Cannot generate MoMo QR image") from exc
+
+    @staticmethod
     def _sign(raw_signature: str) -> str:
         return hmac.new(
             settings.MOMO_SECRET_KEY.encode("utf-8"),
@@ -102,6 +141,21 @@ class MoMoService:
         try:
             with urlopen(request, timeout=30) as response:
                 raw = response.read().decode("utf-8")
+        except HTTPError as exc:
+            raw = exc.read().decode("utf-8", errors="replace")
+            try:
+                error_data = json.loads(raw)
+            except json.JSONDecodeError:
+                error_data = {"message": raw}
+            message = error_data.get("message") or error_data.get("localMessage") or "MoMo gateway rejected the request"
+            raise HTTPException(
+                502,
+                {
+                    "message": message,
+                    "resultCode": error_data.get("resultCode"),
+                    "response": error_data,
+                },
+            ) from exc
         except URLError as exc:
             raise HTTPException(502, "Cannot connect to MoMo gateway") from exc
 

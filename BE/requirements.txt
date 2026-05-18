@@ -9,3 +9,4 @@ joblib
 apscheduler
 redis
 hiredis
+qrcode[pil]

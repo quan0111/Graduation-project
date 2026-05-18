@@ -10,6 +10,7 @@ export const API_URL_ADDRESS = `${API_URL}addresses`
 export const API_URL_COUPON = `${API_URL}coupons`
 export const API_URL_REVIEW = `${API_URL}reviews`
 export const API_URL_FOLLOW = `${API_URL}followers`
+export const API_URL_ANALYTICS = `${API_URL}analytics`
 export const API_URL_BEHAVIOR = `${API_URL}shops`
 export const API_URL_ORDER = `${API_URL}orders`
 export const API_URL_SELLER = `${API_URL}sellers`

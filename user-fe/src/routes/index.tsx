@@ -12,6 +12,7 @@ import ShopPage from "@/modules/shop/view";
 import CheckOutPage from "@/modules/order/view/checkout";
 import OrderPage from "@/modules/order/view/order";
 import OrderDetailPage from "@/modules/order/view/order-detail";
+import PaymentSuccessPage from "@/modules/order/view/payment-success";
 
 import AccountPage from "@/modules/auth/view/me";
 import PromotionPage from "@/modules/promotion/view";
@@ -42,6 +43,7 @@ export const router = createBrowserRouter([
       { path: "product/:id", element: <ProductDetailPage /> },
 
       { path: "checkout", element: <RequireAuth><CheckOutPage /></RequireAuth> },
+      { path: "payment-success", element: <RequireAuth><PaymentSuccessPage /></RequireAuth> },
 
       { path: "orders", element: <RequireAuth><OrderPage /></RequireAuth> },
       { path: "orders/:id", element: <RequireAuth><OrderDetailPage /></RequireAuth> },

@@ -5,6 +5,7 @@ import { DataTable } from "@/components/common/data-table";
 import { Button } from "@/components/ui/button";
 
 import { useProducts } from "../api/get-all-product";
+import { useGetCategories } from "@/modules/categories/api/category";
 import { useReportProductViolation } from "../api/report-product-violation";
 import { useUpdateProduct } from "../api/update-product-id";
 import { productColumns } from "../component/product-collum";
@@ -15,6 +16,7 @@ type ProductStatus = "ACTIVE" | "REJECT" | "BANNED";
 
 export default function ProductsPage() {
   const { data: products = [] } = useProducts();
+  const { data: categories = [] } = useGetCategories();
   const updateProductMutation = useUpdateProduct();
   const reportViolationMutation = useReportProductViolation();
 
@@ -110,9 +112,11 @@ export default function ProductsPage() {
           className="rounded border px-3 py-2"
         >
           <option value="all">Tat ca danh muc</option>
-          <option value="Thoi trang">Thoi trang</option>
-          <option value="Dien tu">Dien tu</option>
-          <option value="Nha & Cuoc song">Nha & Cuoc song</option>
+          {categories.map((item) => (
+            <option key={item.id} value={item.name}>
+              {item.name}
+            </option>
+          ))}
         </select>
       </div>
 

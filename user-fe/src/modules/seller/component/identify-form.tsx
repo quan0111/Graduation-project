@@ -8,10 +8,11 @@ import type { IdentityInfo } from '../types'
 interface IdentityFormProps {
   initialData?: IdentityInfo
   onSubmit: (data: IdentityInfo) => void
+  onPrev?: () => void
   isLoading?: boolean
 }
 
-export function IdentityForm({ initialData, onSubmit, isLoading = false }: IdentityFormProps) {
+export function IdentityForm({ initialData, onSubmit, onPrev, isLoading = false }: IdentityFormProps) {
   const [fullName, setFullName] = useState(initialData?.fullName || '')
   const [cccdNumber, setCccdNumber] = useState(initialData?.cccdNumber || '')
   const [cccdFrontPreview, setCccdFrontPreview] = useState<string | null>(null)
@@ -181,7 +182,7 @@ export function IdentityForm({ initialData, onSubmit, isLoading = false }: Ident
       </div>
 
       <div className="flex gap-3 justify-end pt-4">
-        <Button variant="outline" disabled={isLoading}>
+        <Button variant="outline" onClick={onPrev} disabled={isLoading}>
           Quay lại
         </Button>
         <Button onClick={handleSubmit} disabled={isLoading}>

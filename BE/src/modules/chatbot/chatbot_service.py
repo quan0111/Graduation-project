@@ -7,6 +7,7 @@ from src.ai.recommendation_engine import RecommendationEngine
 from src.core.database import prisma
 from src.modules.chatbot.chatbot_schema import ChatbotProductOut
 from src.modules.chatbot.ollama_client import OllamaClient, OllamaUnavailable
+from src.utils.recommendation_reason import product_reason as build_product_reason
 
 
 class ChatService:
@@ -50,7 +51,13 @@ class ChatService:
     }
 
     @classmethod
-    async def answer(cls, message: str, user_id: Optional[int] = None, product_id: Optional[int] = None):
+    async def answer(
+        cls,
+        message: str,
+        user_id: Optional[int] = None,
+        product_id: Optional[int] = None,
+        history: Optional[List] = None,
+    ):
         clean_message = message.strip()
         normalized = cls._normalize(clean_message)
 
@@ -64,7 +71,7 @@ class ChatService:
             )
 
         intent = cls._detect_intent(normalized)
-        context = await cls._build_context(intent, clean_message, user_id, product_id)
+        context = await cls._build_context(intent, clean_message, user_id, product_id, history or [])
 
         if intent in {"cart", "orders", "payment", "shipping", "seller", "auth", "promotion", "order_guide", "return_policy", "greeting"}:
             return cls._response(
@@ -101,6 +108,22 @@ class ChatService:
         result = await cls.answer(message)
         return result["answer"]
 
+    @staticmethod
+    def _history_context_lines(history: List) -> List[str]:
+        if not history:
+            return []
+
+        lines = ["Lịch sử hội thoại gần đây:"]
+        for item in history[-8:]:
+            role = getattr(item, "role", None) or (item.get("role") if isinstance(item, dict) else "")
+            content = getattr(item, "content", None) or (item.get("content") if isinstance(item, dict) else "")
+            if role not in {"user", "assistant"} or not content:
+                continue
+            label = "Người dùng" if role == "user" else "Trợ lý"
+            lines.append(f"{label}: {str(content).strip()[:220]}")
+
+        return lines if len(lines) > 1 else []
+
     @classmethod
     async def _ask_ollama(cls, question: str, context_lines: List[str]) -> str:
         context_text = "\n".join(f"- {line}" for line in context_lines[:20])
@@ -128,11 +151,19 @@ class ChatService:
         return cls._clean_model_answer(raw_answer)
 
     @classmethod
-    async def _build_context(cls, intent: str, message: str, user_id: Optional[int], product_id: Optional[int]):
+    async def _build_context(
+        cls,
+        intent: str,
+        message: str,
+        user_id: Optional[int],
+        product_id: Optional[int],
+        history: List,
+    ):
         context_lines = [
             "MarketHub là website ecommerce trong đồ án.",
             "Các chức năng chính: xem sản phẩm, tìm kiếm sản phẩm, giỏ hàng, checkout, đơn hàng, seller center.",
         ]
+        context_lines.extend(cls._history_context_lines(history))
         products: List[ChatbotProductOut] = []
         suggestions = cls.SCOPE_SUGGESTIONS
         needs_current_product = bool(product_id) and intent in {"recommend", "product_search", "general"}
@@ -477,6 +508,7 @@ class ChatService:
 
     @classmethod
     def _product_reason(cls, product, preferences, current_product=None):
+        return build_product_reason(product, preferences, current_product)
         category = getattr(getattr(product, "category", None), "name", None)
         shop = getattr(getattr(product, "shop", None), "name", None)
 

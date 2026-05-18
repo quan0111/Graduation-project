@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 from src.core.dependencies import get_current_user, get_role_value, require_admin
-from src.modules.review.review_schema import ReviewCreate, ReviewUpdate, ReviewOut
+from src.modules.review.review_schema import ReviewCreate, ReviewUpdate, ReviewOut, ReviewReplyCreate, ReviewReplyOut
 from src.modules.review.review_service import ReviewService     
 
 router = APIRouter(prefix="/reviews", tags=["Reviews"])
@@ -44,6 +44,15 @@ async def update_review(
 async def delete_review(review_id: int, user=Depends(get_current_user)):
     await ReviewService.delete_review(review_id, user)
     return {"message": "Review deleted successfully"}
+
+
+@router.post("/{review_id}/reply", response_model=ReviewReplyOut)
+async def reply_review(
+    review_id: int,
+    data: ReviewReplyCreate,
+    user=Depends(get_current_user),
+):
+    return await ReviewService.reply_review(review_id, data, user)
 
 
 @router.get("/product/{product_id}/paginated", response_model=List[ReviewOut])

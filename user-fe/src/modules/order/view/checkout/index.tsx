@@ -6,11 +6,9 @@ import { Archive, ShieldCheck, Truck, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 import { getStoredStorefrontUser } from "@/lib/auth-storage";
-import { useDeleteCartItem } from "@/modules/cart/api/delete-cart";
 import { useGetAddresses } from "@/modules/address/api/get-address";
 
-import { useCreateOrder } from "../../api/add-order";
-import { useCreatePaymentQr } from "../../api/create-payment-qr";
+import { useCheckoutOrder } from "../../api/checkout";
 import { Confirmation } from "../../components/checkout/confirmation";
 import { OrderSummary } from "../../components/checkout/orderSumary";
 import { PaymentMethod } from "../../components/checkout/paymentMethod";
@@ -44,16 +42,40 @@ type CheckoutOrderItem = {
   price: number;
 };
 
+const CHECKOUT_STORAGE_KEY = "markethub.checkout.items";
+
+const readStoredCheckoutItems = (): CheckoutLocationItem[] => {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(CHECKOUT_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
 export default function CheckOutPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
   const { data: addresses } = useGetAddresses();
-  const createOrderMutation = useCreateOrder();
-  const createPaymentQrMutation = useCreatePaymentQr();
-  const deleteCartMutation = useDeleteCartItem();
+  const checkoutMutation = useCheckoutOrder();
 
-  const cartItems = (location.state?.items as CheckoutLocationItem[] | undefined) || [];
+  const locationItems = location.state?.items as CheckoutLocationItem[] | undefined;
+  const [cartItems, setCartItems] = useState<CheckoutLocationItem[]>(() =>
+    locationItems?.length ? locationItems : readStoredCheckoutItems(),
+  );
+
+  useEffect(() => {
+    if (!locationItems?.length) {
+      return;
+    }
+    setCartItems(locationItems);
+    window.sessionStorage.setItem(CHECKOUT_STORAGE_KEY, JSON.stringify(locationItems));
+  }, [locationItems]);
 
   useEffect(() => {
     const user = getStoredStorefrontUser();
@@ -126,8 +148,7 @@ export default function CheckOutPage() {
 
   const totalWithDiscount =
   state.subtotal +
-  state.shippingPrice +
-  state.tax -
+  state.shippingPrice -
   discountAmount;
 
   const handlePlaceOrder = async () => {
@@ -157,6 +178,9 @@ export default function CheckOutPage() {
         totalAmount: totalWithDiscount,
         shippingAddressId: state.shippingAddress.id,
         couponId: appliedCoupon?.id ? Number(appliedCoupon.id) : undefined,
+        cartItemIds: checkoutItems
+          .map((item) => item.cartItemId)
+          .filter((cartItemId): cartItemId is number => Boolean(cartItemId)),
         items: validItems.map((item) => ({
           productId: item.productId,
           variantId: item.variantId,
@@ -172,31 +196,25 @@ export default function CheckOutPage() {
         } : undefined,
       };
 
-      const createdOrder = await createOrderMutation.mutateAsync(payload);
-
-      await Promise.all(
-        checkoutItems
-          .map((item) => item.cartItemId)
-          .filter(Boolean)
-          .map((cartItemId) => deleteCartMutation.mutateAsync(Number(cartItemId))),
-      );
+      const checkoutResult = await checkoutMutation.mutateAsync(payload);
+      window.sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
 
       // Chỉ tạo QR payment cho MOMO/VNPAY
       if (state.payment === "MOMO" || state.payment === "VNPAY") {
-        const qrPayment = await createPaymentQrMutation.mutateAsync({
-          orderId: createdOrder.id,
-          method: state.payment,
-        });
         setPaymentQrData({
-          ...qrPayment,
-          orderId: createdOrder.id,
+          paymentUrl: checkoutResult.paymentUrl,
+          qrCodeUrl: checkoutResult.qrCodeUrl,
+          deeplink: checkoutResult.deeplink,
+          providerOrderId: checkoutResult.providerOrderId,
+          requestId: checkoutResult.requestId,
+          orderId: checkoutResult.order.id,
         });
         state.setStep(5); // New step for QR display
         return;
       }
 
       toast.success("Đặt hàng thành công");
-      navigate(`/orders/${createdOrder.id}`);
+      navigate(`/orders/${checkoutResult.order.id}`);
     } catch (error: any) {
       const detail = error?.response?.data?.detail;
       toast.error(typeof detail === "string" ? detail : "Không thể tạo đơn hàng");
@@ -285,9 +303,9 @@ export default function CheckOutPage() {
             {state.step === 4 ? (
               <div className="space-y-4 rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
                 <Confirmation
-                  total={state.total}
+                  total={totalWithDiscount}
                   onSubmit={handlePlaceOrder}
-                  loading={createOrderMutation.isPending || createPaymentQrMutation.isPending || deleteCartMutation.isPending}
+                  loading={checkoutMutation.isPending}
                 />
               </div>
             ) : null}
@@ -308,6 +326,11 @@ export default function CheckOutPage() {
                       alt="Payment QR Code"
                       className="h-64 w-64 rounded-lg border border-slate-200"
                     />
+                  </div>
+                )}
+                {!paymentQrData.qrCodeUrl && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    Cổng thanh toán chưa trả dữ liệu QR. Vui lòng dùng nút mở trang thanh toán bên dưới.
                   </div>
                 )}
 

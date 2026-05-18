@@ -1,19 +1,47 @@
 'use client';
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { DataTable } from "@/components/common/data-table";
 import { CategoryFilter } from "../components/category-filter";
 import { CategoryStats } from "../components/category-stats";
 import { categoryColumns } from "../components/categories-collumn";
-import { useGetCategories } from "../api/category";
+import { type Category, useGetCategories } from "../api/category";
+import { useDeleteCategory } from "../api/delete-category";
+import { useUpdateCategory } from "../api/update-category";
 import { CategoryCreateModal } from "../components/category-create-modal";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export default function CategoriesPage() {
   const [search, setSearch] = useState("");
   const [openCreate, setOpenCreate] = useState(false); // 👈 modal state
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSlug, setEditSlug] = useState("");
+  const [editParentId, setEditParentId] = useState("");
 
   const { data: categories = [], isLoading, isError } = useGetCategories();
+  const updateCategoryMutation = useUpdateCategory({
+    onSuccess: () => {
+      toast.success("Cập nhật danh mục thành công");
+      setEditingCategory(null);
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.detail || "Cập nhật danh mục thất bại");
+    },
+  });
+  const deleteCategoryMutation = useDeleteCategory({
+    config: {
+      onSuccess: () => {
+        toast.success("Đã xóa danh mục");
+      },
+      onError: (error: any) => {
+        toast.error(error?.response?.data?.detail || "Xóa danh mục thất bại");
+      },
+    },
+  });
 
   const filtered = categories.filter(
     (c) =>
@@ -22,11 +50,32 @@ export default function CategoriesPage() {
   );
 
   const handleEdit = (c: any) => {
-    console.log("edit", c.id);
+    setEditingCategory(c);
+    setEditName(c.name || "");
+    setEditSlug(c.slug || "");
+    setEditParentId(c.parentId ? String(c.parentId) : "");
   };
 
-  const handleDelete = (c: any) => {
-    console.log("delete", c.id);
+  const handleDelete = async (c: any) => {
+    if (!window.confirm(`Xóa danh mục "${c.name}"?`)) return;
+    await deleteCategoryMutation.mutateAsync(c.id);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingCategory) return;
+    if (!editName.trim()) {
+      toast.error("Tên danh mục không được trống");
+      return;
+    }
+
+    await updateCategoryMutation.mutateAsync({
+      id: String(editingCategory.id),
+      data: {
+        name: editName.trim(),
+        slug: editSlug.trim() || null,
+        parentId: editParentId ? Number(editParentId) : null,
+      },
+    });
   };
 
   const columns = categoryColumns(handleEdit, handleDelete);
@@ -72,6 +121,48 @@ export default function CategoriesPage() {
         open={openCreate}
         onClose={() => setOpenCreate(false)}
       />
+
+      <Dialog open={Boolean(editingCategory)} onOpenChange={(open) => !open && setEditingCategory(null)}>
+        <DialogContent className="sm:max-w-125">
+          <DialogHeader>
+            <DialogTitle>Chỉnh sửa danh mục</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <Input
+              value={editName}
+              onChange={(event) => setEditName(event.target.value)}
+              placeholder="Tên danh mục"
+            />
+            <Input
+              value={editSlug}
+              onChange={(event) => setEditSlug(event.target.value)}
+              placeholder="Slug"
+            />
+            <select
+              className="w-full rounded-md border px-3 py-2"
+              value={editParentId}
+              onChange={(event) => setEditParentId(event.target.value)}
+            >
+              <option value="">-- Không có danh mục cha --</option>
+              {categories
+                .filter((category) => category.id !== editingCategory?.id)
+                .map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+            </select>
+            <Button
+              className="w-full"
+              onClick={handleSaveEdit}
+              disabled={updateCategoryMutation.isPending}
+            >
+              {updateCategoryMutation.isPending ? "Đang lưu..." : "Lưu thay đổi"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

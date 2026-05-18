@@ -20,10 +20,12 @@ import { normalizeProduct } from "@/modules/product/utils/normalize-product";
 import { useRecommendations } from "@/modules/recommendation/api/get-recommendations";
 import { RecommendationSection } from "@/modules/recommendation/components/recommendation-section";
 import { useTrackProductBehavior } from "@/modules/recommendation/hooks/useTrackProductBehavior";
+import { useAuthStore } from "@/stores/auth.store";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
   const productId = Number(id);
+  const user = useAuthStore((state) => state.user);
 
   const { data: rawProduct, isLoading, error } = useGetProductByID(productId, {
     enabled: Number.isFinite(productId) && productId > 0,
@@ -121,7 +123,7 @@ export default function ProductDetailPage() {
 
         <section className="rounded-3xl border border-orange-100 bg-white p-6 shadow-sm">
           <h2 className="mb-6 text-xl font-semibold text-slate-900">Đánh giá sản phẩm</h2>
-          <ProductReviews productId={productId} />
+          <ProductReviews productId={productId} userId={user?.id} />
         </section>
 
         <RecommendationSection

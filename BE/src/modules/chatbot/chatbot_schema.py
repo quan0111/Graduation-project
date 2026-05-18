@@ -3,9 +3,15 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
+class ChatbotHistoryMessage(BaseModel):
+    role: str = Field(..., pattern="^(user|assistant)$")
+    content: str = Field(..., min_length=1, max_length=650)
+
+
 class ChatbotMessageIn(BaseModel):
     message: str = Field(..., min_length=1, max_length=500)
     productId: Optional[int] = None
+    history: List[ChatbotHistoryMessage] = Field(default_factory=list)
 
 
 class ChatbotProductOut(BaseModel):

@@ -17,24 +17,71 @@ class FinanceService:
         return shop
 
     @staticmethod
+    def _is_shop_config_current(config, now: datetime):
+        if not config or not getattr(config, "isActive", False):
+            return False
+        start_at = getattr(config, "startAt", None)
+        end_at = getattr(config, "endAt", None)
+        if start_at and start_at > now:
+            return False
+        if end_at and end_at < now:
+            return False
+        return True
+
+    @staticmethod
+    async def _get_commission_rate(shop_id: int | None = None, category_id: int | None = None) -> float:
+        now = datetime.utcnow()
+
+        if shop_id:
+            shop_config = await prisma.shopcommissionconfig.find_unique(
+                where={"shopId": shop_id}
+            )
+            if FinanceService._is_shop_config_current(shop_config, now):
+                return float(shop_config.commissionRate)
+
+        if category_id:
+            category_config = await prisma.categorycommissionconfig.find_unique(
+                where={"categoryId": category_id}
+            )
+            if category_config and category_config.isActive:
+                return float(category_config.commissionRate)
+
+        return 0.1
+
+    @staticmethod
+    async def _calculate_item_commission(items) -> tuple[float, float]:
+        total = 0.0
+        commission = 0.0
+        rate_cache: dict[tuple[int | None, int | None], float] = {}
+
+        for item in items:
+            amount = float(item.price or 0) * int(item.quantity or 0)
+            total += amount
+            category_id = getattr(getattr(item, "product", None), "categoryId", None)
+            cache_key = (getattr(item, "shopId", None), category_id)
+            if cache_key not in rate_cache:
+                rate_cache[cache_key] = await FinanceService._get_commission_rate(
+                    shop_id=cache_key[0],
+                    category_id=cache_key[1],
+                )
+            commission += amount * rate_cache[cache_key]
+
+        return total, commission
+
+    @staticmethod
     async def calculate_commission(order_id: int):
 
         order = await prisma.order.find_unique(
             where={"id": order_id},
             include={
-                "items": True,
+                "items": {"include": {"product": True}},
             }
         )
 
         if not order:
             raise HTTPException(404, "Order not found")
 
-        total = sum(item.price * item.quantity for item in order.items)
-
-        # 🔥 lấy commission config (fallback 10%)
-        commission_rate = 0.1
-
-        commission = total * commission_rate
+        total, commission = await FinanceService._calculate_item_commission(order.items)
         net = total - commission
 
         return {
@@ -114,12 +161,10 @@ class FinanceService:
                     "status": {"in": ["DELIVERED", "COMPLETED"]},
                 },
             },
-            include={"order": True}
+            include={"order": True, "product": True}
         )
 
-        total_revenue = sum(item.price * item.quantity for item in items)
-
-        commission = total_revenue * 0.1
+        total_revenue, commission = await FinanceService._calculate_item_commission(items)
         net = total_revenue - commission
 
         return {
@@ -138,7 +183,7 @@ class FinanceService:
     async def get_shop_wallet(shop_id: int):
         items = await prisma.orderitem.find_many(
             where={"shopId": shop_id, "deletedAt": None},
-            include={"order": True},
+            include={"order": True, "product": True},
         )
         payouts = await prisma.sellerpayout.find_many(
             where={"shopId": shop_id},
@@ -155,6 +200,7 @@ class FinanceService:
         pending_revenue = 0.0
         refunded_revenue = 0.0
         cancelled_revenue = 0.0
+        completed_items = []
 
         for item in items:
             amount = float(item.price or 0) * int(item.quantity or 0)
@@ -162,6 +208,7 @@ class FinanceService:
             status = FinanceService._to_value(item.order.status) if item.order else ""
             if status in completed_statuses:
                 completed_revenue += amount
+                completed_items.append(item)
             elif status in pending_statuses:
                 pending_revenue += amount
             elif status in refunded_statuses:
@@ -169,8 +216,7 @@ class FinanceService:
             elif status == "CANCELLED":
                 cancelled_revenue += amount
 
-        commission_rate = 0.1
-        commission = completed_revenue * commission_rate
+        _, commission = await FinanceService._calculate_item_commission(completed_items)
         available = max(completed_revenue - commission - refunded_revenue, 0)
         pending_payout = sum(float(p.amount or 0) for p in payouts if FinanceService._to_value(p.status) in {"PENDING", "PROCESSING"})
         paid_payout = sum(float(p.amount or 0) for p in payouts if FinanceService._to_value(p.status) == "PAID")

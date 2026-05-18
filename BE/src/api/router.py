@@ -25,6 +25,7 @@ from src.modules.security.security_router import router as security_router
 from src.modules.moderation.moderation_router import router as moderation_router
 from src.modules.inventory.inventory_router import router as inventory_router
 from src.modules.support.support_router import router as support_router
+from src.modules.wishlist.wishlist_router import router as wishlist_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -55,6 +56,7 @@ api_router.include_router(security_router)
 api_router.include_router(moderation_router)
 api_router.include_router(inventory_router)
 api_router.include_router(support_router)
+api_router.include_router(wishlist_router)
 
 
 

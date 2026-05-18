@@ -117,7 +117,7 @@ class CouponService:
         )
 
     @staticmethod
-    async def validate_coupon(code: str, order_amount: float):
+    async def validate_coupon(code: str, order_amount: float, user_id: int | None = None):
         coupon = await prisma.coupon.find_unique(
             where={"code": code}
         )
@@ -139,6 +139,13 @@ class CouponService:
         if coupon.usageLimit and coupon.usedCount >= coupon.usageLimit:
             raise HTTPException(400, "Coupon limit reached")
 
+        if user_id is not None and coupon.usageLimitPerUser:
+            used_by_user = await prisma.couponredemption.count(
+                where={"couponId": coupon.id, "userId": user_id}
+            )
+            if used_by_user >= coupon.usageLimitPerUser:
+                raise HTTPException(400, "Coupon usage limit reached for this user")
+
         if coupon.minOrderAmount and order_amount < coupon.minOrderAmount:
             raise HTTPException(400, "Order not eligible")
 
@@ -157,7 +164,7 @@ class CouponService:
 
         return discount
     @staticmethod
-    async def use_coupon(coupon_id: int):
+    async def use_coupon(coupon_id: int, user_id: int | None = None, order_id: int | None = None):
         coupon = await prisma.coupon.find_unique(
             where={"id": coupon_id}
         )
@@ -168,9 +175,24 @@ class CouponService:
         if coupon.usageLimit and coupon.usedCount >= coupon.usageLimit:
             raise HTTPException(400, "Coupon limit reached")
 
-        return await prisma.coupon.update(
-            where={"id": coupon_id},
-            data={
-                "usedCount": coupon.usedCount + 1
-            }
-        )
+        if user_id is not None and coupon.usageLimitPerUser:
+            used_by_user = await prisma.couponredemption.count(
+                where={"couponId": coupon_id, "userId": user_id}
+            )
+            if used_by_user >= coupon.usageLimitPerUser:
+                raise HTTPException(400, "Coupon usage limit reached for this user")
+
+        async with prisma.tx() as tx:
+            updated = await tx.coupon.update(
+                where={"id": coupon_id},
+                data={"usedCount": {"increment": 1}},
+            )
+            if user_id is not None:
+                await tx.couponredemption.create(
+                    data={
+                        "coupon": {"connect": {"id": coupon_id}},
+                        "user": {"connect": {"id": user_id}},
+                        **({"order": {"connect": {"id": order_id}}} if order_id else {}),
+                    }
+                )
+            return updated

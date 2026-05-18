@@ -5,6 +5,7 @@ from src.ai.train import train_model
 from src.core.database import prisma
 from src.modules.analytics.analytics_schema import BehaviorTrackPayload, BehaviorType
 from src.modules.security.security_service import SecurityService
+from src.utils.recommendation_reason import product_reason as build_product_reason
 
 
 class AnalyticsService:
@@ -110,9 +111,10 @@ class AnalyticsService:
             await AnalyticsService._persist_recommendation(user_id=user_id, product_ids=product_ids, algorithm=algorithm)
 
         if explain:
+            current_product = await AnalyticsService._get_current_product(context_product_id)
             return {
                 "algorithm": algorithm,
-                "products": AnalyticsService._attach_reasons(products, algorithm, user_id, context_product_id),
+                "products": AnalyticsService._attach_reasons(products, algorithm, user_id, current_product),
             }
         return products
 
@@ -151,6 +153,16 @@ class AnalyticsService:
         return ranked_products
 
     @staticmethod
+    async def _get_current_product(product_id: Optional[int]):
+        if not product_id:
+            return None
+
+        return await prisma.product.find_first(
+            where={"id": product_id, "status": "ACTIVE", "deletedAt": None},
+            include=AnalyticsService.PRODUCT_INCLUDE,
+        )
+
+    @staticmethod
     async def _persist_recommendation(user_id: int, product_ids: List[int], algorithm: str):
         try:
             await prisma.recommendation.create(
@@ -164,9 +176,9 @@ class AnalyticsService:
             return
 
     @staticmethod
-    def _attach_reasons(products: List, algorithm: str, user_id: Optional[int], context_product_id: Optional[int]):
+    def _attach_reasons(products: List, algorithm: str, user_id: Optional[int], current_product=None):
         reason = "Sản phẩm đang được nhiều người quan tâm trên MarketHub."
-        if context_product_id:
+        if current_product:
             reason = "Gợi ý vì liên quan đến sản phẩm bạn đang xem."
         elif user_id is not None and "behavior_profile" in algorithm:
             reason = "Gợi ý vì bạn đã xem, thêm giỏ hoặc mua sản phẩm tương tự."
@@ -176,10 +188,7 @@ class AnalyticsService:
         enriched = []
         for product in products:
             data = product.model_dump() if hasattr(product, "model_dump") else dict(product)
-            category = getattr(getattr(product, "category", None), "name", None)
-            if category and user_id is not None:
-                data["recommendationReason"] = f"Gợi ý vì bạn quan tâm nhóm {category}."
-            else:
-                data["recommendationReason"] = reason
+            detailed_reason, relation_type = build_product_reason(product, {}, current_product)
+            data["recommendationReason"] = detailed_reason if relation_type != "popular" else reason
             enriched.append(data)
         return enriched

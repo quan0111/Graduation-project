@@ -7,7 +7,7 @@ import type { IOrder } from "../types";
 export const getAllOrders = async (): Promise<IOrder[]> => {
   const res = await apiClient.post(`${API_URL_ADMIN}/orders`, {
     filter_data: {},
-    pagination: { page: 1, page_size: 100 }
+    pagination: { page: 1, limit: 1000 }
   });
   return res.data.data || res.data;
 };

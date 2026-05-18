@@ -1,9 +1,11 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 
 from src.core.dependencies import get_current_user, require_admin, require_seller
 from src.modules.order.order_schema import (
+    CheckoutCreate,
+    CheckoutOut,
     OrderCreate,
     OrderOut,
     OrderUpdate,
@@ -25,6 +27,16 @@ async def create_order(
     user=Depends(get_current_user),
 ):
     return await OrderService.create_order(user, order_data)
+
+
+@router.post("/checkout", response_model=CheckoutOut)
+async def checkout(
+    checkout_data: CheckoutCreate,
+    request: Request,
+    user=Depends(get_current_user),
+):
+    client_host = request.client.host if request.client else "127.0.0.1"
+    return await OrderService.checkout(user, checkout_data, client_host)
 
 
 @router.post("/payment", response_model=PaymentOut)
@@ -51,12 +63,8 @@ async def vnpay_return(request: Request):
 
 @router.post("/payment/momo/ipn")
 async def momo_ipn(payload: dict):
-    result = await PaymentService.handle_momo_callback(payload)
-    return {
-        "resultCode": 0,
-        "message": "Received",
-        "success": result["success"],
-    }
+    await PaymentService.handle_momo_callback(payload)
+    return Response(status_code=204)
 
 
 @router.get("/payment/momo/return")

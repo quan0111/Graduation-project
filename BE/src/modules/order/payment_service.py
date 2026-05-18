@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from fastapi import HTTPException
+from prisma import Json
 
 from src.core.database import prisma
 from src.core.dependencies import get_role_value
@@ -73,7 +74,7 @@ class PaymentService:
             gateway_data = MoMoService.create_payment(order.id, amount)
             response_data = gateway_data["responseData"]
             payment_url = response_data.get("payUrl")
-            qr_code_url = response_data.get("qrCodeUrl")
+            qr_code_url = gateway_data.get("qrCodeImage")
             deeplink = response_data.get("deeplink")
             request_id = gateway_data["requestId"]
             provider_message = response_data.get("message")
@@ -89,8 +90,7 @@ class PaymentService:
             "qrCodeUrl": qr_code_url,
             "deeplink": deeplink,
             "providerMessage": provider_message,
-            "providerResponse": response_data,
-            "rawCallback": None,
+            "providerResponse": PaymentService._json(response_data),
             "paidAt": None,
         }
 
@@ -250,8 +250,8 @@ class PaymentService:
                 "status": status,
                 "transactionId": transaction_id,
                 "providerMessage": provider_message,
-                "rawCallback": callback_data,
-                "providerResponse": callback_data,
+                "rawCallback": PaymentService._json(callback_data),
+                "providerResponse": PaymentService._json(callback_data),
                 "paidAt": datetime.utcnow() if status == "SUCCESS" else None,
             },
         )
@@ -297,20 +297,22 @@ class PaymentService:
     async def _create_event(payment, event_type: str, status: str | None = None, payload: dict | None = None, transaction_id: str | None = None, message: str | None = None):
         try:
             retry_count = await prisma.paymentevent.count(where={"paymentId": payment.id})
+            event_data = {
+                "paymentId": payment.id,
+                "orderId": payment.orderId,
+                "provider": PaymentService._to_value(payment.method),
+                "eventType": event_type,
+                "status": status or PaymentService._to_value(payment.status),
+                "providerOrderId": payment.providerOrderId,
+                "requestId": payment.requestId,
+                "transactionId": transaction_id or payment.transactionId,
+                "message": message,
+                "retryCount": retry_count,
+            }
+            if payload is not None:
+                event_data["payload"] = PaymentService._json(payload)
             await prisma.paymentevent.create(
-                data={
-                    "paymentId": payment.id,
-                    "orderId": payment.orderId,
-                    "provider": PaymentService._to_value(payment.method),
-                    "eventType": event_type,
-                    "status": status or PaymentService._to_value(payment.status),
-                    "providerOrderId": payment.providerOrderId,
-                    "requestId": payment.requestId,
-                    "transactionId": transaction_id or payment.transactionId,
-                    "message": message,
-                    "retryCount": retry_count,
-                    "payload": payload,
-                }
+                data=event_data
             )
             await AuditService.create(
                 action=f"PAYMENT.{event_type}",
@@ -362,3 +364,7 @@ class PaymentService:
     @staticmethod
     def _to_value(value):
         return value.value if hasattr(value, "value") else str(value)
+
+    @staticmethod
+    def _json(value):
+        return Json(value) if value is not None else None

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
 
@@ -22,6 +22,12 @@ class SellerApplicationCreate(BaseModel):
     businessPhone: Optional[str] = None
     businessEmail: Optional[str] = None
     taxCode: Optional[str] = None
+    identityFullName: Optional[str] = None
+    identityNumber: Optional[str] = None
+    identityFrontUrl: Optional[str] = None
+    identityBackUrl: Optional[str] = None
+    shippingOptions: Optional[Dict[str, Any]] = None
+    taxInfo: Optional[Dict[str, Any]] = None
 
     addressLine: Optional[str] = None
     ward: Optional[str] = None
@@ -62,6 +68,12 @@ class SellerApplicationOut(BaseModel):
     businessPhone: Optional[str] = None
     businessEmail: Optional[str] = None
     taxCode: Optional[str] = None
+    identityFullName: Optional[str] = None
+    identityNumber: Optional[str] = None
+    identityFrontUrl: Optional[str] = None
+    identityBackUrl: Optional[str] = None
+    shippingOptions: Optional[Dict[str, Any]] = None
+    taxInfo: Optional[Dict[str, Any]] = None
 
     addressLine: Optional[str] = None
     ward: Optional[str] = None

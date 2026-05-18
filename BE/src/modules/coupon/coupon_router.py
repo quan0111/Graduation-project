@@ -22,14 +22,13 @@ async def get_coupon_by_code(code: str):
     coupon = await CouponService.get_coupon_by_code(code)
     return coupon
 @router.get("/validate/{code}/{order_amount}")
-async def validate_coupon(code: str, order_amount: float):
-    validation_result = await CouponService.validate_coupon(code, order_amount)
+async def validate_coupon(code: str, order_amount: float, user=Depends(get_current_user)):
+    validation_result = await CouponService.validate_coupon(code, order_amount, user.id)
     return validation_result
 
 @router.patch("/use/{coupon_id}")
 async def use_coupon(coupon_id: int, user=Depends(get_current_user)):
-    _ = user
-    used_coupon = await CouponService.use_coupon(coupon_id)
+    used_coupon = await CouponService.use_coupon(coupon_id, user.id)
     return used_coupon
 
 @router.get("/{coupon_id}", response_model=CouponOut)

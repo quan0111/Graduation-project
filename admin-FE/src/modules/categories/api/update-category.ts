@@ -30,11 +30,12 @@ export const useUpdateCategory = (
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ id, data }) => updateCategory(id, data),
-        onSuccess: () => {
-            queryClient.invalidateQueries({
+        ...config,
+        onSuccess: async (data, variables, onMutateResult, context) => {
+            await queryClient.invalidateQueries({
                 queryKey: ["categories"],
             });
+            await config?.onSuccess?.(data, variables, onMutateResult, context);
         },
-        ...config,
     });
 };

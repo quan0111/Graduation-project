@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from fastapi import HTTPException
+from prisma import Json
 
 from src.core.database import prisma
 from src.core.dependencies import get_role_value
@@ -37,9 +38,15 @@ class SellerService:
         if existing:
             raise HTTPException(400, "You already have a pending application")
 
+        payload = data.model_dump()
+        if payload.get("shippingOptions") is not None:
+            payload["shippingOptions"] = Json(payload["shippingOptions"])
+        if payload.get("taxInfo") is not None:
+            payload["taxInfo"] = Json(payload["taxInfo"])
+
         return await prisma.sellerapplication.create(
             data={
-                **data.model_dump(),
+                **payload,
                 "status": "PENDING",
                 "user": {
                     "connect": {"id": user_id}
@@ -130,7 +137,10 @@ class SellerService:
 
     @staticmethod
     async def get_my_application(user_id: int):
-        return await prisma.sellerapplication.find_first(where={"userId": user_id})
+        return await prisma.sellerapplication.find_first(
+            where={"userId": user_id},
+            order={"createdAt": "desc"},
+        )
 
     @staticmethod
     async def get_all():

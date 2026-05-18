@@ -10,10 +10,11 @@ import type { TaxInfo } from '../types'
 interface TaxFormProps {
   initialData?: TaxInfo
   onSubmit: (data: TaxInfo) => void
+  onPrev?: () => void
   isLoading?: boolean
 }
 
-export function TaxForm({ initialData, onSubmit, isLoading = false }: TaxFormProps) {
+export function TaxForm({ initialData, onSubmit, onPrev, isLoading = false }: TaxFormProps) {
   const [businessType, setBusinessType] = useState(initialData?.businessType || 'individual')
   const [businessPlace, setBusinessPlace] = useState(initialData?.businessRegistrationPlace || '')
   const [registeredEmail, setRegisteredEmail] = useState(initialData?.registeredEmail || '')
@@ -199,7 +200,7 @@ export function TaxForm({ initialData, onSubmit, isLoading = false }: TaxFormPro
       </div>
 
       <div className="flex gap-3 justify-end pt-4">
-        <Button variant="outline" disabled={isLoading}>
+        <Button variant="outline" onClick={onPrev} disabled={isLoading}>
           Quay lại
         </Button>
         <Button onClick={handleSubmit} disabled={isLoading}>

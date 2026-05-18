@@ -22,6 +22,11 @@ async def get_shipment(order_id: int, user=Depends(get_current_user)):
     return await ShipmentService.get_shipment(order_id, user)
 
 
+@router.get("/order/{order_id}/events")
+async def get_shipment_events(order_id: int, user=Depends(get_current_user)):
+    return await ShipmentService.get_events(order_id, user)
+
+
 @router.patch("/order/{order_id}", response_model=ShipmentOut)
 async def update_shipment(
     order_id: int,

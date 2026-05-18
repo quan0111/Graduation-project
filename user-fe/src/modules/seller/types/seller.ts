@@ -30,6 +30,12 @@ export interface ISellerApplication {
   businessPhone?: string | null;
   businessEmail?: string | null;
   taxCode?: string | null;
+  identityFullName?: string | null;
+  identityNumber?: string | null;
+  identityFrontUrl?: string | null;
+  identityBackUrl?: string | null;
+  shippingOptions?: Record<string, unknown> | null;
+  taxInfo?: Record<string, unknown> | null;
 
   addressLine?: string | null;
   ward?: string | null;
@@ -64,6 +70,12 @@ export interface ISellerCreate {
   businessPhone?: string;
   businessEmail?: string;
   taxCode?: string;
+  identityFullName?: string;
+  identityNumber?: string;
+  identityFrontUrl?: string;
+  identityBackUrl?: string;
+  shippingOptions?: Record<string, unknown>;
+  taxInfo?: Record<string, unknown>;
 
   addressLine?: string;
   ward?: string;

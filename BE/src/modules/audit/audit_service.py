@@ -1,5 +1,7 @@
 from typing import Any, Dict, Optional
 
+from prisma import Json
+
 from src.core.database import prisma
 
 
@@ -27,7 +29,7 @@ class AuditService:
                     "severity": severity,
                     "ipAddress": ip_address,
                     "userAgent": user_agent,
-                    "metadata": metadata,
+                    **({"metadata": Json(metadata)} if metadata is not None else {}),
                 }
             )
         except Exception:

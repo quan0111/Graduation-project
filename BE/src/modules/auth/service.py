@@ -3,6 +3,7 @@ import hashlib
 
 from fastapi import HTTPException, Request, Response
 
+from src.core.config import settings
 from src.core.database import prisma
 from src.core.security import (
     AUTH_SCOPE_ADMIN,
@@ -48,11 +49,12 @@ class AuthService:
 
     @staticmethod
     def _set_refresh_cookie(response: Response, cookie_name: str, refresh_token: str):
+        secure_cookie = settings.COOKIE_SECURE if settings.COOKIE_SECURE is not None else not settings.DEBUG
         response.set_cookie(
             key=cookie_name,
             value=refresh_token,
             httponly=True,
-            secure=False,
+            secure=secure_cookie,
             samesite="lax",
             max_age=60 * 60 * 24 * 7,
         )

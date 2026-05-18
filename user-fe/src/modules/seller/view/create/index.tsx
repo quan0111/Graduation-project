@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { useMe } from "@/modules/auth/api/get-auth-me"
 import { useApplySeller } from "@/modules/seller/api/apply"
 import { useGetMySeller } from "@/modules/seller/api/get-my-application"
+import { uploadImage } from "@/modules/upload/api/upload-image"
 import { IdentityForm } from '../../component/identify-form'
 import { ShippingSettings } from '../../component/shipp-setting'
 import { ShopInfoForm } from '../../component/shop-info'
@@ -100,7 +101,7 @@ export function SellerRegistrationView() {
   }
 
   const handleTaxSubmit = (data: TaxInfo) => {
-    setRegistration((previous) => ({ ...previous, taxInfo: data }))
+    setRegistration((previous) => ({ ...previous, taxInfo: { ...previous.taxInfo, ...data } }))
     markStepCompleted('tax')
     setCurrentStep('complete')
   }
@@ -121,6 +122,14 @@ export function SellerRegistrationView() {
 
     try {
       setIsLoading(true)
+      const [frontUpload, backUpload] = await Promise.all([
+        registration.identityInfo.cccdFrontImage
+          ? uploadImage({ file: registration.identityInfo.cccdFrontImage, folder: "seller-identity" })
+          : Promise.resolve(null),
+        registration.identityInfo.cccdBackImage
+          ? uploadImage({ file: registration.identityInfo.cccdBackImage, folder: "seller-identity" })
+          : Promise.resolve(null),
+      ])
 
       const payload = {
         shopName: registration.shopInfo.shopName,
@@ -131,12 +140,29 @@ export function SellerRegistrationView() {
         district: registration.shopInfo.district,
         province: registration.shopInfo.city,
         taxCode: registration.taxInfo.taxNumber,
+        identityFullName: registration.identityInfo.fullName,
+        identityNumber: registration.identityInfo.cccdNumber,
+        identityFrontUrl: frontUpload?.url,
+        identityBackUrl: backUpload?.url,
+        shippingOptions: {
+          codEnabled: registration.taxInfo.codEnabled,
+          dailyDeliveryEnabled: registration.taxInfo.dailyDeliveryEnabled,
+          expressDeliveryEnabled: registration.taxInfo.expressDeliveryEnabled,
+          instantDeliveryEnabled: registration.taxInfo.instantDeliveryEnabled,
+          buyNowPayLaterEnabled: registration.taxInfo.buyNowPayLaterEnabled,
+        },
+        taxInfo: {
+          businessType: registration.taxInfo.businessType,
+          businessRegistrationPlace: registration.taxInfo.businessRegistrationPlace,
+          registeredEmail: registration.taxInfo.registeredEmail,
+          taxNumber: registration.taxInfo.taxNumber,
+        },
       }
 
       await applyMutation.mutateAsync({ data: payload })
       markStepCompleted('complete')
       toast.success("Gửi yêu cầu mở shop thành công")
-      navigate("/seller", { replace: true })
+      navigate("/", { replace: true })
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || "Đăng ký thất bại")
     } finally {
@@ -204,6 +230,42 @@ export function SellerRegistrationView() {
             Hồ sơ của bạn đã được gửi lên ban quản trị. Chúng tôi sẽ phê duyệt trong vòng <span className="font-bold text-slate-900">24h làm việc</span>.
           </p>
           <div className="mt-12 flex justify-center gap-4">
+            <Link to="/">
+              <Button variant="outline" className="rounded-2xl h-12 px-8 font-bold border-slate-200 hover:bg-slate-50">Về trang chủ</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (application?.status === "REJECTED" || application?.status === "NEED_MORE_INFO") {
+    const isRejected = application.status === "REJECTED"
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50/50 px-4">
+        <div className="w-full max-w-2xl rounded-[40px] border bg-white p-12 text-center shadow-2xl shadow-slate-200/30 ring-1 ring-slate-100">
+          <div className={`mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-4xl ${isRejected ? "bg-red-50 text-red-600 ring-red-100" : "bg-amber-50 text-amber-600 ring-amber-100"} shadow-inner ring-1`}>
+            <Store className="h-12 w-12" />
+          </div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+            {isRejected ? "Hồ sơ chưa được duyệt" : "Cần bổ sung thông tin"}
+          </h1>
+          <div className="mt-6 rounded-3xl bg-slate-50 p-6 text-left">
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Ghi chú từ quản trị viên</p>
+            <p className="mt-3 text-base font-medium leading-7 text-slate-700">
+              {application.note || "Chưa có ghi chú chi tiết. Vui lòng kiểm tra lại thông tin shop, định danh và thuế trước khi gửi lại."}
+            </p>
+          </div>
+          <div className="mt-10 flex justify-center gap-4">
+            <Button
+              className="rounded-2xl h-12 px-8 font-bold"
+              onClick={() => {
+                setCompletedSteps([])
+                setCurrentStep("shop-info")
+              }}
+            >
+              Cập nhật hồ sơ
+            </Button>
             <Link to="/">
               <Button variant="outline" className="rounded-2xl h-12 px-8 font-bold border-slate-200 hover:bg-slate-50">Về trang chủ</Button>
             </Link>
@@ -342,6 +404,7 @@ export function SellerRegistrationView() {
                       <IdentityForm
                         initialData={registration.identityInfo}
                         onSubmit={handleIdentitySubmit}
+                        onPrev={handlePrevStep}
                         isLoading={isLoading}
                       />
                     </div>
@@ -352,6 +415,7 @@ export function SellerRegistrationView() {
                       <TaxForm
                         initialData={registration.taxInfo}
                         onSubmit={handleTaxSubmit}
+                        onPrev={handlePrevStep}
                         isLoading={isLoading}
                       />
                     </div>

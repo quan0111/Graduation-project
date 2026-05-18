@@ -114,6 +114,9 @@ class ShopService:
         if "avatarUrl" in update_data:
             data["avatarUrl"] = update_data["avatarUrl"]
 
+        if "isActive" in update_data:
+            data["isActive"] = update_data["isActive"]
+
         if "ownerId" in update_data:
             data["owner"] = {
                 "connect": {"id": update_data["ownerId"]}

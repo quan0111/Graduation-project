@@ -16,6 +16,7 @@ async def send_message(payload: ChatbotMessageIn, user=Depends(get_optional_curr
         message=payload.message,
         user_id=user.id if user else None,
         product_id=payload.productId,
+        history=payload.history,
     )
 
 
@@ -25,6 +26,7 @@ async def chat(data: ChatRequest, user=Depends(get_optional_current_user)):
         message=data.message,
         user_id=user.id if user else None,
         product_id=data.productId,
+        history=data.history,
     )
     return {"message": response["answer"]}
 

@@ -93,13 +93,15 @@ export const OrderSummary: React.FC<Props> = ({
           </span>
         </div>
 
-        <div className="flex items-center justify-between text-slate-500">
-          <span>VAT (10%)</span>
+        {tax && tax > 0 ? (
+          <div className="flex items-center justify-between text-slate-500">
+            <span>VAT (10%)</span>
 
-          <span className="font-medium text-slate-900">
-            {formatCurrency(tax || 0)}
-          </span>
-        </div>
+            <span className="font-medium text-slate-900">
+              {formatCurrency(tax)}
+            </span>
+          </div>
+        ) : null}
 
         {discount && discount > 0 && (
           <div className="flex items-center justify-between text-green-600">

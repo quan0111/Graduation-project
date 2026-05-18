@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 
@@ -8,10 +8,37 @@ class ReviewCreate(BaseModel):
     productId: int
     rating: int
     comment: Optional[str] = None
+    mediaUrls: List[str] = []
 
 class ReviewUpdate(BaseModel):
     rating: Optional[int] = None
     comment: Optional[str] = None
+
+
+class ReviewReplyCreate(BaseModel):
+    content: str
+
+
+class ReviewMediaOut(BaseModel):
+    id: int
+    reviewId: int
+    url: str
+    type: str
+    position: int
+    createdAt: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ReviewReplyOut(BaseModel):
+    id: int
+    reviewId: int
+    sellerId: int
+    content: str
+    createdAt: datetime
+    updatedAt: datetime
+
+    model_config = {"from_attributes": True}
 
 
 class UserShort(BaseModel):
@@ -42,5 +69,7 @@ class ReviewOut(BaseModel):
 
     user: Optional[UserShort] = None
     product: Optional[ProductShort] = None
+    media: List[ReviewMediaOut] = []
+    replies: List[ReviewReplyOut] = []
 
     model_config = {"from_attributes": True}

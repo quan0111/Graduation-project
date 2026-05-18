@@ -20,6 +20,7 @@ class ShopUpdate(BaseModel):
     avatarUrl: Optional[str] = None
     description: Optional[str] = None
     ownerId: Optional[int] = None
+    isActive: Optional[bool] = None
 
 class OwnerOut(BaseModel):
     id: int
@@ -41,6 +42,7 @@ class ShopInDB(ShopBase):
 class ShopOut(ShopBase):
     id: int
     ownerId: int
+    isActive: bool = True
 
     owner: Optional[OwnerOut] = None
     productCount: int = 0

@@ -18,6 +18,7 @@ class CouponCreate(BaseModel):
     minOrderAmount: Optional[float] = None
     maxDiscount: Optional[float] = None
     usageLimit: Optional[int] = None
+    usageLimitPerUser: Optional[int] = None
 
     validFrom: Optional[datetime] = None
     validUntil: Optional[datetime] = None
@@ -29,6 +30,7 @@ class CouponUpdate(BaseModel):
     discountValue: Optional[float] = None
     isActive: Optional[bool] = None
     usageLimit: Optional[int] = None
+    usageLimitPerUser: Optional[int] = None
     validUntil: Optional[datetime] = None
 
 
@@ -50,6 +52,7 @@ class CouponOut(BaseModel):
     maxDiscount: Optional[float]
 
     usageLimit: Optional[int]
+    usageLimitPerUser: Optional[int] = None
     usedCount: int
 
     validFrom: Optional[datetime]

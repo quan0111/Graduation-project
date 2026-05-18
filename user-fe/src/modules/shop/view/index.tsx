@@ -1,38 +1,43 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
 import { useGetShopById } from "../api/get-shop-id";
+import { useFollowShop, useIsFollowingShop, useShopFollowerCount, useUnfollowShop } from "../api/follow-shop";
 import { useGetProductsByShop } from "@/modules/product/api/get-product-by-shop";
+import { useAuthStore } from "@/stores/auth.store";
 
 export default function ShopPage() {
   const { id } = useParams();
-
-  // ✅ guard param
-  if (!id || isNaN(Number(id))) {
-    return <div>Shop ID không hợp lệ</div>;
-  }
+  const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
 
   const shopId = Number(id);
+  const hasValidShopId = Boolean(id) && Number.isFinite(shopId) && shopId > 0;
 
   // ✅ chỉ gọi API khi có id hợp lệ
   const {
     data: shop,
     isLoading: shopLoading,
   } = useGetShopById(shopId, {
-    enabled: !!shopId,
+    enabled: hasValidShopId,
   });
 
   const {
     data: productsRes,
     isLoading: productLoading,
   } = useGetProductsByShop(shopId, {
-    enabled: !!shopId,
+    enabled: hasValidShopId,
   });
+  const { data: isFollowing = false } = useIsFollowingShop(shopId, hasValidShopId && Boolean(user));
+  const { data: followerCount = 0 } = useShopFollowerCount(shopId);
+  const followMutation = useFollowShop();
+  const unfollowMutation = useUnfollowShop();
 
   const products = Array.isArray(productsRes)
     ? productsRes
@@ -40,8 +45,32 @@ export default function ShopPage() {
     ? productsRes
     : [];
 
-  const [isFollowing, setIsFollowing] = useState(false);
   const [activeTab, setActiveTab] = useState('products');
+
+  if (!hasValidShopId) {
+    return <div>Shop ID không hợp lệ</div>;
+  }
+
+  const handleToggleFollow = async () => {
+    if (!user) {
+      toast.error("Bạn cần đăng nhập để theo dõi shop");
+      navigate("/login", { state: { redirect: `/shop/${shopId}` } });
+      return;
+    }
+
+    try {
+      if (isFollowing) {
+        await unfollowMutation.mutateAsync(shopId);
+        toast.success("Đã bỏ theo dõi shop");
+      } else {
+        await followMutation.mutateAsync(shopId);
+        toast.success("Đã theo dõi shop");
+      }
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail;
+      toast.error(typeof detail === "string" ? detail : "Không thể cập nhật theo dõi shop");
+    }
+  };
 
   if (shopLoading || productLoading) {
     return <div className="p-6">Đang tải...</div>;
@@ -80,10 +109,14 @@ export default function ShopPage() {
 
                 <div className="flex gap-4 mt-3">
                   <span>{products.length} sản phẩm</span>
+                  <span>{followerCount} người theo dõi</span>
                 </div>
               </div>
 
-              <Button onClick={() => setIsFollowing(!isFollowing)}>
+              <Button
+                onClick={handleToggleFollow}
+                disabled={followMutation.isPending || unfollowMutation.isPending}
+              >
                 {isFollowing ? "Đã theo dõi" : "Theo dõi"}
               </Button>
             </div>

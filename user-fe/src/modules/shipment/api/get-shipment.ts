@@ -14,14 +14,21 @@ export interface Shipment {
   createdAt: string;
 }
 
-const getShipmentByOrder = async (orderId: number): Promise<Shipment> => {
-  const response = await apiClient.get(`${API_URL_SHIPMENT}/order/${orderId}`);
-  return response.data;
+const getShipmentByOrder = async (orderId: number): Promise<Shipment | null> => {
+  try {
+    const response = await apiClient.get(`${API_URL_SHIPMENT}/order/${orderId}`);
+    return response.data;
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
 };
 
 export const useShipmentByOrder = (
   orderId: number,
-  config?: UseQueryOptions<Shipment, Error>,
+  config?: UseQueryOptions<Shipment | null, Error>,
 ) => {
   return useQuery({
     queryKey: ["shipment", "order", orderId],

@@ -114,8 +114,6 @@ export function ProductActions({ formData }: ProductActionsProps) {
         })),
       };
 
-      console.log("🚀 FINAL PAYLOAD", payload);
-
       await createProductMutation.mutateAsync(payload as any);
 
       toast.success("Tạo sản phẩm thành công!");

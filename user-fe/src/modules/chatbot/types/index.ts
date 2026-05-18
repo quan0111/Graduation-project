@@ -9,9 +9,15 @@ export interface ChatbotProduct {
   relationType?: string | null;
 }
 
+export interface ChatbotHistoryMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export interface ChatbotMessagePayload {
   message: string;
   productId?: number;
+  history?: ChatbotHistoryMessage[];
 }
 
 export interface ChatbotMessageResponse {

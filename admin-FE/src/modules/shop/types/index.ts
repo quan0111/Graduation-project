@@ -6,14 +6,18 @@ export interface IShop {
   slug?: string | null
   description?: string | null
   avatar_url?: string | null
+  avatarUrl?: string | null
 
   owner_id: number
+  ownerId?: number
+  isActive?: boolean
 
   created_at: string
   updated_at: string
   deleted_at?: string | null
 
   Owner?: IUser
+  owner?: IUser
   Products?: IProduct[]
 }
 export type RegistrationStep = 'shop-info' | 'shipping' | 'identity' | 'tax' | 'complete'

@@ -18,14 +18,9 @@ export default function OrdersPage() {
   const [search, setSearch] = useState("");
 
   // 👇 CALL API
-  const { data: orders = [], isLoading, isError, error } = useGetAllOrders();
+  const { data: orders = [], isLoading, isError } = useGetAllOrders();
   const cancelMutation = useCancelOrder();
   const updateStatusMutation = useUpdateOrder();
-
-  console.log("orders:", orders);
-  console.log("isLoading:", isLoading);
-  console.log("isError:", isError);
-  console.log("error:", error);
 
   // ================= HANDLERS =================
 

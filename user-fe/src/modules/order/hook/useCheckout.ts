@@ -59,15 +59,13 @@ export const useCheckout = (items: CheckoutPricingItem[]) => {
     return SHIPPING_PRICE[shipping] || 0;
   }, [shipping]);
 
-  /* tax */
-  const tax = useMemo(() => {
-    return Math.round(subtotal * 0.1);
-  }, [subtotal]);
+  /* tax is not persisted in the current Order schema. Keep it out of totals. */
+  const tax = 0;
 
   /* total */
   const total = useMemo(() => {
-    return subtotal + shippingPrice + tax;
-  }, [subtotal, shippingPrice, tax]);
+    return subtotal + shippingPrice;
+  }, [subtotal, shippingPrice]);
 
   /* total items */
   const totalItems = useMemo(() => {

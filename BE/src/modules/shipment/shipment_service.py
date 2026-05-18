@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from fastapi import HTTPException
+from prisma import Json
 
 from src.core.database import prisma
 from src.modules.audit.audit_service import AuditService
@@ -137,6 +138,14 @@ class ShipmentService:
                 "status": "READY_TO_SHIP",
             }
         )
+        await prisma.shipmentevent.create(
+            data={
+                "shipment": {"connect": {"id": shipment.id}},
+                "order": {"connect": {"id": data.orderId}},
+                "status": "READY_TO_SHIP",
+                "message": "Shipment created",
+            }
+        )
 
         await prisma.order.update(
             where={"id": data.orderId},
@@ -192,6 +201,15 @@ class ShipmentService:
             where={"orderId": order_id},
             data=update_data,
         )
+        if status:
+            await prisma.shipmentevent.create(
+                data={
+                    "shipment": {"connect": {"id": updated.id}},
+                    "order": {"connect": {"id": order_id}},
+                    "status": status,
+                    "message": f"Shipment status changed to {status}",
+                }
+            )
 
         if status in TRACKING_ORDER_STATUSES:
             await prisma.order.update(
@@ -226,3 +244,11 @@ class ShipmentService:
     @staticmethod
     async def get_all_shipments():
         return await prisma.shipment.find_many(include={"order": True})
+
+    @staticmethod
+    async def get_events(order_id: int, current_user):
+        await ShipmentService._assert_view_access(order_id, current_user)
+        return await prisma.shipmentevent.find_many(
+            where={"orderId": order_id},
+            order={"occurredAt": "desc"},
+        )

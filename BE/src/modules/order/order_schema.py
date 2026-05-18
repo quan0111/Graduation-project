@@ -128,6 +128,16 @@ class PaymentGatewayOut(BaseModel):
     requestId: Optional[str] = None
 
 
+class CheckoutOut(BaseModel):
+    order: "OrderOut"
+    payment: Optional[PaymentOut] = None
+    paymentUrl: Optional[str] = None
+    qrCodeUrl: Optional[str] = None
+    deeplink: Optional[str] = None
+    providerOrderId: Optional[str] = None
+    requestId: Optional[str] = None
+
+
 class OrderBase(BaseModel):
     userId: int
     subtotal: float
@@ -141,6 +151,10 @@ class OrderBase(BaseModel):
 class OrderCreate(OrderBase):
     items: List[OrderItemCreate]
     payment: Optional[OrderPaymentCreate] = None
+
+
+class CheckoutCreate(OrderCreate):
+    cartItemIds: List[int] = []
 
 
 class OrderUpdate(BaseModel):

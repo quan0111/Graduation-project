@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { ChevronLeft, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -8,12 +9,14 @@ import { Input } from "@/components/ui/input";
 import { SellerDashboardLayout } from "@/modules/seller/component/shop-layout";
 
 import { useGetSellerOrderById } from "@/modules/order/api/get-seller-order";
+import { useUpdateOrder } from "@/modules/order/api/update-order";
 import { useUpsertShipment } from "@/modules/order/api/upsert-shipment";
 import { OrderItems } from "@/modules/order/components/orderItems";
 import { OrderShipping } from "@/modules/order/components/shipping";
 import { OrderSummary } from "@/modules/order/components/summary";
 import { OrderTimeline } from "@/modules/order/components/orderTimeLine";
 import type { ShipmentStatusType } from "@/modules/order/types";
+import type { OrderStatusType } from "@/constant";
 import {
   formatCurrency,
   formatDateTime,
@@ -28,13 +31,28 @@ const shipmentStatuses: Array<{ value: ShipmentStatusType; label: string }> = [
   { value: "delivered", label: "Đã giao hàng" },
 ];
 
+const sellerOrderTransitions: Partial<Record<OrderStatusType, Array<{ status: OrderStatusType; label: string }>>> = {
+  pending: [{ status: "confirmed", label: "Xác nhận đơn" }],
+  paid: [
+    { status: "confirmed", label: "Xác nhận đơn" },
+    { status: "processing", label: "Chuyển sang xử lý" },
+  ],
+  confirmed: [{ status: "processing", label: "Bắt đầu xử lý" }],
+  processing: [{ status: "ready_to_ship", label: "Sẵn sàng giao" }],
+  ready_to_ship: [{ status: "shipped", label: "Đã gửi hàng" }],
+  shipped: [{ status: "in_transit", label: "Đang vận chuyển" }],
+  in_transit: [{ status: "delivered", label: "Đã giao hàng" }],
+};
+
 export default function SellerOrderDetailPage() {
   const { id } = useParams();
   const orderId = Number(id);
+  const queryClient = useQueryClient();
   const { data: order, isLoading, isError } = useGetSellerOrderById(orderId, {
     enabled: !!orderId,
   });
   const shipmentMutation = useUpsertShipment();
+  const orderStatusMutation = useUpdateOrder();
 
   const [carrier, setCarrier] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
@@ -67,6 +85,22 @@ export default function SellerOrderDetailPage() {
   }
 
   const statusMeta = getStatusMeta(order.status);
+  const nextOrderStatuses = sellerOrderTransitions[order.status] ?? [];
+
+  const handleUpdateOrderStatus = async (nextStatus: OrderStatusType) => {
+    try {
+      await orderStatusMutation.mutateAsync({
+        id: String(order.id),
+        data: { status: nextStatus },
+      });
+      await queryClient.invalidateQueries({ queryKey: ["orders", "seller-detail", order.id] });
+      await queryClient.invalidateQueries({ queryKey: ["orders", "seller"] });
+      toast.success("Đã cập nhật trạng thái đơn hàng");
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail;
+      toast.error(typeof detail === "string" ? detail : "Không thể cập nhật trạng thái đơn hàng");
+    }
+  };
 
   const handleSaveTracking = async () => {
     try {
@@ -138,6 +172,27 @@ export default function SellerOrderDetailPage() {
 
           <aside className="space-y-6">
             <OrderSummary order={order} sellerView />
+
+            {nextOrderStatuses.length > 0 && (
+              <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+                <p className="text-base font-semibold text-slate-950">Cập nhật trạng thái đơn</p>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  Chỉ hiển thị các bước hợp lệ theo trạng thái hiện tại của đơn hàng.
+                </p>
+                <div className="mt-5 space-y-2">
+                  {nextOrderStatuses.map((option) => (
+                    <Button
+                      key={option.status}
+                      className="w-full bg-slate-950 hover:bg-slate-800"
+                      onClick={() => handleUpdateOrderStatus(option.status)}
+                      disabled={orderStatusMutation.isPending}
+                    >
+                      {orderStatusMutation.isPending ? "Đang cập nhật..." : option.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
               <p className="text-base font-semibold text-slate-950">Chỉnh sửa tracking</p>

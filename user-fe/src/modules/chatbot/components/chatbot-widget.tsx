@@ -5,7 +5,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useSendChatbotMessage } from "@/modules/chatbot/api/send-message";
-import type { ChatbotProduct } from "@/modules/chatbot/types";
+import type { ChatbotHistoryMessage, ChatbotProduct } from "@/modules/chatbot/types";
 import { useTrackProductBehavior } from "@/modules/recommendation/hooks/useTrackProductBehavior";
 
 interface ChatMessage {
@@ -85,14 +85,6 @@ const localKnowledgeBase: Record<string, { answer: string; suggestions?: string[
   "sản phẩm": {
     answer: "MarketHub có hàng nghìn sản phẩm từ các danh mục: Điện tử, Thời trang, Gia dụng, Mỹ phẩm, và nhiều hơn nữa. Bạn có thể tìm kiếm theo danh mục hoặc từ khóa.",
     suggestions: ["Gợi ý sản phẩm", "Sản phẩm bán chạy"],
-  },
-  "giới thiệu sản phẩm": {
-    answer: "Dưới đây là một số sản phẩm nổi bật trên MarketHub:\n\n📱 Điện thoại iPhone 15 Pro Max - Chip A17 Pro, Camera 48MP\n💻 MacBook Air M2 - Mỏng nhẹ, hiệu năng mạnh mẽ\n👟 Nike Air Jordan - Giày thể thao phong cách\n💄 Son MAC Rouge - Màu sắc bền đẹp\n🎧 Tai nghe Sony WH-1000XM5 - Chống ồn đỉnh cao\n\nBạn muốn xem chi tiết sản phẩm nào?",
-    suggestions: ["iPhone 15", "MacBook Air", "Nike Jordan"],
-  },
-  "san pham noi bat": {
-    answer: "Sản phẩm nổi bật tháng này:\n\n🌟 iPhone 15 Pro Max - 29.990.000đ\n🌟 MacBook Air M2 - 24.990.000đ\n🌟 Sony WH-1000XM5 - 8.990.000đ\n🌟 Nike Air Jordan 1 - 4.500.000đ\n🌟 Son MAC Ruby Woo - 650.000đ",
-    suggestions: ["Gợi ý sản phẩm", "Sản phẩm giá rẻ"],
   },
   "danh mục": {
     answer: "MarketHub có các danh mục sản phẩm:\n\n📱 Điện tử & Điện thoại\n👕 Thời trang\n🏠 Gia dụng\n💄 Mỹ phẩm\n📚 Sách\n🎮 Đồ chơi\n🍪 Thực phẩm",
@@ -186,6 +178,14 @@ export function ChatbotWidget() {
       return;
     }
 
+    const history: ChatbotHistoryMessage[] = messages
+      .filter((message) => message.id !== "welcome")
+      .slice(-8)
+      .map((message) => ({
+        role: message.role,
+        content: message.content,
+      }));
+
     setMessages((current) => [...current, { id: makeId(), role: "user", content: text }]);
     setDraft("");
 
@@ -205,7 +205,7 @@ export function ChatbotWidget() {
     }
 
     mutation.mutate(
-      { message: text, productId: currentProductId },
+      { message: text, productId: currentProductId, history },
       {
         onSuccess: (response) => {
           setMessages((current) => [
