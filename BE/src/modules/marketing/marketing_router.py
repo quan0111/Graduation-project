@@ -31,7 +31,7 @@ async def get_banners():
 @router.post("/banners/click")
 async def click(data: BannerTrackingCreate, user=Depends(get_optional_current_user)):
     user_id = user.id if user else None
-    return await MarketingService.track_click(user_id, data)
+    return await MarketingService.track_banner_action(user_id, data.bannerId, data.action)
 
 
 @router.get("/banners/{id}/stats")

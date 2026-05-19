@@ -29,11 +29,12 @@ def hash_token(token: str):
 
 def create_access_token(
     data: dict,
-    expires_delta: int = 10080,
+    expires_delta: int | None = None,
     scope: str = AUTH_SCOPE_STOREFRONT
 ):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=expires_delta)
+    expire_minutes = expires_delta or settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    expire = datetime.utcnow() + timedelta(minutes=expire_minutes)
     to_encode.update({
         "exp": expire,
         "type": "access",

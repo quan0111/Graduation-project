@@ -34,7 +34,7 @@ const productStatusLabelMap: Record<string, string> = {
   OUT_OF_STOCK: "Hết hàng",
   BANNED: "Bị khóa",
   REJECT: "Bị từ chối",
-  APROVAL: "Chờ duyệt",
+  APPROVAL: "Chờ duyệt",
 };
 
 const productStatusToneMap: Record<string, string> = {
@@ -43,7 +43,7 @@ const productStatusToneMap: Record<string, string> = {
   OUT_OF_STOCK: "bg-rose-50 text-rose-700",
   BANNED: "bg-rose-50 text-rose-700",
   REJECT: "bg-rose-50 text-rose-700",
-  APROVAL: "bg-amber-50 text-amber-700",
+  APPROVAL: "bg-amber-50 text-amber-700",
 };
 
 export function formatCurrency(value: number) {

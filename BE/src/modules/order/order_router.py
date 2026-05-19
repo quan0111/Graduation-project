@@ -143,7 +143,7 @@ async def cancel_order(order_id: int, user=Depends(get_current_user)):
 @router.patch("/{order_id}/payment")
 async def update_payment(
     order_id: int,
-    payment_data: OrderUpdate,
+    payment_data: PaymentUpdate,
     user=Depends(require_admin),
 ):
     _ = user

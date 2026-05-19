@@ -23,7 +23,11 @@ export const productColumns = (onApprove: any, onReject: any, onBan: any, onView
   {
     key: "price",
     label: "Gia",
-    render: (product: any) => `${(product.price / 1000).toFixed(0)}K`,
+    render: (product: any) => new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+      maximumFractionDigits: 0,
+    }).format(Number(product.price || 0)),
   },
   {
     key: "status",

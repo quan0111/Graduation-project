@@ -1,6 +1,7 @@
 import { apiClient } from "../../../lib/api";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { API_URL_CART } from "@/constant/config";
+import { useMe } from "@/modules/auth/api/get-auth-me";
 
 export const addItem = async (data: {
   productId: number;
@@ -14,12 +15,13 @@ export const addItem = async (data: {
 
 export const useAddItem = () => {
   const queryClient = useQueryClient();
+  const { data: user } = useMe();
 
   return useMutation({
     mutationFn: addItem,
 
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      queryClient.invalidateQueries({ queryKey: ["cart", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["auth"] });
     },
   });

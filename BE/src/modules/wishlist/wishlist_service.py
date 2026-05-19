@@ -19,6 +19,8 @@ class WishlistService:
         )
         if not product:
             raise HTTPException(404, "Product not found")
+        if product.status in {"BANNED", "DRAFT", "REJECTED"} or product.status != "ACTIVE":
+            raise HTTPException(400, "Product is not available")
 
         return await prisma.wishlist.upsert(
             where={"userId_productId": {"userId": user_id, "productId": product_id}},

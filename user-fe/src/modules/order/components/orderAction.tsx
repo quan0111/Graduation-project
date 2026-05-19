@@ -56,7 +56,7 @@ export const OrderActions = ({ order }: Props) => {
     }
   };
 
-  const canCancel = order.status === "pending";
+  const canCancel = ["pending", "paid", "confirmed", "payment_failed"].includes(order.status);
   const canRebuy = order.status !== "cancelled";
 
   return (

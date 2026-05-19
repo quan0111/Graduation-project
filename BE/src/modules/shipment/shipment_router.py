@@ -37,7 +37,8 @@ async def update_shipment(
 
 
 @router.get("/track/{tracking_number}", response_model=ShipmentOut)
-async def track_shipment(tracking_number: str):
+async def track_shipment(tracking_number: str, user=Depends(get_current_user)):
+    _ = user
     return await ShipmentService.track_shipment(tracking_number)
 
 

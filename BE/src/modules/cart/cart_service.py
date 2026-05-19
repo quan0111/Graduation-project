@@ -99,6 +99,9 @@ class CartService:
         if product.status != "ACTIVE":
             raise HTTPException(400, "Sản phẩm không còn khả dụng")
 
+        if product.shopId != data.shopId:
+            raise HTTPException(400, "Shop does not match product")
+
         variant_id = data.variantId if data.variantId else None
 
         # 🚫 Kiểm tra stock nếu có variant
@@ -108,6 +111,8 @@ class CartService:
             )
             if not variant:
                 raise HTTPException(400, "Variant not found")
+            if variant.productId != data.productId:
+                raise HTTPException(400, "Variant does not match product")
             if variant.stock <= 0:
                 raise HTTPException(400, "Sản phẩm đã hết hàng")
             if variant.stock < data.quantity:
@@ -151,13 +156,20 @@ class CartService:
         return item
 
     async def update_item(self, item_id: int, quantity: int, user_id: int):
-        await self._assert_item_access(item_id, user_id)
+        item = await self._assert_item_access(item_id, user_id)
         if quantity < 0:
             raise HTTPException(400, "Quantity must be >= 0")
 
         if quantity == 0:
             await prisma.cartitem.delete(where={"id": item_id})
             return {"message": "Item removed"}
+
+        if item.variantId:
+            variant = await prisma.productvariant.find_unique(where={"id": item.variantId})
+            if not variant:
+                raise HTTPException(400, "Variant not found")
+            if variant.stock < quantity:
+                raise HTTPException(400, f"Chỉ còn {variant.stock} sản phẩm trong kho")
 
         return await prisma.cartitem.update(
             where={"id": item_id},

@@ -35,7 +35,7 @@ export const shopColumns = (
   },
   {
     key: "category",
-    label: "Danh mục",
+    label: "Phân loại",
     filterable: true,
   },
   {
@@ -117,7 +117,7 @@ export default function ShopsPage() {
     products: s.productCount || 0,
     revenue: s.revenue || 0,
     rating: s.rating || 0,
-    category: s.description|| "Chưa phân loại",
+    category: s.isActive === false ? "Tạm khóa" : "Đang hoạt động",
     description: s.description || "",
     avatarUrl: s.avatarUrl || "",
   }));

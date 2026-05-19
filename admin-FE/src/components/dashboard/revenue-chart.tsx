@@ -11,22 +11,12 @@ import {
 } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-const data = [
-  { month: "T1", revenue: 4500, orders: 2400 },
-  { month: "T2", revenue: 5200, orders: 2800 },
-  { month: "T3", revenue: 4800, orders: 2600 },
-  { month: "T4", revenue: 6100, orders: 3200 },
-  { month: "T5", revenue: 5800, orders: 3100 },
-  { month: "T6", revenue: 7200, orders: 3800 },
-  { month: "T7", revenue: 6900, orders: 3600 },
-  { month: "T8", revenue: 8100, orders: 4200 },
-  { month: "T9", revenue: 7800, orders: 4000 },
-  { month: "T10", revenue: 9200, orders: 4800 },
-  { month: "T11", revenue: 8800, orders: 4600 },
-  { month: "T12", revenue: 10500, orders: 5200 },
-]
+export function RevenueChart({ data }: { data: Array<{ month: string; revenue: number; orders: number }> }) {
+  const chartData = data.map((item) => ({
+    ...item,
+    revenue: Math.round((item.revenue || 0) / 1000000),
+  }))
 
-export function RevenueChart() {
   return (
     <Card className="bg-card border-border">
       <CardHeader>
@@ -38,7 +28,7 @@ export function RevenueChart() {
       <CardContent>
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data}>
+            <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="oklch(0.72 0.19 160)" stopOpacity={0.3} />

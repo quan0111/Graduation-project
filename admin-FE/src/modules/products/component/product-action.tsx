@@ -11,7 +11,7 @@ export function ProductActions({
 }: any) {
   return (
     <div className="flex gap-2">
-      {product.status === "DRAFT" && (
+      {["DRAFT", "REJECT"].includes(product.status) && (
         <>
           <Button size="sm" onClick={() => onApprove(product)}>
             <CheckCircle2 className="h-4 w-4" />

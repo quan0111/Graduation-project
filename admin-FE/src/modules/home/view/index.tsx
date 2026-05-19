@@ -35,23 +35,23 @@ export default function DashboardPage() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <RevenueChart />
+          <RevenueChart data={data.revenueByMonth || []} />
         </div>
-        <CategoryStats />
+        <CategoryStats data={data.categoryStats || []} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <PendingShops />
-        <PendingProducts />
+        <PendingShops shops={data.pendingShops || []} />
+        <PendingProducts products={data.pendingProducts || []} />
       </div>
 
       <div className="mt-6">
-        <TopShops />
+        <TopShops shops={data.topShops || []} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <RecentActivity />
+          <RecentActivity activities={data.recentActivity || []} />
         </div>
         <QuickActions />
       </div>

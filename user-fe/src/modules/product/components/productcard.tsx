@@ -1,11 +1,13 @@
 import { ShoppingCart, Star } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { useAddItem } from "@/modules/cart/api/add-item";
 import type { IProduct } from "@/modules/product/types";
 import { useTrackProductBehavior } from "@/modules/recommendation/hooks/useTrackProductBehavior";
+import { getStoredStorefrontUser } from "@/lib/auth-storage";
+import { addGuestCartItem } from "@/lib/guest-cart";
 
 const getAvgRating = (reviews?: Array<{ rating?: number }>) => {
   if (!reviews?.length) {
@@ -20,9 +22,28 @@ const getImageUrl = (product: IProduct) =>
 
 export const ProductCard = ({ product }: { product: IProduct }) => {
   const addMutation = useAddItem();
+  const navigate = useNavigate();
   const { trackAddToCart, trackClick } = useTrackProductBehavior();
 
   const handleAdd = async () => {
+    if (!getStoredStorefrontUser() && product.shop?.id) {
+      addGuestCartItem({
+        productId: product.id,
+        variantId: product.variants?.[0]?.id ?? null,
+        shopId: product.shop.id,
+        quantity: 1,
+      });
+      toast.success("ÄÃ£ lÆ°u sáº£n pháº©m, Ä‘Äƒng nháº­p Ä‘á»ƒ Ä‘á»“ng bá»™ giá» hÃ ng");
+      navigate("/login", { state: { redirect: window.location.pathname } });
+      return;
+    }
+
+    if (!getStoredStorefrontUser()) {
+      toast.error("Bạn cần đăng nhập để thêm vào giỏ hàng");
+      navigate("/login", { state: { redirect: window.location.pathname } });
+      return;
+    }
+
     if (!product.shop?.id) {
       toast.error("Sản phẩm chưa có thông tin shop");
       return;

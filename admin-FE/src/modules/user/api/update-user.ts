@@ -40,7 +40,9 @@ export const useUpdateUser = (
 
 // Toggle user status (active/inactive)
 const toggleUserStatus = async (id: string, isActive: boolean): Promise<UpdateUserResponse> => {
-    const res = await apiClient.patch(`${API_URL_USER}/${id}`, { isActive });
+    const res = isActive
+        ? await apiClient.patch(`${API_URL_USER}/${id}/unban`)
+        : await apiClient.patch(`${API_URL_USER}/${id}/ban`, { reason: "Admin locked from user management" });
     return res.data;
 };
 

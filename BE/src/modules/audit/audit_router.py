@@ -1,6 +1,6 @@
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from src.core.dependencies import get_optional_current_user, require_admin
@@ -45,8 +45,10 @@ async def track_client_event(
     request: Request,
     user=Depends(get_optional_current_user),
 ):
+    if not user:
+        raise HTTPException(401, "Authentication required")
     await AuditService.create(
-        actor_id=user.id if user else None,
+        actor_id=user.id,
         action=data.action,
         entity_type=data.entityType,
         entity_id=data.entityId,

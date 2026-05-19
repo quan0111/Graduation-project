@@ -39,7 +39,7 @@ export function LoginForm() {
           if (data?.user) {
             setUser(data.user)
           }
-          const redirectUrl = location.state?.redirect || "/"
+          const redirectUrl = location.state?.redirect ?? location.state?.from ?? "/"
           navigate(redirectUrl)
         },
         onError: (err: any) => {

@@ -105,7 +105,7 @@ export default function CategoriesPage() {
         </Button>
       </div>
 
-      <CategoryStats />
+      <CategoryStats categories={categories} />
 
       <div className="flex justify-end mb-4">
         <CategoryFilter value={search} onChange={setSearch} />

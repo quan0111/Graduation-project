@@ -2,17 +2,26 @@ import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 
 import { API_URL_PRODUCT } from "@/constant/config";
 import { apiClient } from "@/lib/api";
-const getProduct = async (): Promise<unknown[]> => {
-  const response = await apiClient.get(API_URL_PRODUCT);
+
+export type ProductQuery = {
+  page?: number;
+  limit?: number;
+  search?: string;
+  categoryId?: number;
+};
+
+const getProduct = async (params: ProductQuery = {}): Promise<unknown[]> => {
+  const response = await apiClient.get(API_URL_PRODUCT, { params });
   return response.data;
 };
 
 export const useGetProduct = (
-  config?: Omit<UseQueryOptions<unknown[], Error, unknown[], [string]>, "queryKey" | "queryFn">,
+  params: ProductQuery = {},
+  config?: Omit<UseQueryOptions<unknown[], Error, unknown[], [string, ProductQuery]>, "queryKey" | "queryFn">,
 ) => {
-  return useQuery<unknown[], Error, unknown[], [string]>({
-    queryKey: ["products"],
-    queryFn: getProduct,
+  return useQuery<unknown[], Error, unknown[], [string, ProductQuery]>({
+    queryKey: ["products", params],
+    queryFn: () => getProduct(params),
     ...config,
   });
 };

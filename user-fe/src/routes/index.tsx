@@ -13,6 +13,7 @@ import CheckOutPage from "@/modules/order/view/checkout";
 import OrderPage from "@/modules/order/view/order";
 import OrderDetailPage from "@/modules/order/view/order-detail";
 import PaymentSuccessPage from "@/modules/order/view/payment-success";
+import ReturnHistoryPage from "@/modules/return-request/view/history";
 
 import AccountPage from "@/modules/auth/view/me";
 import PromotionPage from "@/modules/promotion/view";
@@ -47,6 +48,7 @@ export const router = createBrowserRouter([
 
       { path: "orders", element: <RequireAuth><OrderPage /></RequireAuth> },
       { path: "orders/:id", element: <RequireAuth><OrderDetailPage /></RequireAuth> },
+      { path: "returns", element: <RequireAuth><ReturnHistoryPage /></RequireAuth> },
 
       { path: "account", element: <RequireAuth><AccountPage /></RequireAuth> },
       { path: "profile", element: <RequireAuth><AccountPage /></RequireAuth> },

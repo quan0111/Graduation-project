@@ -390,7 +390,7 @@ export function SellerRegistrationView() {
                   )}
 
                   {currentStep === 'shipping' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div key={`shipping-${currentStep}`} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                       <ShippingSettings
                         data={registration.taxInfo}
                         onNext={handleShippingNext}
@@ -411,7 +411,7 @@ export function SellerRegistrationView() {
                   )}
 
                   {currentStep === 'tax' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div key={`tax-${currentStep}`} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                       <TaxForm
                         initialData={registration.taxInfo}
                         onSubmit={handleTaxSubmit}

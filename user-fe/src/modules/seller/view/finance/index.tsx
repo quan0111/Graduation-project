@@ -38,9 +38,13 @@ export default function SellerFinancePage() {
       toast.error("Số tiền rút không hợp lệ");
       return;
     }
-    await payoutMutation.mutateAsync({ shopId: wallet.shopId, amount });
-    toast.success("Đã gửi yêu cầu rút tiền");
-    setPayoutAmount("");
+    try {
+      await payoutMutation.mutateAsync({ shopId: wallet.shopId, amount });
+      toast.success("Đã gửi yêu cầu rút tiền");
+      setPayoutAmount("");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || "Không thể gửi yêu cầu rút tiền");
+    }
   };
 
   return (

@@ -3,17 +3,12 @@ import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import type { ICoupon } from "../types";
 import { apiClient } from "@/lib/api";
 
-interface CouponApiResponse {
-    data: ICoupon[];
-    count: number;
-}
-
-interface CouponResponse {
-    data: CouponApiResponse;
-    error: boolean;
-    message: string;
-    timestamp: string;
-}
+type CouponResponse = ICoupon[] | {
+    data?: ICoupon[] | { data?: ICoupon[] };
+    error?: boolean;
+    message?: string;
+    timestamp?: string;
+};
 
 const getCoupon = async (): Promise<CouponResponse> => {
     const res = await apiClient.get(API_URL_COUPON);
@@ -74,7 +69,7 @@ export const useValidateCoupon = (
 export const useCalculateDiscount = (
   couponId: number,
   orderAmount: number,
-  config?: UseQueryOptions<any, Error>,
+  config?: Omit<UseQueryOptions<any, Error>, "queryKey" | "queryFn">,
 ) => {
   return useQuery({
     queryKey: ["coupon", "discount", couponId, orderAmount],

@@ -51,6 +51,9 @@ const getOrderTotal = (order: any) => Number(order.totalAmount ?? order.total_am
 
 const getOrderItems = (order: any) => order.items || order.Items || [];
 
+const isRevenueOrder = (order: any) =>
+  ['DELIVERED', 'COMPLETED', 'delivered', 'completed'].includes(order.status);
+
 const formatDateKey = (date: Date) => date.toISOString().slice(0, 10);
 
 const buildRevenueData = (orders: any[], period: string) => {
@@ -80,6 +83,7 @@ const buildRevenueData = (orders: any[], period: string) => {
   }
 
   orders.forEach((order) => {
+    if (!isRevenueOrder(order)) return;
     const date = getOrderDate(order);
     if (!date || date < start) return;
     const key = useDailyBuckets
@@ -105,7 +109,8 @@ const buildRevenueData = (orders: any[], period: string) => {
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState('6months');
   const { data: dashboard } = useDashboard();
-  const { data: orders = [] } = useGetAllOrders();
+  const { data: orderPage } = useGetAllOrders({ limit: 100 });
+  const orders = orderPage?.data || [];
   const { data: shops = [] } = useGetAllShop();
   const { data: products = [] } = useProducts();
   const { data: topProductsData, isLoading: topProductsLoading } = useQuery({
@@ -128,7 +133,7 @@ export default function AnalyticsPage() {
   const categoryData = useMemo(() => {
     const revenueByCategory = new Map<string, number>();
 
-    orders.forEach((order: any) => {
+    orders.filter(isRevenueOrder).forEach((order: any) => {
       getOrderItems(order).forEach((item: any) => {
         const product = productById.get(item.productId || item.product_id);
         const categoryName = product?.category?.name || 'Khác';
@@ -162,6 +167,10 @@ export default function AnalyticsPage() {
   }, [shopRevenueQueries, shops]);
 
   const topProducts = topProductsData?.products || [];
+  const topProductRank = useMemo(() => {
+    const ranking = topProductsData?.ranking || [];
+    return new Map(ranking.map((item: any, index: number) => [item.productId, { rank: index + 1, count: item._count?.productId ?? 0 }]));
+  }, [topProductsData]);
   const totalRevenue = Number(dashboard?.totalRevenue || 0);
   const totalOrders = Number(dashboard?.totalOrders || 0);
   const averageOrder = totalOrders > 0 ? totalRevenue / totalOrders : 0;
@@ -352,7 +361,9 @@ export default function AnalyticsPage() {
                   ) : topProducts.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Chưa có dữ liệu sản phẩm</p>
                   ) : (
-                    topProducts.map((product: any) => (
+                    topProducts.map((product: any, index: number) => {
+                      const rankInfo = topProductRank.get(product.id) || { rank: index + 1, count: 0 };
+                      return (
                       <div key={product.id} className="flex items-center gap-3">
                         <img
                           src={product.images?.[0]?.url || '/placeholder.png'}
@@ -363,9 +374,9 @@ export default function AnalyticsPage() {
                           <p className="truncate text-sm font-medium text-foreground">{product.name}</p>
                           <p className="text-xs text-muted-foreground">{product.category?.name || product.shop?.name || 'MarketHub'}</p>
                         </div>
-                        <span className="text-xs font-semibold text-foreground">{compactNumber(Number(product.price || 0))}</span>
+                        <span className="text-xs font-semibold text-foreground">#{rankInfo.rank} · {compactNumber(Number(rankInfo.count))}</span>
                       </div>
-                    ))
+                    )})
                   )}
                 </div>
               </CardContent>

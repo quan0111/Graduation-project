@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends
 
-from src.core.dependencies import get_current_user, require_seller_or_admin
+from src.core.dependencies import get_current_user, require_admin, require_seller_or_admin
 from src.modules.coupon.coupon_schema import CouponCreate, CouponOut, CouponUpdate
 from src.modules.coupon.coupon_service import CouponService
 
@@ -13,7 +13,8 @@ async def create_coupon(coupon_data: CouponCreate, user=Depends(require_seller_o
     new_coupon = await CouponService.create_coupon(coupon_data, user)
     return new_coupon
 @router.get("/", response_model=List[CouponOut])
-async def get_all_coupons():
+async def get_all_coupons(user=Depends(get_current_user)):
+    _ = user
     coupons = await CouponService.get_all_coupons()
     return coupons
 
@@ -27,12 +28,14 @@ async def validate_coupon(code: str, order_amount: float, user=Depends(get_curre
     return validation_result
 
 @router.patch("/use/{coupon_id}")
-async def use_coupon(coupon_id: int, user=Depends(get_current_user)):
-    used_coupon = await CouponService.use_coupon(coupon_id, user.id)
+async def use_coupon(coupon_id: int, order_id: int, user=Depends(require_admin)):
+    _ = user
+    used_coupon = await CouponService.use_coupon(coupon_id, order_id=order_id)
     return used_coupon
 
 @router.get("/{coupon_id}", response_model=CouponOut)
-async def get_coupon(coupon_id: int):
+async def get_coupon(coupon_id: int, user=Depends(get_current_user)):
+    _ = user
     coupon = await CouponService.get_coupon(coupon_id)
     return coupon
 

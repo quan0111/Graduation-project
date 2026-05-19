@@ -16,7 +16,7 @@ class MarketingService:
         payload = {
             "title": data.title,
             "imageUrl": data.imageUrl,
-            "status": "ACTIVE",
+            "status": data.status if hasattr(data, "status") else "ACTIVE",
             "position": data.position if hasattr(data, "position") else "HOME_TOP",
             "createdBy": {
                 "connect": {"id": user_id}

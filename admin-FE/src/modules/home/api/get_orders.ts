@@ -15,8 +15,8 @@ export const getOrders = async ({
     const response = await apiClient.post(
         `${API_URL_ADMIN}/orders`,
         {
-            ...filter,
-            ...pagination,
+            filter_data: filter,
+            pagination,
         }
     );
     return response.data;

@@ -1,6 +1,6 @@
 'use client';
 import type { ReactNode } from "react";
-import {  useMemo, useState } from "react";
+import {  useEffect, useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -92,7 +92,12 @@ export function DataTable<T extends { id?: number | string }>({
   }, [sortedData, page, pageSize, onPageChange]);
 
   const totalItems = total ?? data.length;
-  const totalPages = Math.ceil(totalItems / pageSize);
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+  useEffect(() => {
+    setSelected(new Set());
+    onSelectChange?.([]);
+  }, [page, data, onSelectChange]);
 
   // 🔥 CHECKBOX
   const toggleRow = (id: any) => {

@@ -42,7 +42,7 @@ export default function OrderDetailPage() {
     if (!window.confirm("Xác nhận bạn đã nhận được hàng?")) return;
     await completeMutation.mutateAsync({
       id: String(order.id),
-      data: { status: "completed" },
+      data: { status: "COMPLETED" as any },
     });
     await queryClient.invalidateQueries({ queryKey: ["orders", "detail", order.id] });
     await queryClient.invalidateQueries({ queryKey: ["orders"] });
@@ -103,7 +103,7 @@ export default function OrderDetailPage() {
                   Hủy đơn hàng
                 </button>
               )}
-              {order.status === "completed" && (
+              {["completed", "COMPLETED"].includes(String(order.status)) ? (
                 <button
                   onClick={() => setShowReturnForm(true)}
                   className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -111,7 +111,7 @@ export default function OrderDetailPage() {
                   <RotateCcw className="size-4" />
                   Yêu cầu trả hàng
                 </button>
-              )}
+              ) : null}
             </div>
           </aside>
         </div>

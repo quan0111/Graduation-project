@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { API_URL_LOGIN } from "../../../constant/config";
 import { saveStorefrontSession } from "@/lib/auth-storage";
+import { mergeGuestCartToAccount } from "@/lib/guest-cart";
 import { apiClient } from "../../../lib/api";
 import type { MutationConfig } from "../../../lib/react-query";
 import type { AuthResponse, RegisterRequest } from "../types";
@@ -22,7 +23,9 @@ export const useRegister = ({ config }: UseRegisterOption = {}) => {
     mutationFn: register,
     onSuccess: async (data) => {
       saveStorefrontSession(data.access_token, data.user);
+      await mergeGuestCartToAccount();
       await queryClient.invalidateQueries({ queryKey: ["auth"] });
+      await queryClient.invalidateQueries({ queryKey: ["cart", data.user.id] });
     },
     ...config,
   });

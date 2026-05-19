@@ -69,6 +69,12 @@ async def get_shop_payouts(shop_id: int, user=Depends(require_seller_or_admin)):
     return await FinanceService.get_payouts_by_shop(shop_id)
 
 
+@router.get("/payouts", response_model=List[PayoutOut])
+async def get_all_payouts(status: str | None = None, user=Depends(require_admin)):
+    _ = user
+    return await FinanceService.get_all_payouts(status)
+
+
 
 @router.get("/shop/{shop_id}/revenue")
 async def shop_revenue(shop_id: int, user=Depends(require_seller_or_admin)):

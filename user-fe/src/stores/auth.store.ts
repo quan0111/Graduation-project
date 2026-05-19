@@ -6,12 +6,13 @@ import { API_URL_LOGIN } from "@/constant/config";
 import {
     STOREFRONT_AUTH_PERSIST_KEY,
     clearStorefrontSession,
+    setStoredStorefrontUser,
 } from "@/lib/auth-storage";
 
 type AuthState = {
     user: AuthUser | null;
 
-    setUser: (user: AuthUser) => void;
+    setUser: (user: AuthUser | null) => void;
     logout: () => void;
 };
 
@@ -23,9 +24,11 @@ export const useAuthStore = create<AuthState>()(
 
             setUser: (user) => {
                 if (!user) {
+                    clearStorefrontSession();
                     set({ user: null });
                     return;
                 }
+                setStoredStorefrontUser(user);
                 set({ user });
             },
 

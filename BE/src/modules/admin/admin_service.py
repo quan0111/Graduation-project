@@ -15,8 +15,14 @@ from src.modules.notification.notification_service import NotificationService
 
 class AdminService:
     @staticmethod
+    def _to_value(value):
+        return value.value if hasattr(value, "value") else str(value)
+
+    @staticmethod
     async def set_product_status(product_id: int, status: str, ban_reason: str = "", admin_id: int | None = None):
-        allowed = {"ACTIVE", "DRAFT", "REJECT", "BANNED", "OUT_OF_STOCK", "APROVAL"}
+        if status == "APROVAL":
+            status = "APPROVAL"
+        allowed = {"ACTIVE", "DRAFT", "REJECT", "BANNED", "OUT_OF_STOCK", "APPROVAL"}
         if status not in allowed:
             raise HTTPException(400, "Invalid product status")
 
@@ -120,20 +126,131 @@ class AdminService:
     @staticmethod
     async def get_dashboard_stats() -> DashboardStats:
 
-        total_users = await prisma.user.count()
-        total_orders = await prisma.order.count()
-        total_products = await prisma.product.count()
-        total_shops = await prisma.shop.count()
+        total_users = await prisma.user.count(where={"deletedAt": None})
+        total_orders = await prisma.order.count(where={"deletedAt": None})
+        total_products = await prisma.product.count(where={"deletedAt": None})
+        total_shops = await prisma.shop.count(where={"deletedAt": None})
 
-        orders = await prisma.order.find_many(where={"deletedAt": None})
-        total_revenue = sum((order.totalAmount or 0) for order in orders)
+        orders = await prisma.order.find_many(
+            where={"deletedAt": None},
+            include={"items": {"include": {"shop": True}}},
+            order={"createdAt": "desc"},
+        )
+        revenue_statuses = {"DELIVERED", "COMPLETED"}
+        total_revenue = sum((order.totalAmount or 0) for order in orders if AdminService._to_value(order.status) in revenue_statuses)
+
+        revenue_by_month: dict[str, dict] = {}
+        for order in orders:
+            key = order.createdAt.strftime("%Y-%m")
+            item = revenue_by_month.setdefault(key, {"month": key, "revenue": 0.0, "orders": 0})
+            item["orders"] += 1
+            if AdminService._to_value(order.status) in revenue_statuses:
+                item["revenue"] += float(order.totalAmount or 0)
+
+        products = await prisma.product.find_many(
+            where={"deletedAt": None},
+            include={"shop": True, "category": True, "images": True},
+            order={"createdAt": "desc"},
+        )
+        category_counts: dict[str, int] = {}
+        for product in products:
+            category_name = product.category.name if product.category else "Khac"
+            category_counts[category_name] = category_counts.get(category_name, 0) + 1
+        product_total = max(sum(category_counts.values()), 1)
+        category_stats = [
+            {"name": name, "value": count, "percent": round(count * 100 / product_total, 2)}
+            for name, count in sorted(category_counts.items(), key=lambda item: item[1], reverse=True)
+        ][:8]
+
+        pending_products = [
+            {
+                "id": product.id,
+                "name": product.name,
+                "shop": product.shop.name if product.shop else "N/A",
+                "price": product.price,
+                "category": product.category.name if product.category else "N/A",
+                "submittedAt": product.createdAt,
+                "image": product.images[0].url if product.images else None,
+            }
+            for product in products
+            if AdminService._to_value(product.status) in {"DRAFT", "APPROVAL", "APROVAL"}
+        ][:5]
+
+        shops = await prisma.shop.find_many(
+            where={"deletedAt": None},
+            include={"owner": True, "products": True},
+            order={"createdAt": "desc"},
+        )
+        pending_shops = [
+            {
+                "id": shop.id,
+                "name": shop.name,
+                "owner": shop.owner.fullName if shop.owner else None,
+                "email": shop.owner.email if shop.owner else None,
+                "submittedAt": shop.createdAt,
+                "documents": "Da gui",
+            }
+            for shop in shops
+            if not shop.isActive
+        ][:5]
+
+        shop_revenue: dict[int, dict] = {}
+        for order in orders:
+            if AdminService._to_value(order.status) not in revenue_statuses:
+                continue
+            for item in order.items:
+                entry = shop_revenue.setdefault(
+                    item.shopId,
+                    {
+                        "id": item.shopId,
+                        "name": item.shop.name if item.shop else f"Shop #{item.shopId}",
+                        "revenue": 0.0,
+                        "orders": set(),
+                        "products": 0,
+                    },
+                )
+                entry["revenue"] += float(item.price or 0) * int(item.quantity or 0)
+                entry["orders"].add(order.id)
+        product_count_by_shop: dict[int, int] = {}
+        for product in products:
+            product_count_by_shop[product.shopId] = product_count_by_shop.get(product.shopId, 0) + 1
+        top_shops = []
+        for entry in sorted(shop_revenue.values(), key=lambda item: item["revenue"], reverse=True)[:5]:
+            top_shops.append(
+                {
+                    **entry,
+                    "orders": len(entry["orders"]),
+                    "products": product_count_by_shop.get(entry["id"], 0),
+                }
+            )
+
+        audit_logs = await prisma.auditlog.find_many(
+            order={"createdAt": "desc"},
+            take=8,
+        )
+        recent_activity = [
+            {
+                "id": log.id,
+                "type": log.action,
+                "message": f"{log.action} {log.entityType or ''} #{log.entityId or ''}".strip(),
+                "time": log.createdAt,
+                "severity": AdminService._to_value(log.severity),
+            }
+            for log in audit_logs
+        ]
 
         return DashboardStats(
             totalUsers=total_users,
             totalOrders=total_orders,
             totalProducts=total_products,
             totalShops=total_shops,
-            totalRevenue=total_revenue or 0.0
+            totalRevenue=total_revenue or 0.0,
+            revenueByMonth=list(sorted(revenue_by_month.values(), key=lambda item: item["month"])),
+            categoryStats=category_stats,
+            pendingShops=pending_shops,
+            pendingProducts=pending_products,
+            topShops=top_shops,
+            recentActivity=recent_activity,
         )
     @staticmethod
     async def get_orders(filter_data: OrderFilter, pagination: Pagination):
@@ -156,16 +273,29 @@ class AdminService:
 
         skip = (pagination.page - 1) * pagination.limit
 
-        return await prisma.order.find_many(
+        total = await prisma.order.count(where=where)
+        data = await prisma.order.find_many(
             where=where,
             skip=skip,
             take=pagination.limit,
             include={
                 "user": True,
-                "items": True
+                "items": {"include": {"shop": True}},
+                "payment": True,
+                "shippingAddress": True,
+                "cancellation": True,
             },
             order={"createdAt": "desc"}
         )
+        return {
+            "data": data,
+            "pagination": {
+                "page": pagination.page,
+                "limit": pagination.limit,
+                "total": total,
+                "totalPages": (total + pagination.limit - 1) // pagination.limit,
+            },
+        }
     @staticmethod
     async def get_sellers(filter_data: SellerFilter, pagination: Pagination):
 
@@ -173,9 +303,6 @@ class AdminService:
 
         if filter_data.isActive is not None:
             where["isActive"] = filter_data.isActive
-
-        if filter_data.isVerified is not None:
-            where["isVerified"] = filter_data.isVerified
 
         skip = (pagination.page - 1) * pagination.limit
 
@@ -201,7 +328,7 @@ class AdminService:
 
         return await prisma.shop.update(
             where={"id": shop_id},
-            data=data.dict(exclude_unset=True)
+            data=data.dict(exclude_unset=True, exclude={"isVerified"})
         )
 
     @staticmethod

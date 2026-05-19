@@ -17,7 +17,7 @@ type ProductFilterStatus = "all" | "active" | "inactive";
 const productStatusMeta: Record<string, { label: string; tone: string }> = {
   ACTIVE: { label: "Đang bán", tone: "bg-emerald-50 text-emerald-700" },
   DRAFT: { label: "Bản nháp", tone: "bg-slate-100 text-slate-700" },
-  APROVAL: { label: "Chờ duyệt", tone: "bg-amber-50 text-amber-700" },
+  APPROVAL: { label: "Chờ duyệt", tone: "bg-amber-50 text-amber-700" },
   REJECT: { label: "Bị từ chối", tone: "bg-rose-50 text-rose-700" },
   BANNED: { label: "Bị khóa", tone: "bg-rose-50 text-rose-700" },
   OUT_OF_STOCK: { label: "Hết hàng", tone: "bg-rose-50 text-rose-700" },

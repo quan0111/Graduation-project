@@ -1,4 +1,10 @@
-export const API_URL = import.meta.env.VITE_API_URL
+const rawApiUrl = import.meta.env.VITE_API_URL
+
+if (!rawApiUrl) {
+  throw new Error("Missing required env VITE_API_URL")
+}
+
+export const API_URL = rawApiUrl.endsWith("/") ? rawApiUrl : `${rawApiUrl}/`
 export const API_URL_LOGIN = `${API_URL}auth`
 export const API_URL_SHOP = `${API_URL}shops`
 export const API_URL_PRODUCT = `${API_URL}products`

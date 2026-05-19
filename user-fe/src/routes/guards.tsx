@@ -41,7 +41,7 @@ export function RequireSeller({ children }: { children: ReactNode }) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
-  if (data.role !== "SELLER") {
+  if (String(data.role).toUpperCase() !== "SELLER") {
     return <Navigate to="/seller" replace state={{ reason: "seller_required" }} />;
   }
 

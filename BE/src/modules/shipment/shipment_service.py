@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from prisma import Json
 
 from src.core.database import prisma
+from src.core.dependencies import get_role_value
 from src.modules.audit.audit_service import AuditService
 
 
@@ -83,7 +84,7 @@ class ShipmentService:
         if order.userId == current_user.id:
             return order
 
-        if current_user.role != "SELLER":
+        if get_role_value(current_user) != "SELLER":
             raise HTTPException(403, "Forbidden")
 
         shop = await ShipmentService._get_seller_shop(current_user.id)
@@ -94,7 +95,7 @@ class ShipmentService:
 
     @staticmethod
     async def _assert_mutation_access(order_id: int, current_user):
-        if current_user.role != "SELLER":
+        if get_role_value(current_user) != "SELLER":
             raise HTTPException(403, "Only sellers can update tracking")
 
         shop = await ShipmentService._get_seller_shop(current_user.id)

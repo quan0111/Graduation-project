@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { API_URL_USER } from "@/constant/config";
+import { API_URL_LOGIN, API_URL_USER } from "@/constant/config";
 import { clearAdminSession, setStoredAdminUser } from "@/lib/auth-storage";
 import { apiClient } from "@/lib/api";
 import type { MutationConfig } from "@/lib/react-query";
@@ -30,7 +30,10 @@ export interface UpdatePasswordRequest {
 
 
 export const getCurrentUser = async (): Promise<User> => {
-    const response = await apiClient.get(`${API_URL_USER}/me`);
+    const response = await apiClient.get(`${API_URL_LOGIN}/admin/me`);
+    if (response.data?.id) {
+        setStoredAdminUser(response.data);
+    }
     return response.data;
 };
 
@@ -38,7 +41,7 @@ export const useGetCurrentUser = (
     config?: Omit<UseQueryOptions<User, Error>, "queryKey" | "queryFn">
 ) => {
     return useQuery<User, Error>({
-        queryKey: ["user", "me"],
+        queryKey: ["auth"],
         queryFn: getCurrentUser,
         ...config,
     });

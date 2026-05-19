@@ -142,6 +142,7 @@ class OrderBase(BaseModel):
     userId: int
     subtotal: float
     shippingFee: float = 0
+    shippingMethod: Optional[str] = None
     discountAmount: float = 0
     totalAmount: float
     shippingAddressId: Optional[int] = None
@@ -171,6 +172,7 @@ class OrderOut(BaseModel):
     status: str
     subtotal: float
     shippingFee: float
+    shippingMethod: Optional[str] = None
     discountAmount: float
     totalAmount: float
     shippingAddressId: Optional[int] = None

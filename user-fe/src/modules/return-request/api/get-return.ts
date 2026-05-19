@@ -43,7 +43,7 @@ const getSellerReturnRequests = async (): Promise<ReturnRequest[]> => {
 
 export const useReturnRequest = (
   returnId: number,
-  config?: UseQueryOptions<ReturnRequest, Error>,
+  config?: Omit<UseQueryOptions<ReturnRequest, Error>, "queryKey" | "queryFn">,
 ) => {
   return useQuery({
     queryKey: ["return", returnId],
@@ -54,7 +54,7 @@ export const useReturnRequest = (
 
 export const useUserReturnRequests = (
   userId: number,
-  config?: UseQueryOptions<ReturnRequest[], Error>,
+  config?: Omit<UseQueryOptions<ReturnRequest[], Error>, "queryKey" | "queryFn">,
 ) => {
   return useQuery({
     queryKey: ["returns", "user", userId],
@@ -64,7 +64,7 @@ export const useUserReturnRequests = (
 };
 
 export const useSellerReturnRequests = (
-  config?: UseQueryOptions<ReturnRequest[], Error>,
+  config?: Omit<UseQueryOptions<ReturnRequest[], Error>, "queryKey" | "queryFn">,
 ) => {
   return useQuery({
     queryKey: ["returns", "seller"],

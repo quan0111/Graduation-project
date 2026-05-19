@@ -8,6 +8,13 @@ import { useGetReview } from "../api/get-review";
 import { useUpdateReview } from "../api/update-review";
 import { toast } from "sonner";
 
+const normalizeReviews = (value: any) => {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.data)) return value.data;
+  if (Array.isArray(value?.data?.data)) return value.data.data;
+  return [];
+};
+
 export default function ReviewsPage() {
   const [search, setSearch] = useState("");
   const [ratingFilter, setRatingFilter] = useState<number | null>(null);
@@ -17,7 +24,7 @@ export default function ReviewsPage() {
   // ================= API =================
   const { data, isLoading, isError } = useGetReview({ });
 
-  const reviews = data?.data?.data || [];
+  const reviews = normalizeReviews(data);
 
 
 

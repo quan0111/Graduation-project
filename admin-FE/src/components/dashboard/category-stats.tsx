@@ -3,21 +3,26 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-const data = [
-  { name: "Thời trang", value: 35, color: "oklch(0.72 0.19 160)" },
-  { name: "Điện tử", value: 25, color: "oklch(0.65 0.2 250)" },
-  { name: "Làm đẹp", value: 18, color: "oklch(0.75 0.15 70)" },
-  { name: "Gia dụng", value: 12, color: "oklch(0.68 0.18 290)" },
-  { name: "Khác", value: 10, color: "oklch(0.5 0 0)" },
+const colors = [
+  "oklch(0.72 0.19 160)",
+  "oklch(0.65 0.2 250)",
+  "oklch(0.75 0.15 70)",
+  "oklch(0.68 0.18 290)",
+  "oklch(0.5 0 0)",
 ]
 
-export function CategoryStats() {
+export function CategoryStats({ data }: { data: Array<{ name: string; value: number; percent?: number }> }) {
+  const chartData = data.map((item, index) => ({
+    ...item,
+    color: colors[index % colors.length],
+  }))
+
   return (
     <Card className="bg-card border-border">
       <CardHeader>
-        <CardTitle className="text-foreground">Phân bổ danh mục</CardTitle>
+        <CardTitle className="text-foreground">Phan bo danh muc</CardTitle>
         <CardDescription className="text-muted-foreground">
-          Tỷ lệ sản phẩm theo danh mục
+          Ty le san pham theo danh muc
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -26,7 +31,7 @@ export function CategoryStats() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={data}
+                  data={chartData}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -34,7 +39,7 @@ export function CategoryStats() {
                   paddingAngle={2}
                   dataKey="value"
                 >
-                  {data.map((entry, index) => (
+                  {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -45,13 +50,13 @@ export function CategoryStats() {
                     borderRadius: "8px",
                     color: "oklch(0.98 0 0)",
                   }}
-                  formatter={(value) => [`${value}%`, "Tỷ lệ"]}
+                  formatter={(value) => [`${value}`, "San pham"]}
                 />
               </PieChart>
             </ResponsiveContainer>
           </div>
           <div className="flex flex-1 flex-col gap-2">
-            {data.map((category) => (
+            {chartData.map((category) => (
               <div
                 key={category.name}
                 className="flex items-center justify-between"
@@ -64,10 +69,13 @@ export function CategoryStats() {
                   <span className="text-sm text-foreground">{category.name}</span>
                 </div>
                 <span className="text-sm font-medium text-foreground">
-                  {category.value}%
+                  {category.percent ?? category.value}%
                 </span>
               </div>
             ))}
+            {!chartData.length && (
+              <p className="text-sm text-muted-foreground">Chua co du lieu danh muc.</p>
+            )}
           </div>
         </div>
       </CardContent>

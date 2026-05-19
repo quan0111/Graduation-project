@@ -1,92 +1,48 @@
 "use client"
 
-import { Check, X, Eye, Clock } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Clock, Eye } from "lucide-react"
+import { Link } from "react-router-dom"
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-const pendingShops = [
-  {
-    id: 1,
-    name: "Thời trang Hà Nội",
-    owner: "Nguyễn Văn A",
-    email: "nguyenvana@gmail.com",
-    category: "Thời trang",
-    submittedAt: "2 giờ trước",
-    documents: "Đầy đủ",
-  },
-  {
-    id: 2,
-    name: "Điện tử Sài Gòn",
-    owner: "Trần Thị B",
-    email: "tranthib@gmail.com",
-    category: "Điện tử",
-    submittedAt: "5 giờ trước",
-    documents: "Đầy đủ",
-  },
-  {
-    id: 3,
-    name: "Mỹ phẩm Đà Nẵng",
-    owner: "Lê Văn C",
-    email: "levanc@gmail.com",
-    category: "Làm đẹp",
-    submittedAt: "1 ngày trước",
-    documents: "Thiếu CCCD",
-  },
-  {
-    id: 4,
-    name: "Đồ gia dụng Pro",
-    owner: "Phạm Thị D",
-    email: "phamthid@gmail.com",
-    category: "Gia dụng",
-    submittedAt: "1 ngày trước",
-    documents: "Đầy đủ",
-  },
-]
-
-export function PendingShops() {
+export function PendingShops({ shops = [] }: { shops?: any[] }) {
   return (
     <Card className="bg-card border-border">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle className="text-foreground">Shop chờ duyệt</CardTitle>
+          <CardTitle className="text-foreground">Shop cho duyet</CardTitle>
           <CardDescription className="text-muted-foreground">
-            12 shop đang chờ phê duyệt
+            {shops.length} shop dang cho phe duyet
           </CardDescription>
         </div>
-        <Button variant="outline" size="sm" className="text-foreground">
-          Xem tất cả
-        </Button>
+        <Link to="/seller-applications" className="rounded-md border px-3 py-1.5 text-sm text-foreground">
+          Xem tat ca
+        </Link>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {pendingShops.map((shop) => (
+          {shops.map((shop) => (
             <div
               key={shop.id}
               className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4"
             >
               <div className="flex items-center gap-4">
                 <Avatar className="size-10">
-                  <AvatarImage src="/placeholder.svg" />
+                  <AvatarImage src={shop.avatarUrl || "/placeholder.svg"} />
                   <AvatarFallback className="bg-primary/20 text-primary">
-                    {shop.name.charAt(0)}
+                    {(shop.name || "S").charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="font-medium text-foreground">{shop.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    {shop.owner} • {shop.email}
+                    {shop.owner || "N/A"} - {shop.email || "N/A"}
                   </p>
                   <div className="mt-1 flex items-center gap-2">
                     <Badge variant="secondary" className="text-xs">
-                      {shop.category}
-                    </Badge>
-                    <Badge
-                      variant={shop.documents === "Đầy đủ" ? "default" : "destructive"}
-                      className="text-xs"
-                    >
-                      {shop.documents}
+                      {shop.documents || "Da gui"}
                     </Badge>
                   </div>
                 </div>
@@ -94,20 +50,15 @@ export function PendingShops() {
               <div className="flex items-center gap-2">
                 <div className="mr-4 flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="size-3" />
-                  {shop.submittedAt}
+                  {shop.submittedAt ? new Date(shop.submittedAt).toLocaleString("vi-VN") : "N/A"}
                 </div>
-                <Button size="icon" variant="ghost" className="size-8 text-muted-foreground hover:text-foreground">
+                <Link to="/seller-applications" className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground">
                   <Eye className="size-4" />
-                </Button>
-                <Button size="icon" variant="ghost" className="size-8 text-primary hover:bg-primary/20">
-                  <Check className="size-4" />
-                </Button>
-                <Button size="icon" variant="ghost" className="size-8 text-destructive hover:bg-destructive/20">
-                  <X className="size-4" />
-                </Button>
+                </Link>
               </div>
             </div>
           ))}
+          {!shops.length && <p className="text-sm text-muted-foreground">Khong co shop cho duyet.</p>}
         </div>
       </CardContent>
     </Card>

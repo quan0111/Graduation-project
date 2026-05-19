@@ -43,7 +43,7 @@ class ReviewReplyOut(BaseModel):
 
 class UserShort(BaseModel):
     id: int
-    email: str
+    fullName: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

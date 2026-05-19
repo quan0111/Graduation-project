@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { CatalogHeader } from "@/modules/product/components/catalogHeader";
@@ -18,14 +18,23 @@ import { useTrackProductBehavior } from "@/modules/recommendation/hooks/useTrack
 export default function ProductPage() {
   const [searchParams] = useSearchParams();
   const categoryFilter = searchParams.get("category")?.toLowerCase().trim() ?? "";
+  const searchParam = searchParams.get("search") ?? "";
+  const [search, setSearch] = useState(searchParam);
+  const deferredSearch = useDeferredValue(search.trim().toLowerCase());
 
-  const { data: rawProducts = [], isLoading } = useGetProduct();
+  const { data: rawProducts = [], isLoading } = useGetProduct({
+    page: 1,
+    limit: 48,
+    search: deferredSearch || undefined,
+  });
   const { data: recommendedProducts = [], isLoading: recommendationLoading } = useRecommendations({ topK: 10 });
   const { trackClick } = useTrackProductBehavior();
 
   const apiProducts: IProduct[] = rawProducts.map((product) => normalizeProduct(product as Record<string, unknown>));
-  const [search, setSearch] = useState("");
-  const deferredSearch = useDeferredValue(search.trim().toLowerCase());
+
+  useEffect(() => {
+    setSearch(searchParam);
+  }, [searchParam]);
 
   const shops = useMemo(() => {
     const shopMap = new Map<number, IShop>();

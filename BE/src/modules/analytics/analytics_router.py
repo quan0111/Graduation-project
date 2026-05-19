@@ -8,7 +8,9 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
 
 @router.post("/track")
-async def track_event(data: BehaviorCreate):
+async def track_event(data: BehaviorCreate, user=Depends(get_current_user)):
+    if data.userId != user.id and get_role_value(user) != "ADMIN":
+        raise HTTPException(status_code=403, detail="Forbidden")
     return await AnalyticsService.track_event(data)
 
 

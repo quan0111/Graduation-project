@@ -55,13 +55,6 @@ export function ShopFilter({
         </Button>
 
         <Button
-          variant={value === "pending" ? "default" : "outline"}
-          onClick={() => onChange("pending")}
-        >
-          Chờ duyệt ({count("pending")})
-        </Button>
-
-        <Button
           variant={value === "suspended" ? "default" : "outline"}
           onClick={() => onChange("suspended")}
         >

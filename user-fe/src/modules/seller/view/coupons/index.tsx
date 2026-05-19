@@ -12,6 +12,13 @@ import { useActivateCoupon, useDeactivateCoupon } from "@/modules/coupon/api/upd
 import { CouponForm } from "@/modules/coupon/components/couponForm";
 import { useGetShopByOwnerId } from "@/modules/shop/api/myshop";
 
+const normalizeCoupons = (value: any) => {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.data)) return value.data;
+  if (Array.isArray(value?.data?.data)) return value.data.data;
+  return [];
+};
+
 export default function SellerCouponsPage() {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -21,7 +28,7 @@ export default function SellerCouponsPage() {
   const activateMutation = useActivateCoupon();
   const deactivateMutation = useDeactivateCoupon();
 
-  const coupons = couponsData?.data?.data || [];
+  const coupons = normalizeCoupons(couponsData);
   const shopId = myShop?.id;
 
   const filteredCoupons = coupons.filter(

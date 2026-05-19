@@ -100,6 +100,12 @@ class FinanceService:
         if not shop:
             raise HTTPException(404, "Shop not found")
 
+        wallet = await FinanceService.get_shop_wallet(data.shopId)
+        if float(data.amount or 0) <= 0:
+            raise HTTPException(400, "Payout amount must be greater than 0")
+        if float(data.amount or 0) > float(wallet["availableBalance"] or 0):
+            raise HTTPException(400, "Payout amount exceeds available balance")
+
         return await prisma.sellerpayout.create(
             data={
                 "amount": data.amount,
@@ -149,6 +155,17 @@ class FinanceService:
             where={"shopId": shop_id},
             include={"shop": True},
             order={"createdAt": "desc"}
+        )
+
+    @staticmethod
+    async def get_all_payouts(status: str | None = None):
+        where = {}
+        if status:
+            where["status"] = status.upper()
+        return await prisma.sellerpayout.find_many(
+            where=where,
+            include={"shop": True},
+            order={"createdAt": "desc"},
         )
 
     @staticmethod
@@ -204,9 +221,9 @@ class FinanceService:
 
         for item in items:
             amount = float(item.price or 0) * int(item.quantity or 0)
-            gross_revenue += amount
             status = FinanceService._to_value(item.order.status) if item.order else ""
             if status in completed_statuses:
+                gross_revenue += amount
                 completed_revenue += amount
                 completed_items.append(item)
             elif status in pending_statuses:
@@ -217,7 +234,7 @@ class FinanceService:
                 cancelled_revenue += amount
 
         _, commission = await FinanceService._calculate_item_commission(completed_items)
-        available = max(completed_revenue - commission - refunded_revenue, 0)
+        available = max(completed_revenue - commission, 0)
         pending_payout = sum(float(p.amount or 0) for p in payouts if FinanceService._to_value(p.status) in {"PENDING", "PROCESSING"})
         paid_payout = sum(float(p.amount or 0) for p in payouts if FinanceService._to_value(p.status) == "PAID")
 
@@ -253,6 +270,7 @@ class FinanceService:
         order_ids = set()
         cancelled_order_ids = set()
         returned_order_ids = set()
+        completed_statuses = {"DELIVERED", "COMPLETED"}
 
         for item in items:
             if not item.order:
@@ -267,25 +285,27 @@ class FinanceService:
             day = item.order.createdAt.date().isoformat()
             amount = float(item.price or 0) * int(item.quantity or 0)
             daily.setdefault(day, {"date": day, "revenue": 0.0, "orders": set(), "cancelled": 0, "returned": 0})
-            daily[day]["revenue"] += 0 if status == "CANCELLED" else amount
+            if status in completed_statuses:
+                daily[day]["revenue"] += amount
             daily[day]["orders"].add(item.orderId)
             if status == "CANCELLED":
                 daily[day]["cancelled"] += 1
             if status in {"RETURN_REQUESTED", "RETURNED"}:
                 daily[day]["returned"] += 1
 
-            top_products.setdefault(
-                item.productId,
-                {
-                    "productId": item.productId,
-                    "name": item.productName,
-                    "sold": 0,
-                    "revenue": 0.0,
-                    "image": item.productImage,
-                },
-            )
-            top_products[item.productId]["sold"] += int(item.quantity or 0)
-            top_products[item.productId]["revenue"] += amount
+            if status in completed_statuses:
+                top_products.setdefault(
+                    item.productId,
+                    {
+                        "productId": item.productId,
+                        "name": item.productName,
+                        "sold": 0,
+                        "revenue": 0.0,
+                        "image": item.productImage,
+                    },
+                )
+                top_products[item.productId]["sold"] += int(item.quantity or 0)
+                top_products[item.productId]["revenue"] += amount
 
         daily_revenue = [
             {

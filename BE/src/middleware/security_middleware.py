@@ -9,9 +9,9 @@ class SecurityMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
 
-        check_ip_blacklist(request)
+        await check_ip_blacklist(request)
 
-        check_rate_limit(request)
+        await check_rate_limit(request)
 
         response = await call_next(request)
 

@@ -19,6 +19,9 @@ import AdminProfilePage from "@/modules/auth/view/me"
 import ReturnsPage from "@/modules/returns/view"
 import ViolationsPage from "@/modules/violations/view"
 import AuditPage from "@/modules/audit/view"
+import NotificationsPage from "@/modules/notifications/view"
+import AdminFinancePage from "@/modules/finance/view"
+import MarketingPage from "@/modules/marketing/view"
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -49,6 +52,10 @@ export const router = createBrowserRouter([
         element: <TransactionsPage />,
       },
       {
+        path: "finance",
+        element: <AdminFinancePage />,
+      },
+      {
         path: "shops",
         element: <ShopsPage />,
       },
@@ -59,6 +66,10 @@ export const router = createBrowserRouter([
       {
         path: "promotions",
         element: <PromotionsPage />,
+      },
+      {
+        path: "marketing",
+        element: <MarketingPage />,
       },
       {
         path: "products",
@@ -79,6 +90,10 @@ export const router = createBrowserRouter([
       {
         path: "audit",
         element: <AuditPage />,
+      },
+      {
+        path: "notifications",
+        element: <NotificationsPage />,
       },
       {
         path: "categories",

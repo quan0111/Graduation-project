@@ -141,7 +141,9 @@ export const ReturnRequestForm: React.FC<ReturnRequestFormProps> = ({
                     className="size-4"
                   />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-slate-900">{item.productName}</p>
+                    <p className="text-sm font-medium text-slate-900">
+                      {item.productName || item.product_name || item.product?.name || "Sản phẩm"}
+                    </p>
                     <p className="text-xs text-slate-500">Số lượng: {item.quantity}</p>
                   </div>
                   {selectedItems[item.id] !== undefined && (

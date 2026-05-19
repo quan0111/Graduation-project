@@ -1,6 +1,6 @@
 'use client';
 
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Search, ShoppingCart, User, Heart, Menu, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,8 @@ import { useLogout } from '@/modules/auth/api/logout';
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const navigate = useNavigate();
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -18,7 +20,7 @@ export default function Header() {
   const { mutate: logout } = useLogout();
 
   // 🔥 FIX: đúng field backend
-  const cartCount = user?.cart?.itemCount ?? 0;
+  const cartCount = user?.cart?.totalItems ?? user?.cart?.itemCount ?? 0;
 
   // 👉 click ngoài để đóng dropdown
   useEffect(() => {
@@ -31,6 +33,11 @@ export default function Header() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleSearch = () => {
+    const query = searchTerm.trim();
+    navigate(query ? `/products?search=${encodeURIComponent(query)}` : "/products");
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-border">
@@ -92,9 +99,20 @@ export default function Header() {
                 type="text"
                 placeholder="Tìm kiếm sản phẩm..."
                 className="w-full pl-4 pr-12"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    handleSearch();
+                  }
+                }}
               />
 
-              <button className="absolute right-1 top-1/2 -translate-y-1/2 bg-primary text-white p-2 rounded">
+              <button
+                type="button"
+                onClick={handleSearch}
+                className="absolute right-1 top-1/2 -translate-y-1/2 bg-primary text-white p-2 rounded"
+              >
                 <Search size={16} />
               </button>
             </div>
@@ -156,6 +174,14 @@ export default function Header() {
                       className="block px-4 py-2 hover:bg-muted"
                     >
                       Đơn hàng
+                    </Link>
+
+                    <Link
+                      to="/returns"
+                      onClick={() => setIsDropdownOpen(false)}
+                      className="block px-4 py-2 hover:bg-muted"
+                    >
+                      Doi tra
                     </Link>
 
                     {/* SELLER */}

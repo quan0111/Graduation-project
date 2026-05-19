@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 export const createCategory = async (data: ICategory): Promise<any> => {
     const response = await apiClient.post(`${API_URL_CATEGORY}`, data);
-    return response.data.data;
+    return response.data?.data ?? response.data;
 };
 
 type UseCreateCategoryOptions = {

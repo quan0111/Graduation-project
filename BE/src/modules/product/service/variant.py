@@ -204,6 +204,15 @@ class VariantService:
         )
 
     @staticmethod
+    async def get_variant_image(image_id: int):
+        image = await prisma.variantimage.find_first(
+            where={"id": image_id, "deletedAt": None}
+        )
+        if not image:
+            raise HTTPException(404, "Image not found")
+        return image
+
+    @staticmethod
     async def _assert_variant_image_access(image_id: int, viewer):
         image = await prisma.variantimage.find_unique(
             where={"id": image_id},

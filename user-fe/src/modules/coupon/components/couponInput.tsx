@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import { useCouponByCode, useValidateCoupon } from "../api/get-coupon";
+import { useCalculateDiscount, useValidateCoupon } from "../api/get-coupon";
 
 interface CouponInputProps {
   orderAmount: number;
@@ -32,12 +32,18 @@ export const CouponInput: React.FC<CouponInputProps> = ({
   }, [code]);
 
   // Chỉ gọi API khi debouncedCode có giá trị
-  const { data: coupon, isLoading: validating } = useCouponByCode(debouncedCode, {
+  const {
+    data: coupon,
+    isLoading: validating,
+    isError: isCouponInvalid,
+    error: couponError,
+  } = useValidateCoupon(debouncedCode, orderAmount, {
     enabled: debouncedCode.length > 0,
+    retry: false,
   });
 
-  const { data: validation } = useValidateCoupon(debouncedCode, orderAmount, {
-    enabled: debouncedCode.length > 0,
+  const { data: discountData, isLoading: calculatingDiscount } = useCalculateDiscount(coupon?.id ?? 0, orderAmount, {
+    enabled: !!coupon?.id,
   });
 
   const handleApply = () => {
@@ -46,18 +52,13 @@ export const CouponInput: React.FC<CouponInputProps> = ({
       return;
     }
 
-    if (!coupon) {
-      toast.error("Không tìm thấy voucher này");
-      return;
-    }
-
-    if (!validation?.valid) {
-      toast.error(validation?.message || "Voucher không hợp lệ cho đơn hàng này");
+    if (!coupon || isCouponInvalid) {
+      toast.error((couponError as any)?.response?.data?.detail || "Voucher không hợp lệ cho đơn hàng này");
       return;
     }
 
     setAppliedCoupon(coupon);
-    const discount = validation?.discountAmount || 0;
+    const discount = Math.max(0, discountData?.discountAmount || 0);
     onApplyCoupon(coupon, discount);
     toast.success(`Đã áp dụng voucher ${code}`);
   };
@@ -102,10 +103,10 @@ export const CouponInput: React.FC<CouponInputProps> = ({
           <Button
             onClick={handleApply}
             variant="outline"
-            disabled={validating}
+            disabled={validating || calculatingDiscount}
             className="whitespace-nowrap"
           >
-            {validating ? "Đang kiểm tra..." : "Áp dụng"}
+            {validating || calculatingDiscount ? "Đang kiểm tra..." : "Áp dụng"}
           </Button>
         </div>
       )}

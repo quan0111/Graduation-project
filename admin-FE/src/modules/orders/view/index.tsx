@@ -7,7 +7,6 @@ import { OrderStats } from "../components/order-stats";
 import { OrderFilter } from "../components/search-filter-order";
 import { OrderDetailModal } from "../components/order-detail-modal";
 import { useGetAllOrders } from "../api/get-all-orders";
-import { useCancelOrder } from "../api/cancel-order";
 import { useUpdateOrder } from "../api/update-order";
 import { toast } from "sonner";
 import type { OrderStatusType } from "../types";
@@ -16,23 +15,28 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   // 👇 CALL API
-  const { data: orders = [], isLoading, isError } = useGetAllOrders();
-  const cancelMutation = useCancelOrder();
+  const { data: orderPage, isLoading, isError } = useGetAllOrders({ page, limit: 20, search });
+  const orders = orderPage?.data || [];
+  const pagination = orderPage?.pagination;
   const updateStatusMutation = useUpdateOrder();
 
   // ================= HANDLERS =================
 
   const handleView = (order: any) => {
-    setSelectedOrder(order);
+    setSelectedOrder(order.raw || order);
     setOpen(true);
   };
 
   const handleDelete = (order: any) => {
     if (!confirm(`Hủy đơn ${order.orderId}?`)) return;
 
-    cancelMutation.mutate(order.id, {
+    updateStatusMutation.mutate({
+      id: Number(order.id),
+      data: { status: "CANCELLED" as OrderStatusType },
+    }, {
       onSuccess: () => toast.success("Hủy đơn thành công"),
       onError: () => toast.error("Hủy đơn thất bại"),
     });
@@ -52,8 +56,9 @@ export default function OrdersPage() {
 
   const mappedOrders = orders.map((o: any) => ({
     id: o.id,
+    raw: o,
     orderId: `#${o.id}`,
-    shop: o.shop?.name || "N/A",
+    shop: o.shop?.name || o.items?.find((item: any) => item.shop?.name)?.shop?.name || "N/A",
     customer: o.user?.fullName || o.User?.fullName || "N/A",
     total: o.totalAmount || 0,
     items: o.items?.length || o.Items?.length || 0,
@@ -83,15 +88,19 @@ export default function OrdersPage() {
   return (
     <main className="flex-1 overflow-auto p-6 w-full">
 
-      <OrderStats />
+      <OrderStats orders={orders} />
 
       <div className="flex justify-end mb-4">
-        <OrderFilter value={search} onChange={setSearch} />
+        <OrderFilter value={search} onChange={(value) => { setSearch(value); setPage(1); }} />
       </div>
 
       <DataTable
         data={filtered}
         columns={columns}
+        pageSize={20}
+        total={pagination?.total}
+        page={page}
+        onPageChange={setPage}
         title="Danh sách đơn hàng"
       />
 

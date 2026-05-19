@@ -2,6 +2,7 @@ import { useMutation, type UseMutationOptions } from "@tanstack/react-query";
 
 import { API_URL_REVIEW } from "@/constant/config";
 import { apiClient } from "@/lib/api";
+import { uploadImage } from "@/modules/upload/api/upload-image";
 
 export interface ReviewCreatePayload {
   userId: number;
@@ -12,23 +13,20 @@ export interface ReviewCreatePayload {
 }
 
 const createReview = async (payload: ReviewCreatePayload) => {
-  const formData = new FormData();
-  formData.append("userId", payload.userId.toString());
-  formData.append("productId", payload.productId.toString());
-  formData.append("rating", payload.rating.toString());
-  if (payload.comment) {
-    formData.append("comment", payload.comment);
-  }
-  if (payload.images && payload.images.length > 0) {
-    payload.images.forEach((image) => {
-      formData.append(`images`, image);
-    });
-  }
+  const mediaUrls = payload.images?.length
+    ? await Promise.all(
+        payload.images.map((file) =>
+          uploadImage({ file, folder: "reviews" }).then((result) => result.url),
+        ),
+      )
+    : [];
 
-  const response = await apiClient.post(`${API_URL_REVIEW}/`, formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
+  const response = await apiClient.post(`${API_URL_REVIEW}/`, {
+    userId: payload.userId,
+    productId: payload.productId,
+    rating: payload.rating,
+    comment: payload.comment,
+    mediaUrls,
   });
   return response.data;
 };

@@ -215,6 +215,11 @@ class UserService:
         if not existing or existing.deletedAt:
             raise HTTPException(404, "User not found")
 
+        await prisma.refreshtoken.update_many(
+            where={"userId": user_id, "isRevoked": False},
+            data={"isRevoked": True},
+        )
+
         return await prisma.user.update(
             where={"id": user_id},
             data={"deletedAt": datetime.utcnow()}

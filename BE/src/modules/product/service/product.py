@@ -188,14 +188,23 @@ class ProductService:
 
     @staticmethod
     @cache_result(CacheManager.PRODUCT_LIST, expire_seconds=CacheManager.MEDIUM_TTL)
-    async def get_all_products(viewer=None):
+    async def get_all_products(viewer=None, page: int = 1, limit: int = 24, search: str | None = None, category_id: int | None = None):
         where = {"deletedAt": None}
 
         if not viewer or get_role_value(viewer) != "ADMIN":
             where["status"] = "ACTIVE"
+        if search:
+            where["OR"] = [
+                {"name": {"contains": search}},
+                {"description": {"contains": search}},
+            ]
+        if category_id:
+            where["categoryId"] = category_id
 
         products = await prisma.product.find_many(
             where=where,
+            skip=(max(page, 1) - 1) * min(max(limit, 1), 100),
+            take=min(max(limit, 1), 100),
             include={
                 "shop": True,
                 "variants": {"include": {"images": True}},

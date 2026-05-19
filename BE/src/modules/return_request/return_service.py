@@ -67,6 +67,54 @@ class ReturnService:
         return refund_amount
 
     @staticmethod
+    async def _active_return_quantities(client, order_id: int):
+        returns = await client.returnrequest.find_many(
+            where={"orderId": order_id},
+            include={"items": True},
+        )
+        quantities: dict[int, int] = {}
+        for return_request in returns:
+            if ReturnService._to_value(return_request.status) not in ACTIVE_RETURN_STATUSES:
+                continue
+            for item in return_request.items:
+                quantities[item.orderItemId] = quantities.get(item.orderItemId, 0) + int(item.quantity or 0)
+        return quantities
+
+    @staticmethod
+    async def _is_order_fully_covered_by_returns(client, order_id: int):
+        order_items = await client.orderitem.find_many(
+            where={"orderId": order_id, "deletedAt": None},
+        )
+        if not order_items:
+            return False
+        returned_quantities = await ReturnService._active_return_quantities(client, order_id)
+        return all(
+            returned_quantities.get(item.id, 0) >= int(item.quantity or 0)
+            for item in order_items
+        )
+
+    @staticmethod
+    async def _assert_single_shop_return(client, order, requested_items):
+        order_items = await client.orderitem.find_many(
+            where={"orderId": order.id, "deletedAt": None},
+        )
+        item_by_id = {item.id: item for item in order_items}
+        active_quantities = await ReturnService._active_return_quantities(client, order.id)
+        shop_ids = set()
+
+        for requested in requested_items:
+            order_item = item_by_id.get(requested.orderItemId)
+            if not order_item:
+                raise HTTPException(404, "Order item not found")
+            remaining = int(order_item.quantity or 0) - active_quantities.get(order_item.id, 0)
+            if requested.quantity > remaining:
+                raise HTTPException(400, "Return quantity exceeds remaining returnable quantity")
+            shop_ids.add(order_item.shopId)
+
+        if len(shop_ids) > 1:
+            raise HTTPException(400, "Create one return request per shop")
+
+    @staticmethod
     async def _create_item(client, return_request, data):
         order_item = await client.orderitem.find_first(
             where={
@@ -118,19 +166,14 @@ class ReturnService:
                     "id": data.orderId,
                     "userId": user_id,
                     "deletedAt": None,
-                }
+                },
             )
             if not order:
                 raise HTTPException(404, "Order not found")
             if ReturnService._to_value(order.status) not in RETURNABLE_ORDER_STATUSES:
                 raise HTTPException(400, "Only delivered or completed orders can be returned")
 
-            existing_returns = await tx.returnrequest.find_many(
-                where={"orderId": data.orderId}
-            )
-            for existing in existing_returns:
-                if ReturnService._to_value(existing.status) in ACTIVE_RETURN_STATUSES:
-                    raise HTTPException(400, "Return request already exists for this order")
+            await ReturnService._assert_single_shop_return(tx, order, data.items)
 
             return_request = await tx.returnrequest.create(
                 data={
@@ -148,10 +191,11 @@ class ReturnService:
                 await ReturnService._create_evidence(tx, return_request.id, evidence_data)
 
             await ReturnService._sync_refund_amount(tx, return_request.id)
-            await tx.order.update(
-                where={"id": data.orderId},
-                data={"status": "RETURN_REQUESTED"},
-            )
+            if await ReturnService._is_order_fully_covered_by_returns(tx, data.orderId):
+                await tx.order.update(
+                    where={"id": data.orderId},
+                    data={"status": "RETURN_REQUESTED"},
+                )
 
         await ReturnService._notify_return_update(return_request.id, "REQUESTED", actor_id=user_id)
         await AuditService.create(
@@ -312,6 +356,16 @@ class ReturnService:
             if len(seller_items) != len(return_request.items):
                 raise HTTPException(400, "Return request contains items from another shop")
 
+            order = await tx.order.find_unique(
+                where={"id": return_request.orderId},
+                include={"payment": True},
+            )
+            if order and order.payment:
+                payment_method = ReturnService._to_value(order.payment.method)
+                payment_status = ReturnService._to_value(order.payment.status)
+                if payment_method in {"MOMO", "VNPAY", "STRIPE"} and payment_status == "SUCCESS":
+                    raise HTTPException(400, "Gateway refund is required before marking this return as refunded")
+
             for item in seller_items:
                 await tx.platformcommission.update_many(
                     where={"orderItemId": item.orderItemId},
@@ -321,10 +375,11 @@ class ReturnService:
                     },
                 )
 
-            await tx.order.update(
-                where={"id": return_request.orderId},
-                data={"status": "RETURNED"},
-            )
+            if await ReturnService._is_order_fully_covered_by_returns(tx, return_request.orderId):
+                await tx.order.update(
+                    where={"id": return_request.orderId},
+                    data={"status": "RETURNED"},
+                )
             updated = await tx.returnrequest.update(
                 where={"id": return_id},
                 data={"status": "REFUNDED"},

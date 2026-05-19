@@ -1,9 +1,10 @@
 from fastapi import APIRouter, WebSocket, Depends, HTTPException
+from src.core.database import prisma
 from src.modules.notification.notification_service import NotificationService
 from src.modules.notification.notification_schema import NotificationCreate
 from src.modules.notification.notification_websocket import notification_ws
 from src.core.dependencies import get_current_user
-from src.core.security import decode_token
+from src.core.security import AUTH_SCOPE_STOREFRONT, decode_token, verify_token_type
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 service = NotificationService()
@@ -20,7 +21,22 @@ async def create_notification(
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, token: str):
     # 🔥 decode token để lấy user_id
-    user_id = decode_token(token)["sub"]
+    payload = decode_token(token)
+    if not verify_token_type(payload, "access", AUTH_SCOPE_STOREFRONT):
+        await websocket.close(code=1008)
+        return
+
+    user_id = payload.get("sub")
+    if not user_id:
+        await websocket.close(code=1008)
+        return
+
+    user = await prisma.user.find_first(
+        where={"id": int(user_id), "isActive": True, "deletedAt": None}
+    )
+    if not user:
+        await websocket.close(code=1008)
+        return
     await notification_ws(websocket, int(user_id))
 
 

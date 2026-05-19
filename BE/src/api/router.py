@@ -17,6 +17,7 @@ from src.modules.shipment.shipment_router import router as shipment_router
 from src.modules.seller.seller_router import router as seller_router
 from src.modules.marketing.marketing_router import router as marketing_router
 from src.modules.finance.finance_router import router as finance_router
+from src.modules.flash_sale.flash_sale_router import router as flash_sale_router
 from src.modules.admin.admin_router import router as admin_router
 from src.modules.return_request.return_router import router as return_router
 from src.modules.upload.upload_router import router as upload_router
@@ -48,6 +49,7 @@ api_router.include_router(order_router)
 api_router.include_router(seller_router)
 api_router.include_router(marketing_router)
 api_router.include_router(finance_router)
+api_router.include_router(flash_sale_router)
 api_router.include_router(admin_router)
 api_router.include_router(return_router)
 api_router.include_router(upload_router)

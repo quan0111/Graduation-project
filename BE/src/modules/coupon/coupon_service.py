@@ -183,10 +183,17 @@ class CouponService:
                 raise HTTPException(400, "Coupon usage limit reached for this user")
 
         async with prisma.tx() as tx:
-            updated = await tx.coupon.update(
-                where={"id": coupon_id},
+            where = {"id": coupon_id}
+            if coupon.usageLimit:
+                where["usedCount"] = {"lt": coupon.usageLimit}
+
+            updated_count = await tx.coupon.update_many(
+                where=where,
                 data={"usedCount": {"increment": 1}},
             )
+            if updated_count == 0:
+                raise HTTPException(400, "Coupon limit reached")
+            updated = await tx.coupon.find_unique(where={"id": coupon_id})
             if user_id is not None:
                 await tx.couponredemption.create(
                     data={

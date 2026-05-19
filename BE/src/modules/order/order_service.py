@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import HTTPException
 from prisma import Json
 
@@ -9,6 +11,7 @@ from src.modules.notification.notification_schema import NotificationCreate
 from src.modules.notification.notification_service import NotificationService
 from src.modules.order.momo_service import MoMoService
 from src.modules.order.order_schema import CheckoutCreate, CheckoutOut, OrderCreate, OrderUpdate, PaymentOut
+from src.modules.order.payment_service import PaymentService
 from src.modules.order.vnpay_service import VNPayService
 
 
@@ -31,7 +34,7 @@ ORDER_STATUSES = {
 ADMIN_TRANSITIONS = {
     "PENDING": {"PAID", "PAYMENT_FAILED", "CONFIRMED", "CANCELLED"},
     "PAYMENT_FAILED": {"PENDING", "CANCELLED"},
-    "PAID": {"CONFIRMED", "CANCELLED"},
+    "PAID": {"CONFIRMED"},
     "CONFIRMED": {"PROCESSING", "CANCELLED"},
     "PROCESSING": {"READY_TO_SHIP", "CANCELLED"},
     "READY_TO_SHIP": {"SHIPPED", "CANCELLED"},
@@ -55,7 +58,7 @@ CUSTOMER_TRANSITIONS = {
     "DELIVERED": {"COMPLETED"},
 }
 
-CANCELLABLE_STATUSES = {"PENDING", "PAYMENT_FAILED", "PAID", "CONFIRMED"}
+CANCELLABLE_STATUSES = {"PENDING", "PAYMENT_FAILED", "CONFIRMED"}
 
 ORDER_INCLUDE = {
     "items": {
@@ -217,7 +220,7 @@ class OrderService:
 
                 product = await tx.product.find_unique(
                     where={"id": item.productId},
-                    include={"images": True},
+                    include={"images": True, "variants": True},
                 )
 
                 if not product:
@@ -236,7 +239,14 @@ class OrderService:
                         f"Sản phẩm '{product.name}' hiện không khả dụng (trạng thái: {product.status})",
                     )
 
-                price = item.price
+                if product.shopId != item.shopId:
+                    raise HTTPException(400, "Shop does not match product")
+                if variant and variant.productId != item.productId:
+                    raise HTTPException(400, "Variant does not match product")
+                if not variant and product.variants:
+                    raise HTTPException(400, "Variant is required for this product")
+
+                price = float(variant.price if variant else product.price)
                 subtotal += price * item.quantity
 
                 # Get image
@@ -317,6 +327,38 @@ class OrderService:
                         }
                     )
 
+            shipping_fee = max(float(order_data.shippingFee or 0), 0)
+            discount_amount = 0.0
+            if order_data.couponId:
+                coupon = await tx.coupon.find_first(where={"id": order_data.couponId})
+                if not coupon:
+                    raise HTTPException(404, "Coupon not found")
+                now = datetime.utcnow()
+                if not coupon.isActive:
+                    raise HTTPException(400, "Coupon inactive")
+                if coupon.validFrom and coupon.validFrom > now:
+                    raise HTTPException(400, "Coupon not started")
+                if coupon.validUntil and coupon.validUntil < now:
+                    raise HTTPException(400, "Coupon expired")
+                if coupon.usageLimit and coupon.usedCount >= coupon.usageLimit:
+                    raise HTTPException(400, "Coupon limit reached")
+                if coupon.minOrderAmount and subtotal < coupon.minOrderAmount:
+                    raise HTTPException(400, "Order not eligible")
+                if coupon.applicableShopId and any(item["shop"]["connect"]["id"] != coupon.applicableShopId for item in order_items_data):
+                    raise HTTPException(400, "Coupon is not applicable to this shop")
+                if coupon.usageLimitPerUser:
+                    used_by_user = await tx.couponredemption.count(
+                        where={"couponId": order_data.couponId, "userId": current_user.id}
+                    )
+                    if used_by_user >= coupon.usageLimitPerUser:
+                        raise HTTPException(400, "Coupon usage limit reached for this user")
+                discount_amount = subtotal * (coupon.discountValue / 100) if coupon.discountType == "PERCENTAGE" else coupon.discountValue
+                if coupon.maxDiscount:
+                    discount_amount = min(discount_amount, coupon.maxDiscount)
+                discount_amount = min(discount_amount, subtotal + shipping_fee)
+
+            total_amount = max(subtotal + shipping_fee - discount_amount, 0)
+
             # IMPORTANT: prisma-client-py needs relation connect
             create_data = {
                 "user": {
@@ -326,9 +368,10 @@ class OrderService:
                 },
 
                 "subtotal": subtotal,
-                "shippingFee": order_data.shippingFee,
-                "discountAmount": order_data.discountAmount,
-                "totalAmount": order_data.totalAmount,
+                "shippingFee": shipping_fee,
+                "shippingMethod": order_data.shippingMethod,
+                "discountAmount": discount_amount,
+                "totalAmount": total_amount,
 
                 "items": {
                     "create": order_items_data,
@@ -371,13 +414,21 @@ class OrderService:
 
             # Increase coupon usage
             if order_data.couponId:
-                await tx.coupon.update(
-                    where={"id": order_data.couponId},
+                coupon_where = {"id": order_data.couponId}
+                if coupon.usageLimit:
+                    coupon_where["usedCount"] = {"lt": coupon.usageLimit}
+                updated_coupon_count = await tx.coupon.update_many(
+                    where=coupon_where,
+                    data={"usedCount": {"increment": 1}},
+                )
+                if updated_coupon_count == 0:
+                    raise HTTPException(400, "Coupon limit reached")
+                await tx.couponredemption.create(
                     data={
-                        "usedCount": {
-                            "increment": 1,
-                        }
-                    },
+                        "coupon": {"connect": {"id": order_data.couponId}},
+                        "user": {"connect": {"id": current_user.id}},
+                        "order": {"connect": {"id": order.id}},
+                    }
                 )
 
             # Create payment
@@ -458,7 +509,7 @@ class OrderService:
 
                 product = await tx.product.find_unique(
                     where={"id": item.productId},
-                    include={"images": True},
+                    include={"images": True, "variants": True},
                 )
 
                 if not product:
@@ -470,7 +521,14 @@ class OrderService:
                 if product.status != "ACTIVE":
                     raise HTTPException(400, f"Sản phẩm '{product.name}' hiện không khả dụng (trạng thái: {product.status})")
 
-                price = item.price
+                if product.shopId != item.shopId:
+                    raise HTTPException(400, "Shop does not match product")
+                if variant and variant.productId != item.productId:
+                    raise HTTPException(400, "Variant does not match product")
+                if not variant and product.variants:
+                    raise HTTPException(400, "Variant is required for this product")
+
+                price = float(variant.price if variant else product.price)
                 subtotal += price * item.quantity
 
                 image_url = None
@@ -516,12 +574,45 @@ class OrderService:
                         }
                     )
 
+            shipping_fee = max(float(checkout_data.shippingFee or 0), 0)
+            discount_amount = 0.0
+            if checkout_data.couponId:
+                coupon = await tx.coupon.find_first(where={"id": checkout_data.couponId})
+                if not coupon:
+                    raise HTTPException(404, "Coupon not found")
+                now = datetime.utcnow()
+                if not coupon.isActive:
+                    raise HTTPException(400, "Coupon inactive")
+                if coupon.validFrom and coupon.validFrom > now:
+                    raise HTTPException(400, "Coupon not started")
+                if coupon.validUntil and coupon.validUntil < now:
+                    raise HTTPException(400, "Coupon expired")
+                if coupon.usageLimit and coupon.usedCount >= coupon.usageLimit:
+                    raise HTTPException(400, "Coupon limit reached")
+                if coupon.minOrderAmount and subtotal < coupon.minOrderAmount:
+                    raise HTTPException(400, "Order not eligible")
+                if coupon.applicableShopId and any(item["shop"]["connect"]["id"] != coupon.applicableShopId for item in order_items_data):
+                    raise HTTPException(400, "Coupon is not applicable to this shop")
+                if coupon.usageLimitPerUser:
+                    used_by_user = await tx.couponredemption.count(
+                        where={"couponId": checkout_data.couponId, "userId": current_user.id}
+                    )
+                    if used_by_user >= coupon.usageLimitPerUser:
+                        raise HTTPException(400, "Coupon usage limit reached for this user")
+                discount_amount = subtotal * (coupon.discountValue / 100) if coupon.discountType == "PERCENTAGE" else coupon.discountValue
+                if coupon.maxDiscount:
+                    discount_amount = min(discount_amount, coupon.maxDiscount)
+                discount_amount = min(discount_amount, subtotal + shipping_fee)
+
+            total_amount = max(subtotal + shipping_fee - discount_amount, 0)
+
             create_data = {
                 "user": {"connect": {"id": current_user.id}},
                 "subtotal": subtotal,
-                "shippingFee": checkout_data.shippingFee,
-                "discountAmount": checkout_data.discountAmount,
-                "totalAmount": checkout_data.totalAmount,
+                "shippingFee": shipping_fee,
+                "shippingMethod": checkout_data.shippingMethod,
+                "discountAmount": discount_amount,
+                "totalAmount": total_amount,
                 "items": {"create": order_items_data},
             }
 
@@ -547,10 +638,15 @@ class OrderService:
                 await InventoryService.record(tx, inventory_log)
 
             if checkout_data.couponId:
-                await tx.coupon.update(
-                    where={"id": checkout_data.couponId},
+                coupon_where = {"id": checkout_data.couponId}
+                if coupon.usageLimit:
+                    coupon_where["usedCount"] = {"lt": coupon.usageLimit}
+                updated_coupon_count = await tx.coupon.update_many(
+                    where=coupon_where,
                     data={"usedCount": {"increment": 1}},
                 )
+                if updated_coupon_count == 0:
+                    raise HTTPException(400, "Coupon limit reached")
                 await tx.couponredemption.create(
                     data={
                         "coupon": {"connect": {"id": checkout_data.couponId}},
@@ -560,67 +656,25 @@ class OrderService:
                 )
 
             amount = int(round(float(order.totalAmount or 0)))
-            payment_payload = None
+            if method in {"MOMO", "VNPAY"} and amount <= 0:
+                raise HTTPException(400, "Order total amount must be greater than 0")
 
             if method == "COD":
-                payment_payload = {
-                    "order": {"connect": {"id": order.id}},
-                    "method": "COD",
-                    "status": "PENDING",
-                    "amount": float(amount),
-                }
-                payment = await tx.payment.create(data=payment_payload)
-            elif method == "VNPAY":
-                gateway_data = VNPayService.create_payment_url(order.id, amount, ip_address)
-                gateway_response = {
-                    "paymentUrl": gateway_data["paymentUrl"],
-                    "qrCodeUrl": gateway_data["paymentUrl"],
-                    "deeplink": None,
-                    "providerOrderId": gateway_data["providerOrderId"],
-                    "requestId": None,
-                }
                 payment = await tx.payment.create(
                     data={
                         "order": {"connect": {"id": order.id}},
-                        "method": method,
+                        "method": "COD",
                         "status": "PENDING",
                         "amount": float(amount),
-                        "providerOrderId": gateway_data["providerOrderId"],
-                        "requestId": None,
-                        "transactionId": None,
-                        "paymentUrl": gateway_data["paymentUrl"],
-                        "qrCodeUrl": gateway_data["paymentUrl"],
-                        "deeplink": None,
-                        "providerMessage": "VNPay payment URL created",
-                        "providerResponse": OrderService._json(gateway_data["requestData"]),
-                        "paidAt": None,
                     }
                 )
             else:
-                gateway_data = MoMoService.create_payment(order.id, amount)
-                response_data = gateway_data["responseData"]
-                gateway_response = {
-                    "paymentUrl": response_data.get("payUrl"),
-                    "qrCodeUrl": gateway_data.get("qrCodeImage"),
-                    "deeplink": response_data.get("deeplink"),
-                    "providerOrderId": gateway_data["providerOrderId"],
-                    "requestId": gateway_data["requestId"],
-                }
                 payment = await tx.payment.create(
                     data={
                         "order": {"connect": {"id": order.id}},
                         "method": method,
                         "status": "PENDING",
                         "amount": float(amount),
-                        "providerOrderId": gateway_data["providerOrderId"],
-                        "requestId": gateway_data["requestId"],
-                        "transactionId": None,
-                        "paymentUrl": response_data.get("payUrl"),
-                        "qrCodeUrl": gateway_data.get("qrCodeImage"),
-                        "deeplink": response_data.get("deeplink"),
-                        "providerMessage": response_data.get("message"),
-                        "providerResponse": OrderService._json(response_data),
-                        "paidAt": None,
                     }
                 )
 
@@ -635,6 +689,93 @@ class OrderService:
                     )
 
             created_order = await tx.order.find_unique(where={"id": order.id}, include=ORDER_INCLUDE)
+
+        if method in {"MOMO", "VNPAY"} and payment:
+            try:
+                if method == "VNPAY":
+                    gateway_data = VNPayService.create_payment_url(created_order.id, amount, ip_address)
+                    response_data = gateway_data["requestData"]
+                    gateway_response = {
+                        "paymentUrl": gateway_data["paymentUrl"],
+                        "qrCodeUrl": gateway_data["paymentUrl"],
+                        "deeplink": None,
+                        "providerOrderId": gateway_data["providerOrderId"],
+                        "requestId": None,
+                    }
+                    payment = await prisma.payment.update(
+                        where={"id": payment.id},
+                        data={
+                            "providerOrderId": gateway_data["providerOrderId"],
+                            "requestId": None,
+                            "transactionId": None,
+                            "paymentUrl": gateway_data["paymentUrl"],
+                            "qrCodeUrl": gateway_data["paymentUrl"],
+                            "deeplink": None,
+                            "providerMessage": "VNPay payment URL created",
+                            "providerResponse": OrderService._json(response_data),
+                            "paidAt": None,
+                        },
+                    )
+                    await PaymentService._create_event(
+                        payment=payment,
+                        event_type="CREATED",
+                        status="PENDING",
+                        payload=response_data,
+                        message="VNPay payment URL created",
+                    )
+                else:
+                    gateway_data = MoMoService.create_payment(created_order.id, amount)
+                    response_data = gateway_data["responseData"]
+                    if response_data.get("resultCode") != 0:
+                        raise HTTPException(502, response_data.get("message") or "MoMo payment creation failed")
+                    gateway_response = {
+                        "paymentUrl": response_data.get("payUrl"),
+                        "qrCodeUrl": gateway_data.get("qrCodeImage"),
+                        "deeplink": response_data.get("deeplink"),
+                        "providerOrderId": gateway_data["providerOrderId"],
+                        "requestId": gateway_data["requestId"],
+                    }
+                    payment = await prisma.payment.update(
+                        where={"id": payment.id},
+                        data={
+                            "providerOrderId": gateway_data["providerOrderId"],
+                            "requestId": gateway_data["requestId"],
+                            "transactionId": None,
+                            "paymentUrl": response_data.get("payUrl"),
+                            "qrCodeUrl": gateway_data.get("qrCodeImage"),
+                            "deeplink": response_data.get("deeplink"),
+                            "providerMessage": response_data.get("message"),
+                            "providerResponse": OrderService._json(response_data),
+                            "paidAt": None,
+                        },
+                    )
+                    await PaymentService._create_event(
+                        payment=payment,
+                        event_type="CREATED",
+                        status="PENDING",
+                        payload=response_data,
+                        message=response_data.get("message"),
+                    )
+            except HTTPException as exc:
+                failure_message = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+                failed_payment = await prisma.payment.update(
+                    where={"id": payment.id},
+                    data={
+                        "status": "FAILED",
+                        "providerMessage": failure_message,
+                    },
+                )
+                await prisma.order.update(
+                    where={"id": created_order.id},
+                    data={"status": "PAYMENT_FAILED"},
+                )
+                await PaymentService._create_event(
+                    payment=failed_payment,
+                    event_type="CREATED",
+                    status="FAILED",
+                    message=failure_message,
+                )
+                raise
 
         await OrderService._notify_order_update(created_order.id, "CREATED", actor_id=current_user.id)
         return CheckoutOut(
@@ -751,6 +892,24 @@ class OrderService:
                     )
 
     @staticmethod
+    async def _record_cancellation(tx, order_id: int, cancelled_by: str, actor_id: int | None = None, reason: str = "Order cancelled"):
+        existing = await tx.ordercancellation.find_unique(where={"orderId": order_id})
+        data = {
+            "cancelledBy": cancelled_by,
+            "reason": reason,
+            "note": f"actorId={actor_id}" if actor_id is not None else None,
+            "status": "CANCELLED",
+        }
+        if existing:
+            return await tx.ordercancellation.update(where={"id": existing.id}, data=data)
+        return await tx.ordercancellation.create(
+            data={
+                **data,
+                "order": {"connect": {"id": order_id}},
+            }
+        )
+
+    @staticmethod
     async def update_order(order_id: int, current_user, order_data: OrderUpdate):
         order = await OrderService.assert_order_visibility(order_id, current_user)
         data = order_data.model_dump(exclude_unset=True)
@@ -788,7 +947,16 @@ class OrderService:
 
         async with prisma.tx() as tx:
             if next_status == "CANCELLED" and current_status != "CANCELLED":
+                if order.payment and OrderService._to_value(order.payment.status) == "SUCCESS":
+                    raise HTTPException(400, "Paid orders must be refunded before cancellation")
                 await OrderService._restore_stock(order_id, tx, actor_id=current_user.id)
+                await OrderService._record_cancellation(
+                    tx,
+                    order_id,
+                    cancelled_by=role if role in {"CUSTOMER", "SELLER", "ADMIN"} else "SYSTEM",
+                    actor_id=current_user.id,
+                    reason="Status updated to CANCELLED",
+                )
 
             updated = await tx.order.update(
                 where={"id": order_id},
@@ -816,7 +984,8 @@ class OrderService:
                     "id": order_id,
                     "userId": current_user.id,
                     "deletedAt": None,
-                }
+                },
+                include={"payment": True},
             )
 
             if not order:
@@ -830,7 +999,16 @@ class OrderService:
             if order_status not in CANCELLABLE_STATUSES:
                 raise HTTPException(400, "Chỉ có thể hủy đơn trước khi người bán bàn giao cho vận chuyển")
 
+            if order.payment and OrderService._to_value(order.payment.status) == "SUCCESS":
+                raise HTTPException(400, "Paid orders must be refunded before cancellation")
+
             await OrderService._restore_stock(order_id, tx, actor_id=current_user.id)
+            await OrderService._record_cancellation(
+                tx,
+                order_id,
+                cancelled_by="CUSTOMER",
+                actor_id=current_user.id,
+            )
 
             await tx.order.update(
                 where={"id": order_id},

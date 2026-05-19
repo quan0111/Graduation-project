@@ -39,8 +39,13 @@ export function CategoryCreateModal({ open, onClose }: Props) {
   });
 
   const onSubmit = (data: ICategory) => {
+    if (!data.slug?.trim()) {
+      toast.error("Slug là bắt buộc");
+      return;
+    }
     createCategoryMutation.mutate({
       ...data,
+      slug: data.slug.trim(),
       parentId: data.parentId ? Number(data.parentId) : null,
     });
   };
@@ -69,7 +74,7 @@ export function CategoryCreateModal({ open, onClose }: Props) {
 
           <Input
             placeholder="Slug"
-            {...register("slug")}
+            {...register("slug", { required: true })}
           />
 
           <select

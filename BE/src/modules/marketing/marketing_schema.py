@@ -1,40 +1,40 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel
+
 
 class BannerCreate(BaseModel):
     title: str
+    subtitle: Optional[str] = None
     imageUrl: str
-    link: Optional[str] = None
-    shopId: Optional[int] = None
-    categoryId: Optional[int] = None
-
+    mobileImageUrl: Optional[str] = None
+    redirectUrl: Optional[str] = None
+    buttonText: Optional[str] = None
+    position: str = "HOME_TOP"
+    status: str = "DRAFT"
+    priority: int = 0
+    startAt: Optional[datetime] = None
+    endAt: Optional[datetime] = None
 
 
 class BannerUpdate(BaseModel):
-    isActive: Optional[bool] = None
     title: Optional[str] = None
+    subtitle: Optional[str] = None
     imageUrl: Optional[str] = None
-    link: Optional[str] = None
+    mobileImageUrl: Optional[str] = None
+    redirectUrl: Optional[str] = None
+    buttonText: Optional[str] = None
+    position: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[int] = None
+    startAt: Optional[datetime] = None
+    endAt: Optional[datetime] = None
 
 
 class BannerTrackingCreate(BaseModel):
     bannerId: int
-
-
-
-class ShopShort(BaseModel):
-    id: int
-    name: str
-
-    model_config = {"from_attributes": True}
-
-
-class CategoryShort(BaseModel):
-    id: int
-    name: str
-
-    model_config = {"from_attributes": True}
+    action: str = "CLICK"
 
 
 class UserShort(BaseModel):
@@ -44,19 +44,21 @@ class UserShort(BaseModel):
     model_config = {"from_attributes": True}
 
 
-
-
 class BannerOut(BaseModel):
     id: int
     title: str
+    subtitle: Optional[str] = None
     imageUrl: str
-    link: Optional[str]
-    isActive: bool
+    mobileImageUrl: Optional[str] = None
+    redirectUrl: Optional[str] = None
+    buttonText: Optional[str] = None
+    position: str
+    status: str
+    priority: int
+    startAt: Optional[datetime] = None
+    endAt: Optional[datetime] = None
     createdAt: datetime
-
-    # 🔥 relationship
-    shop: Optional[ShopShort] = None
-    category: Optional[CategoryShort] = None
+    updatedAt: datetime
     createdBy: Optional[UserShort] = None
 
     model_config = {"from_attributes": True}
@@ -65,6 +67,7 @@ class BannerOut(BaseModel):
 class BannerTrackingOut(BaseModel):
     id: int
     bannerId: int
+    action: str
     createdAt: datetime
 
     model_config = {"from_attributes": True}

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from typing import List
 
 from src.core.dependencies import get_current_user, get_optional_current_user, require_admin, require_seller, require_seller_or_admin
@@ -31,8 +31,20 @@ async def create_product(product_data: SellerProductCreate, user=Depends(require
 
 
 @router.get("/", response_model=List[ProductOut])
-async def get_all_products(user=Depends(get_optional_current_user)):
-    return await ProductService.get_all_products(user)
+async def get_all_products(
+    page: int = Query(1, ge=1),
+    limit: int = Query(24, ge=1, le=100),
+    search: str | None = None,
+    category_id: int | None = None,
+    user=Depends(get_optional_current_user),
+):
+    return await ProductService.get_all_products(
+        user,
+        page=page,
+        limit=limit,
+        search=search,
+        category_id=category_id,
+    )
 
 
 @router.get("/me", response_model=List[ProductOut])
@@ -168,7 +180,7 @@ async def add_variant_image(
 
 @router.get("/variants/images/{image_id}", response_model=VariantImageOut)
 async def get_variant_image(image_id: int):
-    return await VariantService.get_variant_images(image_id)
+    return await VariantService.get_variant_image(image_id)
 
 
 @router.patch("/variants/images/{image_id}", response_model=VariantImageOut)

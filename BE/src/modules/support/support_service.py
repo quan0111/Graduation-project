@@ -155,6 +155,11 @@ class SupportService:
             await SupportService._assert_access(ticket, user)
 
         update_data = data.model_dump(exclude_unset=True, exclude_none=True)
+        if get_role_value(user) != "ADMIN":
+            allowed_fields = {"priority"}
+            update_data = {key: value for key, value in update_data.items() if key in allowed_fields}
+            if not update_data:
+                raise HTTPException(403, "Only admins can update ticket assignment or status")
         updated = await prisma.supportticket.update(
             where={"id": ticket_id},
             data=update_data,

@@ -20,11 +20,7 @@ class InventoryService:
     @staticmethod
     async def record(client, data):
         payload = data.model_dump(exclude_none=True) if hasattr(data, "model_dump") else {k: v for k, v in data.items() if v is not None}
-        try:
-            return await client.inventoryledger.create(data=payload)
-        except Exception:
-            # Inventory ledger should not break checkout/payment flows.
-            return None
+        return await client.inventoryledger.create(data=payload)
 
     @staticmethod
     async def list_for_shop(shop_id: int, limit: int = 100):

@@ -13,14 +13,16 @@ const getOrderIdFromProviderOrderId = (providerOrderId: string | null) => {
 export default function PaymentSuccessPage() {
   const [searchParams] = useSearchParams();
 
-  const resultCode = searchParams.get("resultCode");
-  const providerOrderId = searchParams.get("orderId");
-  const orderId = getOrderIdFromProviderOrderId(providerOrderId);
-  const message = searchParams.get("message");
-  const transId = searchParams.get("transId");
+  const momoResultCode = searchParams.get("resultCode");
+  const vnpayResponseCode = searchParams.get("vnp_ResponseCode");
+  const providerOrderId = searchParams.get("orderId") || searchParams.get("vnp_TxnRef");
+  const orderId = getOrderIdFromProviderOrderId(providerOrderId) || providerOrderId;
+  const message = searchParams.get("message") || searchParams.get("vnp_Message");
+  const transId = searchParams.get("transId") || searchParams.get("vnp_TransactionNo");
+  const gatewayName = vnpayResponseCode ? "VNPay" : "MoMo";
 
-  const isSuccess = resultCode === "0";
-  const isPending = resultCode === "9000" || resultCode === "7000" || resultCode === "7002";
+  const isSuccess = vnpayResponseCode ? vnpayResponseCode === "00" : momoResultCode === "0";
+  const isPending = !vnpayResponseCode && (momoResultCode === "9000" || momoResultCode === "7000" || momoResultCode === "7002");
   const Icon = isSuccess ? CheckCircle2 : isPending ? Clock : XCircle;
 
   return (
@@ -34,12 +36,12 @@ export default function PaymentSuccessPage() {
           {isSuccess ? "Thanh toán thành công" : isPending ? "Thanh toán đang xử lý" : "Thanh toán chưa thành công"}
         </h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          {message || "Hệ thống đã nhận kết quả trả về từ cổng thanh toán MoMo."}
+          {message || `Hệ thống đã nhận kết quả trả về từ cổng thanh toán ${gatewayName}.`}
         </p>
 
         <div className="mt-6 rounded-xl bg-slate-50 p-4 text-left text-sm text-slate-700">
           <div className="flex justify-between gap-4">
-            <span>Mã đơn MoMo</span>
+            <span>Mã đơn {gatewayName}</span>
             <span className="font-medium text-slate-950">{providerOrderId || "Không có"}</span>
           </div>
           <div className="mt-3 flex justify-between gap-4">

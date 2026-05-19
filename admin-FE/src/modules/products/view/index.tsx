@@ -86,18 +86,21 @@ export default function ProductsPage() {
   };
 
   const handleBulkApprove = async () => {
-    try {
-      await Promise.all(
-        selectedIds.map((id) =>
-          updateProductMutation.mutateAsync({
-            id,
-            data: { status: "ACTIVE" },
-          }),
-        ),
-      );
+    const results = await Promise.allSettled(
+      selectedIds.map((id) =>
+        updateProductMutation.mutateAsync({
+          id,
+          data: { status: "ACTIVE" },
+        }),
+      ),
+    );
+    const successCount = results.filter((result) => result.status === "fulfilled").length;
+    const failedCount = results.length - successCount;
+    setSelectedIds([]);
+    if (failedCount > 0) {
+      toast.error(`Duyet ${successCount}/${results.length} san pham, ${failedCount} loi`);
+    } else {
       toast.success("Da duyet cac san pham duoc chon");
-    } catch (error: any) {
-      toast.error(error?.response?.data?.detail || "Bulk duyet that bai");
     }
   };
 

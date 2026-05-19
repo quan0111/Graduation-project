@@ -8,10 +8,12 @@ import { Field, FieldLabel } from '@/components/ui/field'
 import { Mail, Lock, User, Eye, EyeOff, Phone } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRegister } from '../api/register'
+import { useAuthStore } from '@/stores/auth.store'
 
 export function SignupForm() {
   const registerMutation = useRegister()
   const navigate = useNavigate()
+  const { setUser } = useAuthStore()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -46,12 +48,13 @@ export function SignupForm() {
         password: formData.password,
       },
       {
-        onSuccess: () => {
-          toast.success('Đăng ký thành công! Vui lòng đăng nhập.')
+        onSuccess: (data: any) => {
+          if (data?.user) {
+            setUser(data.user)
+          }
+          toast.success('Đăng ký thành công!')
           setIsLoading(false)
-          navigate('/login', {
-            state: { message: 'Đăng ký thành công! Hãy đăng nhập để tiếp tục.' },
-          })
+          navigate('/', { replace: true })
         },
         onError: (err: any) => {
           toast.error(err?.response?.data?.detail || 'Đăng ký thất bại')

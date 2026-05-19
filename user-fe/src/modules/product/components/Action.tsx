@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useAddItem } from "@/modules/cart/api/add-item";
 import { getStoredStorefrontUser } from "@/lib/auth-storage";
+import { addGuestCartItem } from "@/lib/guest-cart";
 
 interface ProductActionsProps {
   productId: number;
@@ -21,6 +22,18 @@ export const ProductActions = ({ productId, variantId, shopId, stock, onAddedToC
   const navigate = useNavigate();
 
   const handleAddToCart = async () => {
+    if (!getStoredStorefrontUser() && shopId) {
+      addGuestCartItem({
+        productId,
+        variantId,
+        shopId,
+        quantity,
+      });
+      toast.success("ÄÃ£ lÆ°u sáº£n pháº©m, Ä‘Äƒng nháº­p Ä‘á»ƒ Ä‘á»“ng bá»™ giá» hÃ ng");
+      navigate("/login", { state: { redirect: window.location.pathname } });
+      return;
+    }
+
     // Kiểm tra authentication
     const user = getStoredStorefrontUser();
     if (!user) {
@@ -45,6 +58,13 @@ export const ProductActions = ({ productId, variantId, shopId, stock, onAddedToC
       toast.success("Đã thêm vào giỏ hàng");
     } catch {
       toast.error("Không thể thêm sản phẩm");
+    }
+  };
+
+  const handleBuyNow = async () => {
+    await handleAddToCart();
+    if (getStoredStorefrontUser()) {
+      navigate("/cart");
     }
   };
 
@@ -85,7 +105,13 @@ export const ProductActions = ({ productId, variantId, shopId, stock, onAddedToC
           {addMutation.isPending ? "Đang thêm..." : "Thêm vào giỏ hàng"}
         </Button>
 
-        <Button className="h-11 rounded-xl bg-orange-600 px-8 text-white hover:bg-orange-700">Mua ngay</Button>
+        <Button
+          onClick={handleBuyNow}
+          className="h-11 rounded-xl bg-orange-600 px-8 text-white hover:bg-orange-700"
+          disabled={addMutation.isPending}
+        >
+          Mua ngay
+        </Button>
       </div>
     </div>
   );

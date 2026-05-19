@@ -73,6 +73,8 @@ class PaymentService:
         else:
             gateway_data = MoMoService.create_payment(order.id, amount)
             response_data = gateway_data["responseData"]
+            if response_data.get("resultCode") != 0:
+                raise HTTPException(502, response_data.get("message") or "MoMo payment creation failed")
             payment_url = response_data.get("payUrl")
             qr_code_url = gateway_data.get("qrCodeImage")
             deeplink = response_data.get("deeplink")
@@ -244,6 +246,14 @@ class PaymentService:
         if not payment:
             raise HTTPException(404, "Payment not found")
 
+        current_status = PaymentService._to_value(payment.status)
+        if current_status in {"SUCCESS", "FAILED", "CANCELLED", "REFUNDED"}:
+            return payment
+
+        callback_amount = PaymentService._callback_amount(callback_data)
+        if callback_amount is not None and int(round(float(payment.amount or 0))) != callback_amount:
+            raise HTTPException(400, "Payment callback amount mismatch")
+
         updated = await prisma.payment.update(
             where={"id": payment.id},
             data={
@@ -368,3 +378,15 @@ class PaymentService:
     @staticmethod
     def _json(value):
         return Json(value) if value is not None else None
+
+    @staticmethod
+    def _callback_amount(callback_data: dict) -> int | None:
+        raw_amount = callback_data.get("amount")
+        if raw_amount is None and callback_data.get("vnp_Amount") is not None:
+            raw_amount = int(callback_data["vnp_Amount"]) / 100
+        if raw_amount is None:
+            return None
+        try:
+            return int(round(float(raw_amount)))
+        except (TypeError, ValueError):
+            return None

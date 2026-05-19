@@ -110,6 +110,7 @@ class ChatService:
 
     @staticmethod
     def _history_context_lines(history: List) -> List[str]:
+        return []
         if not history:
             return []
 

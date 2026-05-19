@@ -25,7 +25,6 @@ class ShopUpdate(BaseModel):
 class OwnerOut(BaseModel):
     id: int
     fullName: Optional[str] = None
-    email: str
 
     class Config:
         from_attributes = True

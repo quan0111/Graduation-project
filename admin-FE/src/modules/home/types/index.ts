@@ -22,4 +22,10 @@ export interface IDashboardStats {
   totalProducts: number;
   totalShops: number;
   totalRevenue: number;
+  revenueByMonth?: Array<{ month: string; revenue: number; orders: number }>;
+  categoryStats?: Array<{ name: string; value: number; percent?: number }>;
+  pendingShops?: any[];
+  pendingProducts?: any[];
+  topShops?: any[];
+  recentActivity?: any[];
 }

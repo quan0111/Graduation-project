@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, MoreVertical, Edit, Trash2 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -49,6 +49,7 @@ const formatDate = (value?: string | null) =>
 
 export default function PromotionsPage() {
   const [search, setSearch] = useState('');
+  const queryClient = useQueryClient();
   const { data: coupons = [], isLoading, isError } = useQuery({
     queryKey: ['admin', 'coupons'],
     queryFn: async () => {
@@ -56,6 +57,49 @@ export default function PromotionsPage() {
       return res.data;
     },
   });
+  const invalidateCoupons = () => queryClient.invalidateQueries({ queryKey: ['admin', 'coupons'] });
+  const createCoupon = useMutation({
+    mutationFn: async (payload: Partial<Coupon>) => {
+      const res = await apiClient.post(API_URL_COUPON, payload);
+      return res.data;
+    },
+    onSuccess: invalidateCoupons,
+  });
+  const updateCoupon = useMutation({
+    mutationFn: async ({ id, payload }: { id: number; payload: Partial<Coupon> }) => {
+      const res = await apiClient.patch(`${API_URL_COUPON}/${id}`, payload);
+      return res.data;
+    },
+    onSuccess: invalidateCoupons,
+  });
+  const toggleCoupon = useMutation({
+    mutationFn: async (coupon: Coupon) => {
+      const action = coupon.isActive ? 'deactivate' : 'activate';
+      const res = await apiClient.patch(`${API_URL_COUPON}/${coupon.id}/${action}`);
+      return res.data;
+    },
+    onSuccess: invalidateCoupons,
+  });
+
+  const handleCreate = async () => {
+    const code = window.prompt('Nhap ma khuyen mai');
+    if (!code?.trim()) return;
+    const value = Number(window.prompt('Gia tri giam gia (%)', '10'));
+    if (!Number.isFinite(value) || value <= 0) return;
+    await createCoupon.mutateAsync({
+      code: code.trim().toUpperCase(),
+      description: `Voucher ${code.trim().toUpperCase()}`,
+      discountType: 'PERCENTAGE',
+      discountValue: value,
+      isActive: true,
+    });
+  };
+
+  const handleEdit = async (coupon: Coupon) => {
+    const description = window.prompt('Mo ta khuyen mai', coupon.description || '');
+    if (description === null) return;
+    await updateCoupon.mutateAsync({ id: coupon.id, payload: { description } });
+  };
 
   const filteredPromotions = useMemo(
     () =>
@@ -78,7 +122,11 @@ export default function PromotionsPage() {
           <h1 className="mb-2 text-3xl font-bold text-foreground">Quản lý khuyến mãi</h1>
           <p className="text-muted-foreground">Dữ liệu lấy từ API coupons thật</p>
         </div>
-        <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+        <Button
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
+          onClick={handleCreate}
+          disabled={createCoupon.isPending}
+        >
           Thêm khuyến mãi
         </Button>
       </div>
@@ -183,11 +231,11 @@ export default function PromotionsPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="border-border bg-card">
-                            <DropdownMenuItem className="cursor-pointer text-foreground">
+                            <DropdownMenuItem className="cursor-pointer text-foreground" onClick={() => handleEdit(coupon)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Chỉnh sửa
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer text-destructive">
+                            <DropdownMenuItem className="cursor-pointer text-destructive" onClick={() => toggleCoupon.mutate(coupon)}>
                               <Trash2 className="mr-2 h-4 w-4" />
                               Tắt mã
                             </DropdownMenuItem>

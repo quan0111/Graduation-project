@@ -5,6 +5,9 @@ from src.core.database import prisma
 class ShopFollowerService:
     @staticmethod
     async def follow_shop(user_id: int, shop_id: int):
+        shop = await prisma.shop.find_first(where={"id": shop_id, "deletedAt": None})
+        if not shop:
+            raise HTTPException(404, "Shop not found")
 
         existing = await prisma.shopfollower.find_unique(
             where={
@@ -26,6 +29,17 @@ class ShopFollowerService:
         )
     @staticmethod
     async def unfollow_shop(user_id: int, shop_id: int):
+        existing = await prisma.shopfollower.find_unique(
+            where={
+                "userId_shopId": {
+                    "userId": user_id,
+                    "shopId": shop_id
+                }
+            }
+        )
+        if not existing:
+            return {"message": "Not following"}
+
         return await prisma.shopfollower.delete(
             where={
                 "userId_shopId": {

@@ -83,6 +83,7 @@ export interface IOrder {
   status: OrderStatusType;
   subtotal: number;
   shipping_fee: number;
+  shipping_method?: string | null;
   discount_amount: number;
   total_amount: number;
   shipping_address_id?: number | null;
@@ -100,6 +101,7 @@ export interface ICreateOrderFormInputs {
   userId: number;
   subtotal: number;
   shippingFee: number;
+  shippingMethod?: string | null;
   discountAmount: number;
   totalAmount: number;
   shippingAddressId?: number | null;

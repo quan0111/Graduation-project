@@ -1,38 +1,73 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
+import { AlertTriangle, Lock, ShieldCheck } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Lock, Save } from "lucide-react";
-import { useState } from "react";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useResolveSecurityIncident, useSecurityIncidents } from "@/modules/violations/api/moderation";
 
 export function SecuritySettings() {
-  const [twoFA, setTwoFA] = useState(false);
-  const [maintenance, setMaintenance] = useState(false);
+  const { data: incidents = [], isLoading, isError } = useSecurityIncidents();
+  const resolveIncident = useResolveSecurityIncident();
+  const openIncidents = incidents.filter((incident) => incident.status === "OPEN");
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex gap-2">
-          <Lock className="w-5 h-5" />
-          Bảo mật
+          <Lock className="h-5 w-5" />
+          Bao mat
         </CardTitle>
-        <CardDescription>Quản lý bảo mật</CardDescription>
+        <CardDescription>Du lieu lay tu API security incidents.</CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-6">
-        <Label className="text-sm font-medium leading-none">Xác thực 2 yếu tố (2FA)</Label>
-        <Switch checked={twoFA} onCheckedChange={setTwoFA} />
-        <Label className="text-sm font-medium leading-none">Chế độ bảo trì</Label>
-        <Switch checked={maintenance} onCheckedChange={setMaintenance} />
-        <Label className="text-sm font-medium leading-none">Đổi mật khẩu</Label>
-        <Input type="password" placeholder="Mật khẩu mới" />
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 md:grid-cols-3">
+          <Metric label="Incident dang mo" value={openIncidents.length} />
+          <Metric label="Tong incident" value={incidents.length} />
+          <Metric label="Trang thai API" value={isError ? "Loi" : isLoading ? "Dang tai" : "OK"} />
+        </div>
 
-        <Button className="gap-2">
-          <Save className="w-4 h-4" />
-          Cập nhật
-        </Button>
+        <div className="space-y-3">
+          {openIncidents.slice(0, 5).map((incident) => (
+            <div key={incident.id} className="flex items-start justify-between gap-3 rounded-lg border p-3">
+              <div className="flex gap-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-500" />
+                <div>
+                  <p className="font-medium">Incident #{incident.id}</p>
+                  <p className="text-sm text-muted-foreground">{incident.reason}</p>
+                  <div className="mt-2 flex gap-2">
+                    <Badge variant="outline">{incident.severity}</Badge>
+                    <Badge variant="secondary">User #{incident.userId}</Badge>
+                  </div>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={resolveIncident.isPending}
+                onClick={() => resolveIncident.mutate({ id: incident.id })}
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Resolve
+              </Button>
+            </div>
+          ))}
+          {!openIncidents.length && (
+            <p className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
+              Khong co security incident dang mo.
+            </p>
+          )}
+        </div>
       </CardContent>
     </Card>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-lg border bg-card p-3">
+      <p className="text-xs uppercase text-muted-foreground">{label}</p>
+      <p className="mt-1 text-xl font-semibold">{value}</p>
+    </div>
   );
 }

@@ -254,6 +254,10 @@ class AuthService:
             where={"id": user_id},
             data={"password": hash_password(new_password)},
         )
+        await prisma.refreshtoken.update_many(
+            where={"userId": user_id, "isRevoked": False},
+            data={"isRevoked": True},
+        )
 
         return {"message": "Password changed successfully"}
 

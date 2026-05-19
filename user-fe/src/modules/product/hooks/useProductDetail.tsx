@@ -17,7 +17,7 @@ export const useProductDetail = (product?: IProduct) => {
     return selectedVariant?.price || product?.price || 0;
   }, [selectedVariant, product]);
 
-  const stock = selectedVariant?.stock || 0;
+  const stock = selectedVariant?.stock ?? product?.stock ?? product?.totalStock ?? 0;
 
   return {
     selectedVariant,

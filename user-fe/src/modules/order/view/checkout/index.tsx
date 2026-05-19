@@ -5,8 +5,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Archive, ShieldCheck, Truck, Zap } from "lucide-react";
 import { toast } from "sonner";
 
-import { getStoredStorefrontUser } from "@/lib/auth-storage";
+import { API_URL_ORDER } from "@/constant/config";
+import { apiClient } from "@/lib/api";
 import { useGetAddresses } from "@/modules/address/api/get-address";
+import { useAuthStore } from "@/stores/auth.store";
 
 import { useCheckoutOrder } from "../../api/checkout";
 import { Confirmation } from "../../components/checkout/confirmation";
@@ -63,6 +65,7 @@ export default function CheckOutPage() {
 
   const { data: addresses } = useGetAddresses();
   const checkoutMutation = useCheckoutOrder();
+  const authUser = useAuthStore((store) => store.user);
 
   const locationItems = location.state?.items as CheckoutLocationItem[] | undefined;
   const [cartItems, setCartItems] = useState<CheckoutLocationItem[]>(() =>
@@ -78,9 +81,7 @@ export default function CheckOutPage() {
   }, [locationItems]);
 
   useEffect(() => {
-    const user = getStoredStorefrontUser();
-
-    if (!user) {
+    if (!authUser) {
       toast.error("Bạn cần đăng nhập để thanh toán");
       navigate("/login", { state: { redirect: "/checkout" } });
       return;
@@ -90,7 +91,7 @@ export default function CheckOutPage() {
       navigate("/cart");
       return;
     }
-  }, [navigate, cartItems]);
+  }, [navigate, cartItems, authUser]);
   const shippingMethods = [
     {
       id: "STANDARD",
@@ -146,10 +147,10 @@ export default function CheckOutPage() {
     setDiscountAmount(0);
   };
 
-  const totalWithDiscount =
-  state.subtotal +
-  state.shippingPrice -
-  discountAmount;
+  const totalWithDiscount = Math.max(
+    0,
+    state.subtotal + state.shippingPrice - discountAmount,
+  );
 
   const handlePlaceOrder = async () => {
     if (!state.shippingAddress) {
@@ -158,8 +159,7 @@ export default function CheckOutPage() {
     }
 
     try {
-      const user = getStoredStorefrontUser<{ id: number }>();
-      if (!user) {
+      if (!authUser) {
         toast.error("Bạn cần đăng nhập để đặt hàng");
         return;
       }
@@ -171,9 +171,10 @@ export default function CheckOutPage() {
       }
 
       const payload = {
-        userId: user.id,
+        userId: authUser.id,
         subtotal: state.subtotal,
         shippingFee: state.shippingPrice,
+        shippingMethod: state.shipping,
         discountAmount,
         totalAmount: totalWithDiscount,
         shippingAddressId: state.shippingAddress.id,
@@ -197,8 +198,6 @@ export default function CheckOutPage() {
       };
 
       const checkoutResult = await checkoutMutation.mutateAsync(payload);
-      window.sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
-
       // Chỉ tạo QR payment cho MOMO/VNPAY
       if (state.payment === "MOMO" || state.payment === "VNPAY") {
         setPaymentQrData({
@@ -213,6 +212,7 @@ export default function CheckOutPage() {
         return;
       }
 
+      window.sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
       toast.success("Đặt hàng thành công");
       navigate(`/orders/${checkoutResult.order.id}`);
     } catch (error: any) {
@@ -356,9 +356,20 @@ export default function CheckOutPage() {
                   )}
 
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (paymentQrData.orderId) {
-                        navigate(`/orders/${paymentQrData.orderId}`);
+                        try {
+                          const response = await apiClient.get(`${API_URL_ORDER}/payment/order/${paymentQrData.orderId}`);
+                          const payment = response.data?.data ?? response.data;
+                          if (payment?.status === "SUCCESS") {
+                            window.sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
+                            navigate(`/orders/${paymentQrData.orderId}`);
+                            return;
+                          }
+                          toast.error("Thanh toán chưa được xác nhận. Vui lòng chờ callback từ cổng thanh toán.");
+                        } catch {
+                          toast.error("Không thể kiểm tra trạng thái thanh toán");
+                        }
                       }
                     }}
                     className="w-full rounded-full border border-slate-300 py-3 text-center font-semibold text-slate-600 transition hover:bg-slate-50"

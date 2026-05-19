@@ -101,6 +101,7 @@ export const mapOrder = (order: any): IOrder => ({
   status: toLowerStatus<IOrder["status"]>(order.status),
   subtotal: order.subtotal,
   shipping_fee: order.shippingFee,
+  shipping_method: order.shippingMethod ?? null,
   discount_amount: order.discountAmount,
   total_amount: order.totalAmount,
   shipping_address_id: order.shippingAddressId ?? null,

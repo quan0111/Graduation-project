@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_URL_NOTIFICATION } from "@/constant/config";
 import { apiClient } from "@/lib/api";
+import { useMe } from "@/modules/auth/api/get-auth-me";
 import type { MutationConfig } from "@/lib/react-query";
 import type { UseQueryOptions } from "@tanstack/react-query";
 
@@ -48,9 +49,11 @@ export const getNotifications = async (): Promise<Notification[]> => {
 export const useGetNotifications = (
     config?: Omit<UseQueryOptions<Notification[], Error>, "queryKey" | "queryFn">
 ) => {
+    const { data: user } = useMe();
     return useQuery<Notification[], Error>({
-        queryKey: ["notifications"],
+        queryKey: ["notifications", user?.id],
         queryFn: getNotifications,
+        enabled: !!user?.id && (config?.enabled ?? true),
         ...config,
     });
 };
@@ -64,9 +67,11 @@ export const getUnreadCount = async (): Promise<{ count: number }> => {
 export const useGetUnreadCount = (
     config?: Omit<UseQueryOptions<{ count: number }, Error>, "queryKey" | "queryFn">
 ) => {
+    const { data: user } = useMe();
     return useQuery<{ count: number }, Error>({
-        queryKey: ["notifications", "unread", "count"],
+        queryKey: ["notifications", user?.id, "unread", "count"],
         queryFn: getUnreadCount,
+        enabled: !!user?.id && (config?.enabled ?? true),
         ...config,
     });
 };

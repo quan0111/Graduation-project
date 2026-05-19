@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_URL_USER } from "@/constant/config";
 import { clearStorefrontSession, setStoredStorefrontUser } from "@/lib/auth-storage";
 import { apiClient } from "@/lib/api";
+import { useAuthStore } from "@/stores/auth.store";
 import type { MutationConfig } from "@/lib/react-query";
 import type { UseQueryOptions } from "@tanstack/react-query";
 
@@ -31,6 +32,10 @@ export interface UpdatePasswordRequest {
 // Get current user profile
 export const getCurrentUser = async (): Promise<User> => {
     const response = await apiClient.get(`${API_URL_USER}/me`);
+    if (response.data?.id) {
+        setStoredStorefrontUser(response.data);
+        useAuthStore.getState().setUser(response.data);
+    }
     return response.data;
 };
 
@@ -56,6 +61,7 @@ export const useUpdateProfile = ({ config }: { config?: MutationConfig<typeof up
         mutationFn: updateProfile,
         onSuccess: async (data) => {
             setStoredStorefrontUser(data);
+            useAuthStore.getState().setUser(data);
             await queryClient.invalidateQueries({ queryKey: ["user", "me"] });
             await queryClient.invalidateQueries({ queryKey: ["auth"] });
         },
@@ -75,6 +81,7 @@ export const useUpdateAvatar = ({ config }: { config?: MutationConfig<typeof upd
         mutationFn: updateAvatar,
         onSuccess: async (data) => {
             setStoredStorefrontUser(data);
+            useAuthStore.getState().setUser(data);
             await queryClient.invalidateQueries({ queryKey: ["user", "me"] });
             await queryClient.invalidateQueries({ queryKey: ["auth"] });
         },
@@ -123,6 +130,7 @@ export const useDeleteAccount = ({ config }: { config?: MutationConfig<typeof de
         onSuccess: async () => {
             await queryClient.clear();
             clearStorefrontSession();
+            useAuthStore.getState().setUser(null);
         },
         ...config,
     });

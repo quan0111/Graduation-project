@@ -5,7 +5,7 @@ import type { QueryConfig } from "@/lib/react-query";
 import type { IProduct } from "../types";
 
 export const getProducts = async (): Promise<IProduct[]> => {
-  const res = await apiClient.get(`${API_URL_PRODUCT}`);
+  const res = await apiClient.get(`${API_URL_PRODUCT}`, { params: { limit: 100 } });
   return res.data;
 };
 

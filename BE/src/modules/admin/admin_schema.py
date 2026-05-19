@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from typing import Any, Optional
 
 
 class AdminUserUpdate(BaseModel):
@@ -30,6 +30,12 @@ class DashboardStats(BaseModel):
     totalProducts: int
     totalShops: int
     totalRevenue: float
+    revenueByMonth: list[dict[str, Any]] = []
+    categoryStats: list[dict[str, Any]] = []
+    pendingShops: list[dict[str, Any]] = []
+    pendingProducts: list[dict[str, Any]] = []
+    topShops: list[dict[str, Any]] = []
+    recentActivity: list[dict[str, Any]] = []
 
 
 class AdminAccountCreate(BaseModel):

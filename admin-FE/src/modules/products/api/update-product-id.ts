@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
-import { API_URL_PRODUCT } from "@/constant/config";
+import { API_URL_ADMIN } from "@/constant/config";
 import type { MutationConfig } from "@/lib/react-query";
 
 export const updateProduct = async ({
@@ -10,7 +10,10 @@ export const updateProduct = async ({
   id: number;
   data: any;
 }) => {
-  const res = await apiClient.patch(`${API_URL_PRODUCT}/${id}`, data);
+  const res = await apiClient.patch(`${API_URL_ADMIN}/products/${id}/status`, {
+    status: data.status,
+    banReason: data.banReason || data.reason || "",
+  });
   return res.data;
 };
 
