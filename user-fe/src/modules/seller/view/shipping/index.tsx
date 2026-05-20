@@ -81,7 +81,7 @@ export default function SellerShippingPage() {
   return (
     <SellerDashboardLayout>
       <section className="space-y-6">
-        <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+        <div className="rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.24em] text-[#ee4d2d]">Seller Shipping</p>
@@ -145,7 +145,7 @@ export default function SellerShippingPage() {
                       </div>
                     </div>
 
-                    <div className="grid gap-3 text-sm sm:grid-cols-3 xl:min-w-[520px]">
+                    <div className="grid gap-3 text-sm sm:grid-cols-3 xl:min-w-130">
                       <Info label="Đơn vị" value={row.carrier || "Tự vận chuyển"} />
                       <Info label="Mã vận đơn" value={row.trackingNumber || "Chưa cập nhật"} />
                       <Info label="Cập nhật" value={formatDateTime(row.lastUpdated)} />
@@ -184,7 +184,7 @@ export default function SellerShippingPage() {
         </div>
 
         {!isLoading && filteredRows.length === 0 ? (
-          <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-500">
+          <div className="rounded-4xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-500">
             Không có package phù hợp bộ lọc hiện tại.
           </div>
         ) : null}

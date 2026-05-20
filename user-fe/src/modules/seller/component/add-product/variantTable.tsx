@@ -23,7 +23,7 @@ export const VariantTable = memo(function VariantTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-[24px] border border-slate-200">
+    <div className="overflow-hidden rounded-3xl border border-slate-200">
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">

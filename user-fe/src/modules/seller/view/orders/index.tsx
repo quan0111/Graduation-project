@@ -15,7 +15,7 @@ export default function SellerOrdersPage() {
   return (
     <SellerDashboardLayout>
       <section className="space-y-6">
-        <div className="rounded-[2rem] bg-[radial-gradient(circle_at_top_left,_rgba(238,77,45,0.14),_transparent_36%),linear-gradient(135deg,#111827,#1f2937)] px-6 py-8 text-white shadow-lg">
+        <div className="rounded-4xl bg-[radial-gradient(circle_at_top_left,rgba(238,77,45,0.14),transparent_36%),linear-gradient(135deg,#111827,#1f2937)] px-6 py-8 text-white shadow-lg">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.24em] text-orange-200">Seller Orders</p>
@@ -40,7 +40,7 @@ export default function SellerOrdersPage() {
         {isError ? <p className="text-sm text-rose-500">Không thể tải đơn hàng của shop.</p> : null}
 
         {!isLoading && !orders.length ? (
-          <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white px-6 py-14 text-center shadow-sm">
+          <div className="rounded-4xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center shadow-sm">
             <p className="text-lg font-semibold text-slate-950">Chưa có đơn hàng cho shop này</p>
             <p className="mt-2 text-sm text-slate-500">
               Khi khách đặt hàng, seller có thể xem hóa đơn theo shop và cập nhật tracking từ đây.
@@ -55,7 +55,7 @@ export default function SellerOrdersPage() {
             return (
               <article
                 key={order.id}
-                className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-slate-200/80"
+                className="rounded-4xl bg-white p-5 shadow-sm ring-1 ring-slate-200/80"
               >
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-3">

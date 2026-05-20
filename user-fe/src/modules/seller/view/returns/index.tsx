@@ -152,7 +152,7 @@ export default function SellerReturnsPage() {
   return (
     <SellerDashboardLayout>
       <section className="space-y-6">
-        <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+        <div className="rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
           <p className="text-sm uppercase tracking-[0.24em] text-[#ee4d2d]">Returns & Refunds</p>
           <h1 className="mt-3 text-2xl font-bold text-slate-950">Yêu cầu trả hàng / hoàn tiền</h1>
           <p className="mt-2 text-sm text-slate-500">
@@ -344,7 +344,7 @@ export default function SellerReturnsPage() {
       )}
 
       {refundCandidate && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 px-4">
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>

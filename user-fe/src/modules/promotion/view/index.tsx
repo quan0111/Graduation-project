@@ -37,7 +37,7 @@ export default function PromotionPage() {
   return (
     <main className="min-h-screen bg-[#fff7ed] px-4 py-6 md:px-6">
       <div className="mx-auto max-w-7xl space-y-8">
-        <section className="overflow-hidden rounded-[2rem] bg-slate-950 text-white shadow-sm">
+        <section className="overflow-hidden rounded-4xl bg-slate-950 text-white shadow-sm">
           {banners.length > 0 ? (
             <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
               <div className="p-6 md:p-10">
@@ -125,7 +125,7 @@ export default function PromotionPage() {
           )}
         </section>
 
-        <section className="rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-orange-100 md:p-6">
+        <section className="rounded-4xl bg-white p-5 shadow-sm ring-1 ring-orange-100 md:p-6">
           <div className="mb-5">
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-600">Voucher</p>
             <h2 className="mt-1 text-2xl font-bold text-slate-950">Mã giảm giá khả dụng</h2>

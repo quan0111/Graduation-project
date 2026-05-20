@@ -94,7 +94,7 @@ export default function SellerAnalyticsPage() {
   return (
     <SellerDashboardLayout>
       <section className="space-y-6">
-        <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+        <div className="rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.24em] text-[#ee4d2d]">Seller Analytics</p>

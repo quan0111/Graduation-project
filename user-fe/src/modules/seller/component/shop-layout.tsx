@@ -107,7 +107,7 @@ export function SellerDashboardLayout({ children }: SellerDashboardLayoutProps) 
           ))}
         </div>
 
-        <div className="m-4 rounded-2xl bg-gradient-to-br from-orange-50 to-amber-50 p-4">
+        <div className="m-4 rounded-2xl bg-linear-to-br from-orange-50 to-amber-50 p-4">
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
             <ShieldCheck className="size-4 text-[#ee4d2d]" />
             Shop uy tín

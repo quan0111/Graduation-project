@@ -215,7 +215,7 @@ export default function SellerInventoryPage() {
         ) : (
           <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1040px]">
+              <table className="w-full min-w-260">
                 <thead className="border-b border-slate-200 bg-slate-50">
                   <tr>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Sản phẩm / Variant</th>

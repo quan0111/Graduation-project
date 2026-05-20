@@ -27,7 +27,7 @@ export const ProductVariants = ({
               key={variant.id}
               type="button"
               onClick={() => onSelect(variant)}
-              className={`flex min-w-[120px] items-center gap-2 border px-3 py-2 text-sm ${
+              className={`flex min-w-30 items-center gap-2 border px-3 py-2 text-sm ${
                 active
                   ? "border-[#ee4d2d] text-[#ee4d2d]"
                   : "border-gray-300 hover:border-[#ee4d2d]"

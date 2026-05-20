@@ -183,7 +183,7 @@ export default function SellerOrderDetailPage() {
           </Link>
         </div>
 
-        <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+        <div className="rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.24em] text-slate-400">Shop Invoice</p>
@@ -210,7 +210,7 @@ export default function SellerOrderDetailPage() {
             <OrderTimeline status={order.status} order={order} />
             <OrderShipping order={order} />
 
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+            <div className="rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
               <div className="mb-5">
                 <p className="text-lg font-semibold text-slate-950">Sản phẩm thuộc shop</p>
                 <p className="text-sm text-slate-500">
@@ -225,7 +225,7 @@ export default function SellerOrderDetailPage() {
             <OrderSummary order={order} sellerView />
 
             {nextOrderStatuses.length > 0 && (
-              <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+              <div className="rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
                 <p className="text-base font-semibold text-slate-950">Cập nhật trạng thái đơn</p>
                 <p className="mt-1 text-sm leading-6 text-slate-500">
                   Chỉ hiển thị các bước hợp lệ theo trạng thái hiện tại của đơn hàng.
@@ -245,7 +245,7 @@ export default function SellerOrderDetailPage() {
               </div>
             )}
 
-            <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+            <div className="rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
               <p className="text-base font-semibold text-slate-950">Chỉnh sửa tracking</p>
               <p className="mt-1 text-sm leading-6 text-slate-500">
                 Với đơn nhiều shop, tracking được lưu riêng cho package của shop hiện tại.

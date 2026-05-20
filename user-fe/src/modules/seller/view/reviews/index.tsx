@@ -114,7 +114,7 @@ export default function SellerReviewsPage() {
   return (
     <SellerDashboardLayout>
       <section className="space-y-6">
-        <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+        <div className="rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#ee4d2d]">{TEXT.eyebrow}</p>
@@ -130,13 +130,13 @@ export default function SellerReviewsPage() {
         </div>
 
         {isLoading ? (
-          <div className="rounded-[2rem] bg-white p-8 text-sm text-slate-500 shadow-sm ring-1 ring-slate-200/80">
+          <div className="rounded-4xl bg-white p-8 text-sm text-slate-500 shadow-sm ring-1 ring-slate-200/80">
             {TEXT.loading}
           </div>
         ) : null}
 
         {isError ? (
-          <div className="rounded-[2rem] bg-white p-8 text-sm text-rose-500 shadow-sm ring-1 ring-slate-200/80">
+          <div className="rounded-4xl bg-white p-8 text-sm text-rose-500 shadow-sm ring-1 ring-slate-200/80">
             {TEXT.loadFailed}
           </div>
         ) : null}
@@ -148,7 +148,7 @@ export default function SellerReviewsPage() {
             const hasReply = (review.replies?.length ?? 0) > 0;
 
             return (
-              <article key={review.id} className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
+              <article key={review.id} className="rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-slate-950">{review.productName}</p>
@@ -239,7 +239,7 @@ function Metric({ label, value }: { label: string; value: number }) {
 
 function EmptyMessage({ text }: { text: string }) {
   return (
-    <div className="rounded-[2rem] bg-white p-8 text-center text-sm text-slate-500 shadow-sm ring-1 ring-slate-200/80">
+    <div className="rounded-4xl bg-white p-8 text-center text-sm text-slate-500 shadow-sm ring-1 ring-slate-200/80">
       {text}
     </div>
   );

@@ -53,7 +53,7 @@ export function SellingStep({
       <CardContent className="space-y-6">
         <div className="space-y-4">
           {variantGroups.map((group, groupIndex) => (
-            <div key={`${groupIndex}`} className="rounded-[24px] border border-slate-200 p-4">
+            <div key={`${groupIndex}`} className="rounded-3xl border border-slate-200 p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <Input
                   value={group.name}
