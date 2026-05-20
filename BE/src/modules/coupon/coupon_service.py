@@ -117,7 +117,12 @@ class CouponService:
         )
 
     @staticmethod
-    async def validate_coupon(code: str, order_amount: float, user_id: int | None = None):
+    async def validate_coupon(
+        code: str,
+        order_amount: float,
+        user_id: int | None = None,
+        shop_ids: list[int] | None = None,
+    ):
         coupon = await prisma.coupon.find_unique(
             where={"code": code}
         )
@@ -149,10 +154,18 @@ class CouponService:
         if coupon.minOrderAmount and order_amount < coupon.minOrderAmount:
             raise HTTPException(400, "Order not eligible")
 
+        normalized_shop_ids = {int(shop_id) for shop_id in shop_ids or [] if shop_id}
+        if coupon.applicableShopId:
+            if not normalized_shop_ids:
+                raise HTTPException(400, "Coupon requires shop context")
+            if any(shop_id != coupon.applicableShopId for shop_id in normalized_shop_ids):
+                raise HTTPException(400, "Coupon is not applicable to this shop")
+
         return coupon
 
     @staticmethod
     def calculate_discount(coupon, order_amount: float):
+        order_amount = max(float(order_amount or 0), 0)
         if coupon.discountType == "PERCENTAGE":
             discount = order_amount * (coupon.discountValue / 100)
 
@@ -162,7 +175,7 @@ class CouponService:
         else:
             discount = coupon.discountValue
 
-        return discount
+        return max(0, min(float(discount or 0), order_amount))
     @staticmethod
     async def use_coupon(coupon_id: int, user_id: int | None = None, order_id: int | None = None):
         coupon = await prisma.coupon.find_unique(

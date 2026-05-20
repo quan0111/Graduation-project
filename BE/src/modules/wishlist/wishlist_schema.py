@@ -3,13 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-
-class ProductShort(BaseModel):
-    id: int
-    name: str
-    price: float
-
-    model_config = {"from_attributes": True}
+from src.modules.product.product_schema import ProductOut
 
 
 class WishlistOut(BaseModel):
@@ -17,6 +11,6 @@ class WishlistOut(BaseModel):
     userId: int
     productId: int
     createdAt: datetime
-    product: Optional[ProductShort] = None
+    product: Optional[ProductOut] = None
 
     model_config = {"from_attributes": True}

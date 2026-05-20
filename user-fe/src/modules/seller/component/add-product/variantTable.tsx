@@ -6,13 +6,17 @@ import { VariantRow } from "./variantRow";
 type Props = {
   variants: VariantDraft[];
   images: UploadedImage[];
+  isUploadingVariantImage?: boolean;
   updateVariant: (index: number, field: keyof VariantDraft, value: string | number) => void;
+  uploadVariantImage: (index: number, file: File) => Promise<void>;
 };
 
 export const VariantTable = memo(function VariantTable({
   variants,
   images,
+  isUploadingVariantImage = false,
   updateVariant,
+  uploadVariantImage,
 }: Props) {
   if (variants.length === 0) {
     return null;
@@ -24,7 +28,7 @@ export const VariantTable = memo(function VariantTable({
         <table className="min-w-full text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
-              <th className="px-4 py-3 font-medium">Phân Loại</th>
+              <th className="px-4 py-3 font-medium">Phân loại</th>
               <th className="px-4 py-3 font-medium">Ảnh</th>
               <th className="px-4 py-3 font-medium">SKU</th>
               <th className="px-4 py-3 font-medium">Giá</th>
@@ -39,7 +43,9 @@ export const VariantTable = memo(function VariantTable({
                 variant={variant}
                 index={index}
                 images={images}
+                isUploadingImage={isUploadingVariantImage}
                 updateVariant={updateVariant}
+                uploadVariantImage={uploadVariantImage}
               />
             ))}
           </tbody>

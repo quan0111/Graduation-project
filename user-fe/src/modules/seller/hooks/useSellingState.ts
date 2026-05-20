@@ -3,9 +3,9 @@ import { toast } from "sonner";
 
 import type { UploadedImage, VariantDraft, VariantGroup } from "../types/addproduct";
 
-export function useSellingState(images: UploadedImage[]) {
+export function useSellingState(_images: UploadedImage[]) {
   const [variantGroups, setVariantGroups] = useState<VariantGroup[]>([
-    { name: "Mau sac", values: [""] },
+    { name: "Màu sắc", values: [""] },
   ]);
   const [variants, setVariants] = useState<VariantDraft[]>([]);
 
@@ -106,13 +106,13 @@ export function useSellingState(images: UploadedImage[]) {
         price: existing?.price || 0,
         stock: existing?.stock || 0,
         weight: existing?.weight || 0,
-        imageUrl: existing?.imageUrl || images[0]?.url || "",
+        imageUrl: existing?.imageUrl || "",
       };
     });
 
     setVariants(nextVariants);
     toast.success("Đã tạo bảng phân loại");
-  }, [images, variantGroups, variants]);
+  }, [variantGroups, variants]);
 
   const updateVariant = useCallback(
     (index: number, field: keyof VariantDraft, value: string | number) => {

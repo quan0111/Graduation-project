@@ -14,6 +14,7 @@ export interface UploadImageResponse {
   width?: number;
   height?: number;
   format?: string;
+  resourceType?: string;
 }
 
 export const uploadImage = async ({ file, folder = "datn" }: UploadImageRequest): Promise<UploadImageResponse> => {
@@ -35,4 +36,18 @@ export const useUploadImage = ({ config }: { config?: MutationConfig<typeof uplo
     mutationFn: uploadImage,
     ...config,
   });
+};
+
+export const uploadMedia = async ({ file, folder = "datn" }: UploadImageRequest): Promise<UploadImageResponse> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("folder", folder);
+
+  const response = await apiClient.post("/uploads/media", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  return response.data;
 };

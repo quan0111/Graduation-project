@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from typing import List
 
-from src.core.dependencies import get_current_user, get_optional_current_user, require_admin, require_seller, require_seller_or_admin
+from src.core.dependencies import get_current_user, get_optional_current_user, get_role_value, require_admin, require_seller, require_seller_or_admin
 from src.modules.product.product_schema import (
     ProductAttributeCreate,
     ProductAttributeOut,
@@ -36,14 +36,15 @@ async def get_all_products(
     limit: int = Query(24, ge=1, le=100),
     search: str | None = None,
     category_id: int | None = None,
+    categoryId: int | None = None,
     user=Depends(get_optional_current_user),
 ):
     return await ProductService.get_all_products(
-        user,
+        viewer_role=get_role_value(user) if user else None,
         page=page,
         limit=limit,
         search=search,
-        category_id=category_id,
+        category_id=category_id or categoryId,
     )
 
 

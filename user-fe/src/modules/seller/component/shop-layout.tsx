@@ -15,6 +15,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Star,
   Store,
   TicketPercent,
   Truck,
@@ -35,15 +36,17 @@ const menuGroups = [
       { label: "Trả hàng / hoàn tiền", href: "/seller/returns", icon: RefreshCcw, match: "/seller/returns" },
       { label: "Vi phạm sản phẩm", href: "/seller/violations", icon: ShieldCheck, match: "/seller/violations" },
       { label: "Sản phẩm", href: "/seller/products", icon: Package, match: "/seller/products" },
-      { label: "Vận chuyển", href: "/seller/orders", icon: Truck, match: "/seller/orders" },
+      { label: "Kho & giá variant", href: "/seller/inventory", icon: Package, match: "/seller/inventory" },
+      { label: "Vận chuyển", href: "/seller/shipping", icon: Truck, match: "/seller/shipping" },
+      { label: "Review khách hàng", href: "/seller/reviews", icon: Star, match: "/seller/reviews" },
     ],
   },
   {
     label: "Tăng trưởng",
     items: [
-      { label: "Marketing", href: "/seller/dashboard#campaigns", icon: Megaphone, match: "/seller/dashboard" },
+      { label: "Marketing", href: "/seller/marketing", icon: Megaphone, match: "/seller/marketing" },
       { label: "Coupon shop", href: "/seller/coupons", icon: TicketPercent, match: "/seller/coupons" },
-      { label: "Phân tích", href: "/seller/dashboard#analytics", icon: BarChart3, match: "/seller/dashboard" },
+      { label: "Phân tích", href: "/seller/analytics", icon: BarChart3, match: "/seller/analytics" },
       { label: "Tài chính", href: "/seller/finance", icon: BadgeDollarSign, match: "/seller/finance" },
     ],
   },
@@ -110,7 +113,7 @@ export function SellerDashboardLayout({ children }: SellerDashboardLayoutProps) 
             Shop uy tín
           </div>
           <p className="mb-4 text-xs leading-5 text-slate-500">
-            Hoàn tất SLA đơn hàng và phản hồi chat để giữ điểm vận hành tốt.
+            Hoàn tất SLA đơn hàng và phản hồi khách để giữ điểm vận hành tốt.
           </p>
           <Button size="sm" className="w-full bg-[#ee4d2d] hover:bg-[#d93f21]">
             Xem tiêu chí

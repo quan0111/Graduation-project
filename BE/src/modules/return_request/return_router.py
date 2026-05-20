@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from src.core.dependencies import get_current_user, get_role_value, require_admin, require_seller
 from src.modules.return_request.return_schema import (
+    GatewayRefundConfirm,
     ReturnEvidenceCreate,
     ReturnItemCreate,
     ReturnOut,
@@ -61,6 +62,15 @@ async def review(
     user=Depends(require_admin),
 ):
     return await ReturnService.review(return_id, user.id, data)
+
+
+@router.patch("/{return_id}/gateway-refund", response_model=ReturnOut)
+async def confirm_gateway_refund(
+    return_id: int,
+    data: GatewayRefundConfirm,
+    user=Depends(require_admin),
+):
+    return await ReturnService.confirm_gateway_refund(return_id, user.id, data)
 
 
 @router.patch("/{return_id}/refund", response_model=ReturnOut)

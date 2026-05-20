@@ -49,7 +49,30 @@ export interface ISellerOrder {
   customer_name: string;
   customer_phone: string;
   total_amount: number;
-  status: "PENDING" | "PROCESSING" | "SHIPPED" | "DELIVERED" | "CANCELLED";
+  status:
+    | "PENDING"
+    | "PENDING_PAYMENT"
+    | "CONFIRMED"
+    | "PAID"
+    | "PAYMENT_FAILED"
+    | "PAYMENT_EXPIRED"
+    | "PROCESSING"
+    | "READY_TO_SHIP"
+    | "SHIPPED"
+    | "IN_TRANSIT"
+    | "OUT_FOR_DELIVERY"
+    | "DELIVERED"
+    | "COMPLETED"
+    | "CANCEL_REQUESTED"
+    | "CANCELLED_BY_CUSTOMER"
+    | "CANCELLED_BY_SELLER"
+    | "CANCEL_REJECTED"
+    | "CANCEL_APPROVED"
+    | "CANCELLED"
+    | "DELIVERY_FAILED"
+    | "RETURN_TO_SENDER"
+    | "RETURN_REQUESTED"
+    | "RETURNED";
   created_at: string;
   items: ISellerOrderItem[];
 }

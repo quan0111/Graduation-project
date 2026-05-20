@@ -1,149 +1,161 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { API_URL_FLASH_SALE, API_URL_MARKETING } from "@/constant/config";
-import { apiClient } from "@/lib/api";
+import {
+  useAddFlashSaleItem,
+  useAdminBanners,
+  useCreateBanner,
+  useCreateFlashSale,
+  useFlashSales,
+  useUpdateFlashSale,
+} from "../api/marketing";
+import { BannerCreateDialog } from "../components/banner-create-dialog";
+import { BannerListCard } from "../components/banner-list-card";
+import { FlashSaleCreateDialog } from "../components/flash-sale-create-dialog";
+import { FlashSaleItemDialog } from "../components/flash-sale-item-dialog";
+import { FlashSaleListCard } from "../components/flash-sale-list-card";
+import type {
+  BannerCreatePayload,
+  FlashSale,
+  FlashSaleCreatePayload,
+  FlashSaleItemCreatePayload,
+  FlashSaleStatus,
+} from "../types";
+import { getApiErrorMessage } from "../utils/error";
 
-type Banner = {
-  id: number;
-  title: string;
-  position: string;
-  status: string;
-  imageUrl: string;
-  startAt?: string | null;
-  endAt?: string | null;
-};
-
-type FlashSale = {
-  id: number;
-  name: string;
-  startsAt: string;
-  endsAt: string;
-  status: string;
+const COPY = {
+  title: "Marketing",
+  description: "Qu\u1ea3n l\u00fd banner v\u00e0 flash sale h\u1ec7 th\u1ed1ng.",
+  bannerCreated: "T\u1ea1o banner th\u00e0nh c\u00f4ng.",
+  bannerCreateFailed: "T\u1ea1o banner th\u1ea5t b\u1ea1i.",
+  flashSaleCreated: "T\u1ea1o flash sale th\u00e0nh c\u00f4ng.",
+  flashSaleCreateFailed: "T\u1ea1o flash sale th\u1ea5t b\u1ea1i.",
+  flashSaleUpdated: "C\u1eadp nh\u1eadt flash sale th\u00e0nh c\u00f4ng.",
+  flashSaleUpdateFailed: "C\u1eadp nh\u1eadt flash sale th\u1ea5t b\u1ea1i.",
+  flashSaleItemAdded: "Th\u00eam s\u1ea3n ph\u1ea9m flash sale th\u00e0nh c\u00f4ng.",
+  flashSaleItemAddFailed: "Th\u00eam s\u1ea3n ph\u1ea9m flash sale th\u1ea5t b\u1ea1i.",
 };
 
 export default function MarketingPage() {
-  const queryClient = useQueryClient();
-  const { data: banners = [] } = useQuery({
-    queryKey: ["admin", "banners"],
-    queryFn: async (): Promise<Banner[]> => {
-      const res = await apiClient.get(`${API_URL_MARKETING}/admin/banners`);
-      return res.data;
-    },
-  });
-  const { data: flashSales = [] } = useQuery({
-    queryKey: ["admin", "flash-sales"],
-    queryFn: async (): Promise<FlashSale[]> => {
-      const res = await apiClient.get(API_URL_FLASH_SALE);
-      return res.data;
-    },
-  });
+  const [bannerDialogOpen, setBannerDialogOpen] = useState(false);
+  const [flashSaleDialogOpen, setFlashSaleDialogOpen] = useState(false);
+  const [selectedFlashSale, setSelectedFlashSale] = useState<FlashSale | null>(null);
 
-  const createBanner = useMutation({
-    mutationFn: async (payload: Partial<Banner>) => {
-      const res = await apiClient.post(`${API_URL_MARKETING}/banners`, payload);
-      return res.data;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "banners"] }),
-  });
-  const createFlashSale = useMutation({
-    mutationFn: async (payload: Partial<FlashSale>) => {
-      const res = await apiClient.post(API_URL_FLASH_SALE, payload);
-      return res.data;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "flash-sales"] }),
-  });
+  const bannersQuery = useAdminBanners();
+  const flashSalesQuery = useFlashSales();
+  const createBannerMutation = useCreateBanner();
+  const createFlashSaleMutation = useCreateFlashSale();
+  const updateFlashSaleMutation = useUpdateFlashSale();
+  const addFlashSaleItemMutation = useAddFlashSaleItem();
 
-  const handleCreateBanner = async () => {
-    const title = window.prompt("Ten banner");
-    if (!title?.trim()) return;
-    const imageUrl = window.prompt("Image URL");
-    if (!imageUrl?.trim()) return;
-    await createBanner.mutateAsync({
-      title,
-      imageUrl,
-      position: "HOME_TOP",
-      status: "DRAFT",
-    });
+  const banners = bannersQuery.data ?? [];
+  const flashSales = flashSalesQuery.data ?? [];
+
+  const handleCreateBanner = async (payload: BannerCreatePayload) => {
+    try {
+      await createBannerMutation.mutateAsync(payload);
+      toast.success(COPY.bannerCreated);
+      setBannerDialogOpen(false);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, COPY.bannerCreateFailed));
+      throw error;
+    }
   };
 
-  const handleCreateFlashSale = async () => {
-    const name = window.prompt("Ten flash sale");
-    if (!name?.trim()) return;
-    const now = new Date();
-    const endsAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    await createFlashSale.mutateAsync({
-      name,
-      startsAt: now.toISOString(),
-      endsAt: endsAt.toISOString(),
-      status: "DRAFT",
-    });
+  const handleCreateFlashSale = async (payload: FlashSaleCreatePayload) => {
+    try {
+      await createFlashSaleMutation.mutateAsync(payload);
+      toast.success(COPY.flashSaleCreated);
+      setFlashSaleDialogOpen(false);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, COPY.flashSaleCreateFailed));
+      throw error;
+    }
+  };
+
+  const handleToggleFlashSaleStatus = async (sale: FlashSale) => {
+    const nextStatus: FlashSaleStatus = sale.status === "ACTIVE" ? "PAUSED" : "ACTIVE";
+
+    try {
+      await updateFlashSaleMutation.mutateAsync({
+        id: sale.id,
+        payload: { status: nextStatus },
+      });
+      toast.success(COPY.flashSaleUpdated);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, COPY.flashSaleUpdateFailed));
+    }
+  };
+
+  const handleAddFlashSaleItem = async (payload: FlashSaleItemCreatePayload) => {
+    if (!selectedFlashSale) {
+      return;
+    }
+
+    try {
+      await addFlashSaleItemMutation.mutateAsync({
+        saleId: selectedFlashSale.id,
+        payload,
+      });
+      toast.success(COPY.flashSaleItemAdded);
+      setSelectedFlashSale(null);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, COPY.flashSaleItemAddFailed));
+      throw error;
+    }
   };
 
   return (
     <main className="flex-1 overflow-auto p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Marketing</h1>
-        <p className="text-muted-foreground">Quan ly banner va flash sale tu schema backend.</p>
+        <h1 className="text-2xl font-bold">{COPY.title}</h1>
+        <p className="text-muted-foreground">{COPY.description}</p>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Banner</CardTitle>
-              <CardDescription>{banners.length} banner</CardDescription>
-            </div>
-            <Button onClick={handleCreateBanner} disabled={createBanner.isPending}>
-              <Plus className="h-4 w-4" />
-              Tao banner
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {banners.map((banner) => (
-              <div key={banner.id} className="flex items-center gap-3 rounded-lg border p-3">
-                <img src={banner.imageUrl} alt={banner.title} className="h-14 w-24 rounded object-cover" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{banner.title}</p>
-                  <p className="text-sm text-muted-foreground">{banner.position}</p>
-                </div>
-                <Badge variant="outline">{banner.status}</Badge>
-              </div>
-            ))}
-            {!banners.length && <p className="text-sm text-muted-foreground">Chua co banner.</p>}
-          </CardContent>
-        </Card>
+        <BannerListCard
+          banners={banners}
+          isError={bannersQuery.isError}
+          isLoading={bannersQuery.isLoading}
+          pending={createBannerMutation.isPending}
+          onCreate={() => setBannerDialogOpen(true)}
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Flash sale</CardTitle>
-              <CardDescription>{flashSales.length} chuong trinh</CardDescription>
-            </div>
-            <Button onClick={handleCreateFlashSale} disabled={createFlashSale.isPending}>
-              <Plus className="h-4 w-4" />
-              Tao flash sale
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {flashSales.map((sale) => (
-              <div key={sale.id} className="rounded-lg border p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-medium">{sale.name}</p>
-                  <Badge variant="outline">{sale.status}</Badge>
-                </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {new Date(sale.startsAt).toLocaleString("vi-VN")} - {new Date(sale.endsAt).toLocaleString("vi-VN")}
-                </p>
-              </div>
-            ))}
-            {!flashSales.length && <p className="text-sm text-muted-foreground">Chua co flash sale.</p>}
-          </CardContent>
-        </Card>
+        <FlashSaleListCard
+          flashSales={flashSales}
+          addingItem={addFlashSaleItemMutation.isPending}
+          isError={flashSalesQuery.isError}
+          isLoading={flashSalesQuery.isLoading}
+          pending={createFlashSaleMutation.isPending}
+          updating={updateFlashSaleMutation.isPending}
+          onAddItem={setSelectedFlashSale}
+          onCreate={() => setFlashSaleDialogOpen(true)}
+          onToggleStatus={handleToggleFlashSaleStatus}
+        />
       </div>
+
+      <BannerCreateDialog
+        open={bannerDialogOpen}
+        pending={createBannerMutation.isPending}
+        onOpenChange={setBannerDialogOpen}
+        onSubmit={handleCreateBanner}
+      />
+      <FlashSaleCreateDialog
+        open={flashSaleDialogOpen}
+        pending={createFlashSaleMutation.isPending}
+        onOpenChange={setFlashSaleDialogOpen}
+        onSubmit={handleCreateFlashSale}
+      />
+      <FlashSaleItemDialog
+        sale={selectedFlashSale}
+        pending={addFlashSaleItemMutation.isPending}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedFlashSale(null);
+          }
+        }}
+        onSubmit={handleAddFlashSaleItem}
+      />
     </main>
   );
 }

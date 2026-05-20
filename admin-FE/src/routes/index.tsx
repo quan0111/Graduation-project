@@ -22,6 +22,7 @@ import AuditPage from "@/modules/audit/view"
 import NotificationsPage from "@/modules/notifications/view"
 import AdminFinancePage from "@/modules/finance/view"
 import MarketingPage from "@/modules/marketing/view"
+import AdminInventoryPage from "@/modules/inventory/view"
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -70,6 +71,10 @@ export const router = createBrowserRouter([
       {
         path: "marketing",
         element: <MarketingPage />,
+      },
+      {
+        path: "inventory",
+        element: <AdminInventoryPage />,
       },
       {
         path: "products",

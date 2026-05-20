@@ -27,15 +27,15 @@ class ReviewService:
             where={
                 "userId": current_user.id,
                 "status": {"in": ["DELIVERED", "COMPLETED"]},
-                "items": {"some": {"productId": data.productId}},
+                "items": {"some": {"productId": data.productId, "deletedAt": None}},
             }
         )
+        if not paid_order:
+            raise HTTPException(400, "Only buyers with delivered or completed orders can review this product")
 
-        # COD orders don't require payment record, so check order status directly
-        # MOMO/VNPAY orders require payment record
         payload = data.dict(exclude={"mediaUrls"})
         payload["userId"] = current_user.id
-        payload["isVerifiedPurchase"] = bool(paid_order)
+        payload["isVerifiedPurchase"] = True
         if data.mediaUrls:
             payload["media"] = {
                 "create": [
@@ -67,6 +67,35 @@ class ReviewService:
     async def get_all_review():
         return await prisma.review.find_many(
             where={"deletedAt": None},
+            include={
+                "user": True,
+                "product": True,
+                "media": True,
+                "replies": {"where": {"deletedAt": None}},
+            },
+            order={"createdAt": "desc"},
+        )
+
+    @staticmethod
+    async def get_reviews_for_seller(current_user):
+        if get_role_value(current_user) != "SELLER":
+            raise HTTPException(403, "Only sellers can view shop reviews")
+
+        shop = await prisma.shop.find_first(
+            where={"ownerId": current_user.id, "deletedAt": None},
+        )
+        if not shop:
+            raise HTTPException(404, "Shop not found")
+
+        products = await prisma.product.find_many(
+            where={"shopId": shop.id, "deletedAt": None},
+        )
+        product_ids = [product.id for product in products]
+        if not product_ids:
+            return []
+
+        return await prisma.review.find_many(
+            where={"productId": {"in": product_ids}, "deletedAt": None},
             include={
                 "user": True,
                 "product": True,

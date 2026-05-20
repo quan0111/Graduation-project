@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useUpdateProduct } from "@/modules/product/api/update-product";
+import { useUpdateVariant } from "@/modules/product/api/update-variant";
 import { useUpdateVariantStock } from "@/modules/product/api/update-variant-stock";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,7 @@ interface SellerDashboardInventoryCardProps {
 
 export function SellerDashboardTopProductsCard({ products }: SellerDashboardTopProductsCardProps) {
   const updateProductMutation = useUpdateProduct();
+  const updateVariantMutation = useUpdateVariant();
   const updateStockMutation = useUpdateVariantStock();
   const [stockTarget, setStockTarget] = useState<SellerDashboardTopProduct | null>(null);
   const [stockQuantity, setStockQuantity] = useState("10");
@@ -54,7 +56,11 @@ export function SellerDashboardTopProductsCard({ products }: SellerDashboardTopP
     }
 
     try {
-      await updateStockMutation.mutateAsync({ variantId: product.variantId, quantity });
+      await updateStockMutation.mutateAsync({
+        variantId: product.variantId,
+        quantity,
+        reason: `Seller tăng kho từ dashboard: ${product.name}`,
+      });
       toast.success(`Da tang kho +${quantity} cho ${product.name}`);
       setStockTarget(null);
     } catch (error: any) {
@@ -63,20 +69,25 @@ export function SellerDashboardTopProductsCard({ products }: SellerDashboardTopP
   };
 
   const handleEditPrice = async (product: SellerDashboardTopProduct, value: number) => {
+    if (!product.variantId) {
+      toast.error("Sản phẩm này chưa có biến thể để sửa giá");
+      return;
+    }
+
     if (!Number.isFinite(value) || value <= 0) {
-      toast.error("Gia khong hop le");
+      toast.error("Giá không hợp lệ");
       return;
     }
 
     try {
-      await updateProductMutation.mutateAsync({
-        id: product.id,
+      await updateVariantMutation.mutateAsync({
+        variantId: product.variantId,
         data: { price: value },
       });
-      toast.success("Da cap nhat gia san pham");
+      toast.success("Đã cập nhật giá variant");
       setPriceTarget(null);
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || "Khong the cap nhat gia");
+      toast.error(error?.response?.data?.detail || "Không thể cập nhật giá variant");
     }
   };
 
@@ -178,12 +189,12 @@ export function SellerDashboardTopProductsCard({ products }: SellerDashboardTopP
       {priceTarget && (
         <NumberInputModal
           title="Sua gia san pham"
-          description={`Nhap gia moi cho ${priceTarget.name}.`}
-          label="Gia moi (VND)"
+          description={`Nhập giá mới cho variant ${priceTarget.name}.`}
+          label="Giá mới (VND)"
           value={nextPrice}
           onChange={setNextPrice}
-          confirmLabel="Luu gia"
-          isPending={updateProductMutation.isPending}
+          confirmLabel="Lưu giá"
+          isPending={updateVariantMutation.isPending}
           onCancel={() => setPriceTarget(null)}
           onConfirm={() => handleEditPrice(priceTarget, Number(nextPrice))}
         />
@@ -209,7 +220,11 @@ export function SellerDashboardInventoryCard({ inventory }: SellerDashboardInven
     }
 
     try {
-      await updateStockMutation.mutateAsync({ variantId: item.variantId, quantity });
+      await updateStockMutation.mutateAsync({
+        variantId: item.variantId,
+        quantity,
+        reason: `Seller tăng kho từ dashboard: ${item.name}`,
+      });
       toast.success(`Da tang kho +${quantity} cho ${item.name}`);
       setStockTarget(null);
     } catch (error: any) {

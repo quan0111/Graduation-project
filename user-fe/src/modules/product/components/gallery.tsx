@@ -1,8 +1,6 @@
-// components/gallery.tsx
-
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface ProductGalleryProps {
   images?: string[];
@@ -23,7 +21,7 @@ export const ProductGallery = ({
 
   if (!images.length) {
     return (
-      <div className="aspect-square bg-gray-100 flex items-center justify-center">
+      <div className="flex aspect-square items-center justify-center bg-gray-100 text-sm text-slate-500">
         Không có ảnh
       </div>
     );
@@ -31,42 +29,36 @@ export const ProductGallery = ({
 
   return (
     <div>
-
-      {/* MAIN */}
-      <div className="aspect-square border overflow-hidden">
+      <div className="aspect-square overflow-hidden border">
         <img
           src={main}
           alt={name}
-          className="w-full h-full object-cover"
+          className="h-full w-full object-cover"
         />
       </div>
 
-      {/* THUMB */}
-      <div className="flex gap-2 mt-4 overflow-x-auto">
-
+      <div className="mt-4 flex gap-2 overflow-x-auto">
         {images.map((img, i) => {
           const active = img === main;
 
           return (
             <button
-              key={i}
+              key={`${img}-${i}`}
+              type="button"
               onClick={() => setMain(img)}
-              className={`w-20 h-20 border-2 overflow-hidden shrink-0 ${
-                active
-                  ? "border-[#ee4d2d]"
-                  : "border-gray-200"
+              className={`h-20 w-20 shrink-0 overflow-hidden border-2 ${
+                active ? "border-[#ee4d2d]" : "border-gray-200"
               }`}
             >
               <img
                 src={img}
-                className="w-full h-full object-cover"
+                alt={`${name} ${i + 1}`}
+                className="h-full w-full object-cover"
               />
             </button>
           );
         })}
-
       </div>
-
     </div>
   );
 };

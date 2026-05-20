@@ -1,9 +1,13 @@
+import logging
+
 from fastapi import HTTPException
 
+from src.core.cache import CacheManager
 from src.core.database import prisma
 
 
 FLASH_SALE_STATUSES = {"DRAFT", "ACTIVE", "PAUSED", "ENDED"}
+logger = logging.getLogger(__name__)
 
 
 class FlashSaleService:
@@ -13,6 +17,19 @@ class FlashSaleService:
         if normalized not in FLASH_SALE_STATUSES:
             raise HTTPException(400, "Invalid flash sale status")
         return normalized
+
+    @staticmethod
+    async def _invalidate_products(product_ids):
+        for product_id in {product_id for product_id in product_ids if product_id}:
+            try:
+                await CacheManager.invalidate_product_cache(product_id)
+            except Exception as exc:
+                logger.warning("Failed to invalidate flash sale product cache for %s: %s", product_id, exc)
+
+    @staticmethod
+    async def _invalidate_flash_sale_products(flash_sale_id: int):
+        items = await prisma.flashsaleitem.find_many(where={"flashSaleId": flash_sale_id})
+        await FlashSaleService._invalidate_products([item.productId for item in items])
 
     @staticmethod
     async def list_flash_sales():
@@ -31,7 +48,8 @@ class FlashSaleService:
                 "startsAt": data.startsAt,
                 "endsAt": data.endsAt,
                 "status": FlashSaleService._normalize_status(data.status),
-            }
+            },
+            include={"items": True},
         )
 
     @staticmethod
@@ -48,10 +66,13 @@ class FlashSaleService:
         if ends_at <= starts_at:
             raise HTTPException(400, "Flash sale end time must be after start time")
 
-        return await prisma.flashsale.update(
+        flash_sale = await prisma.flashsale.update(
             where={"id": flash_sale_id},
             data=payload,
+            include={"items": True},
         )
+        await FlashSaleService._invalidate_flash_sale_products(flash_sale_id)
+        return flash_sale
 
     @staticmethod
     async def add_item(flash_sale_id: int, data):
@@ -70,7 +91,7 @@ class FlashSaleService:
             if not variant or variant.productId != data.productId:
                 raise HTTPException(400, "Variant does not match product")
 
-        return await prisma.flashsaleitem.create(
+        item = await prisma.flashsaleitem.create(
             data={
                 "flashSale": {"connect": {"id": flash_sale_id}},
                 "product": {"connect": {"id": data.productId}},
@@ -81,3 +102,5 @@ class FlashSaleService:
                 "purchaseLimit": data.purchaseLimit,
             }
         )
+        await FlashSaleService._invalidate_products([data.productId])
+        return item

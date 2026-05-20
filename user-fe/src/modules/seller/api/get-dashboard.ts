@@ -38,7 +38,9 @@ interface ProductImageResponse {
 
 interface ProductVariantResponse {
   id: number;
+  name: string;
   sku?: string | null;
+  price: number;
   stock: number;
 }
 
@@ -60,10 +62,12 @@ interface PaymentResponse {
 interface OrderItemResponse {
   id: number;
   productId: number;
+  variantId?: number | null;
   shopId: number;
   quantity: number;
   price: number;
   productName?: string;
+  variantName?: string | null;
 }
 
 interface OrderResponse {
@@ -174,16 +178,31 @@ function normalizeShop(data: ShopResponse): SellerDashboardShop {
 }
 
 function normalizeProducts(products: ProductResponse[]): ShopScopedProduct[] {
-  return products.map((product) => ({
-    id: product.id,
-    variantId: (product.variants ?? [])[0]?.id,
-    name: product.name,
-    price: product.price,
-    status: product.status,
-    updatedAt: product.updatedAt ?? product.createdAt,
-    totalStock: (product.variants ?? []).reduce((sum, variant) => sum + (variant.stock ?? 0), 0),
-    sku: (product.variants ?? []).find((variant) => variant.sku)?.sku ?? `SP-${product.id}`,
-  }));
+  return products.flatMap((product) => {
+    const variants = product.variants ?? [];
+    if (!variants.length) {
+      return [{
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        status: product.status,
+        updatedAt: product.updatedAt ?? product.createdAt,
+        totalStock: 0,
+        sku: `SP-${product.id}`,
+      }];
+    }
+
+    return variants.map((variant) => ({
+      id: product.id,
+      variantId: variant.id,
+      name: `${product.name} - ${variant.name}`,
+      price: Number(variant.price || product.price || 0),
+      status: product.status,
+      updatedAt: product.updatedAt ?? product.createdAt,
+      totalStock: Number(variant.stock || 0),
+      sku: variant.sku ?? `SP-${product.id}-V${variant.id}`,
+    }));
+  });
 }
 
 function normalizeOrders(orders: OrderResponse[], shopId: number): ShopScopedOrder[] {
@@ -233,17 +252,17 @@ function buildTrend(orders: ShopScopedOrder[]): SellerDashboardTrendPoint[] {
 function buildOrderBuckets(orders: ShopScopedOrder[]) {
   return orders.reduce(
     (accumulator, order) => {
-      if (order.status === "PENDING") {
+      if (["PENDING", "PENDING_PAYMENT", "PAYMENT_FAILED", "PAYMENT_EXPIRED"].includes(order.status)) {
         accumulator.pending += 1;
       } else if (["CONFIRMED", "PAID", "PROCESSING", "READY_TO_SHIP"].includes(order.status)) {
         accumulator.processing += 1;
-      } else if (["SHIPPED", "IN_TRANSIT"].includes(order.status)) {
+      } else if (["SHIPPED", "IN_TRANSIT", "OUT_FOR_DELIVERY", "DELIVERY_FAILED", "RETURN_TO_SENDER"].includes(order.status)) {
         accumulator.shipping += 1;
       } else if (["RETURN_REQUESTED", "RETURNED"].includes(order.status)) {
         accumulator.returns += 1;
       } else if (["DELIVERED", "COMPLETED"].includes(order.status)) {
         accumulator.completed += 1;
-      } else if (order.status === "CANCELLED") {
+      } else if (["CANCEL_REQUESTED", "CANCELLED_BY_CUSTOMER", "CANCELLED_BY_SELLER", "CANCEL_REJECTED", "CANCEL_APPROVED", "CANCELLED"].includes(order.status)) {
         accumulator.cancelled += 1;
       }
 
@@ -286,22 +305,25 @@ function buildTopProducts(
   products: ShopScopedProduct[],
   orders: ShopScopedOrder[]
 ): SellerDashboardTopProduct[] {
-  const statsByProduct = new Map<number, { sold: number; revenue: number }>();
+  const statsByVariant = new Map<string, { sold: number; revenue: number }>();
 
   orders.forEach((order) => {
     order.items.forEach((item) => {
-      const current = statsByProduct.get(item.productId) ?? { sold: 0, revenue: 0 };
+      const variantId = (item as unknown as { variant_id?: number | null }).variant_id ?? item.variantId;
+      const key = `${item.productId}:${variantId ?? "product"}`;
+      const current = statsByVariant.get(key) ?? { sold: 0, revenue: 0 };
 
       current.sold += item.quantity;
       current.revenue += item.quantity * item.price;
 
-      statsByProduct.set(item.productId, current);
+      statsByVariant.set(key, current);
     });
   });
 
   return products
     .map((product) => {
-      const stats = statsByProduct.get(product.id) ?? { sold: 0, revenue: 0 };
+      const key = `${product.id}:${product.variantId ?? "product"}`;
+      const stats = statsByVariant.get(key) ?? { sold: 0, revenue: 0 };
 
       return {
         id: product.id,
@@ -377,13 +399,13 @@ export const getSellerDashboard = async (): Promise<SellerDashboardData> => {
   const orderBuckets = buildOrderBuckets(orders);
   const grossRevenue = orders.reduce((sum, order) => sum + order.revenue, 0);
   const pendingRevenue = orders
-    .filter((order) => !["DELIVERED", "COMPLETED", "CANCELLED", "RETURNED"].includes(order.status))
+    .filter((order) => !["DELIVERED", "COMPLETED", "CANCELLED", "CANCELLED_BY_CUSTOMER", "CANCELLED_BY_SELLER", "RETURNED"].includes(order.status))
     .reduce((sum, order) => sum + order.revenue, 0);
   const completedRevenue = orders
     .filter((order) => ["DELIVERED", "COMPLETED"].includes(order.status))
     .reduce((sum, order) => sum + order.revenue, 0);
   const cancelledRevenue = orders
-    .filter((order) => order.status === "CANCELLED")
+    .filter((order) => ["CANCELLED", "CANCELLED_BY_CUSTOMER", "CANCELLED_BY_SELLER"].includes(order.status))
     .reduce((sum, order) => sum + order.revenue, 0);
   const lowStockProducts = products.filter((product) => product.totalStock > 0 && product.totalStock <= 10).length;
   const outOfStockProducts = products.filter((product) => product.totalStock <= 0).length;

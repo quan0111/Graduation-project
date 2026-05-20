@@ -14,8 +14,12 @@ export const useProductDetail = (product?: IProduct) => {
   }, [product]);
 
   const price = useMemo(() => {
-    return selectedVariant?.price || product?.price || 0;
+    const basePrice = selectedVariant?.price || product?.price || 0;
+    const salePrice = selectedVariant?.activeFlashSale?.salePrice ?? product?.activeFlashSale?.salePrice;
+    return salePrice && salePrice > 0 ? Math.min(basePrice, salePrice) : basePrice;
   }, [selectedVariant, product]);
+
+  const originalPrice = selectedVariant?.price || product?.price || 0;
 
   const stock = selectedVariant?.stock ?? product?.stock ?? product?.totalStock ?? 0;
 
@@ -23,6 +27,7 @@ export const useProductDetail = (product?: IProduct) => {
     selectedVariant,
     setSelectedVariant,
     price,
+    originalPrice,
     stock,
   };
 };

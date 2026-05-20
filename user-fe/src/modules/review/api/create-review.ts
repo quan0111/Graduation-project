@@ -2,7 +2,7 @@ import { useMutation, type UseMutationOptions } from "@tanstack/react-query";
 
 import { API_URL_REVIEW } from "@/constant/config";
 import { apiClient } from "@/lib/api";
-import { uploadImage } from "@/modules/upload/api/upload-image";
+import { uploadMedia } from "@/modules/upload/api/upload-image";
 
 export interface ReviewCreatePayload {
   userId: number;
@@ -10,13 +10,15 @@ export interface ReviewCreatePayload {
   rating: number;
   comment?: string;
   images?: File[];
+  media?: File[];
 }
 
 const createReview = async (payload: ReviewCreatePayload) => {
-  const mediaUrls = payload.images?.length
+  const files = payload.media ?? payload.images ?? [];
+  const mediaUrls = files.length
     ? await Promise.all(
-        payload.images.map((file) =>
-          uploadImage({ file, folder: "reviews" }).then((result) => result.url),
+        files.map((file) =>
+          uploadMedia({ file, folder: "reviews" }).then((result) => result.url),
         ),
       )
     : [];

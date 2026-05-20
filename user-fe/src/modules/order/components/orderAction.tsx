@@ -56,8 +56,8 @@ export const OrderActions = ({ order }: Props) => {
     }
   };
 
-  const canCancel = ["pending", "paid", "confirmed", "payment_failed"].includes(order.status);
-  const canRebuy = order.status !== "cancelled";
+  const canCancel = ["pending", "pending_payment", "paid", "confirmed", "payment_failed", "payment_expired"].includes(order.status);
+  const canRebuy = !["cancelled", "cancelled_by_customer", "cancelled_by_seller"].includes(order.status);
 
   return (
     <div className="flex flex-wrap gap-3">

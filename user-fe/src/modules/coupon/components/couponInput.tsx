@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Ticket, X, Check } from "lucide-react";
+import { Check, Ticket, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -9,12 +9,14 @@ import { useCalculateDiscount, useValidateCoupon } from "../api/get-coupon";
 
 interface CouponInputProps {
   orderAmount: number;
+  shopIds?: number[];
   onApplyCoupon: (coupon: any, discount: number) => void;
   onRemoveCoupon: () => void;
 }
 
 export const CouponInput: React.FC<CouponInputProps> = ({
   orderAmount,
+  shopIds = [],
   onApplyCoupon,
   onRemoveCoupon,
 }) => {
@@ -22,7 +24,6 @@ export const CouponInput: React.FC<CouponInputProps> = ({
   const [debouncedCode, setDebouncedCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
 
-  // Debounce code input - chỉ gọi API sau 500ms khi người dùng dừng gõ
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedCode(code);
@@ -31,20 +32,22 @@ export const CouponInput: React.FC<CouponInputProps> = ({
     return () => clearTimeout(timer);
   }, [code]);
 
-  // Chỉ gọi API khi debouncedCode có giá trị
   const {
     data: coupon,
     isLoading: validating,
     isError: isCouponInvalid,
     error: couponError,
-  } = useValidateCoupon(debouncedCode, orderAmount, {
+  } = useValidateCoupon(debouncedCode, orderAmount, shopIds, {
     enabled: debouncedCode.length > 0,
     retry: false,
   });
 
-  const { data: discountData, isLoading: calculatingDiscount } = useCalculateDiscount(coupon?.id ?? 0, orderAmount, {
-    enabled: !!coupon?.id,
-  });
+  const { data: discountData, isLoading: calculatingDiscount } = useCalculateDiscount(
+    coupon?.id ?? 0,
+    orderAmount,
+    shopIds,
+    { enabled: !!coupon?.id },
+  );
 
   const handleApply = () => {
     if (!code.trim()) {
@@ -58,7 +61,7 @@ export const CouponInput: React.FC<CouponInputProps> = ({
     }
 
     setAppliedCoupon(coupon);
-    const discount = Math.max(0, discountData?.discountAmount || 0);
+    const discount = Math.max(0, discountData?.discountAmount ?? coupon.discountAmount ?? 0);
     onApplyCoupon(coupon, discount);
     toast.success(`Đã áp dụng voucher ${code}`);
   };
@@ -81,11 +84,11 @@ export const CouponInput: React.FC<CouponInputProps> = ({
               <p className="text-xs text-green-700">
                 {appliedCoupon.discountType === "PERCENTAGE"
                   ? `Giảm ${appliedCoupon.discountValue}%`
-                  : `Giảm ${appliedCoupon.discountValue}₫`}
+                  : `Giảm ${Number(appliedCoupon.discountValue).toLocaleString("vi-VN")}đ`}
               </p>
             </div>
           </div>
-          <button onClick={handleRemove} className="text-green-600 hover:text-green-800">
+          <button onClick={handleRemove} className="text-green-600 hover:text-green-800" type="button">
             <X className="size-4" />
           </button>
         </div>
@@ -95,7 +98,7 @@ export const CouponInput: React.FC<CouponInputProps> = ({
             <Ticket className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <Input
               value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              onChange={(event) => setCode(event.target.value.toUpperCase())}
               placeholder="Nhập mã voucher"
               className="pl-10"
             />

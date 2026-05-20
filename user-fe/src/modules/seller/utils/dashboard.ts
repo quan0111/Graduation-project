@@ -46,6 +46,34 @@ const productStatusToneMap: Record<string, string> = {
   APPROVAL: "bg-amber-50 text-amber-700",
 };
 
+const orderStatusLabelOverrides: Record<string, string> = {
+  PENDING_PAYMENT: "Chờ thanh toán",
+  PAYMENT_FAILED: "Thanh toán thất bại",
+  PAYMENT_EXPIRED: "Hết hạn thanh toán",
+  OUT_FOR_DELIVERY: "Đang giao hàng",
+  CANCEL_REQUESTED: "Yêu cầu hủy",
+  CANCELLED_BY_CUSTOMER: "Khách đã hủy",
+  CANCELLED_BY_SELLER: "Seller đã hủy",
+  CANCEL_REJECTED: "Từ chối hủy",
+  CANCEL_APPROVED: "Đã duyệt hủy",
+  DELIVERY_FAILED: "Giao thất bại",
+  RETURN_TO_SENDER: "Hoàn về seller",
+};
+
+const orderStatusToneOverrides: Record<string, string> = {
+  PENDING_PAYMENT: "bg-amber-50 text-amber-700",
+  PAYMENT_FAILED: "bg-rose-50 text-rose-700",
+  PAYMENT_EXPIRED: "bg-rose-50 text-rose-700",
+  OUT_FOR_DELIVERY: "bg-violet-50 text-violet-700",
+  CANCEL_REQUESTED: "bg-orange-50 text-orange-700",
+  CANCELLED_BY_CUSTOMER: "bg-rose-50 text-rose-700",
+  CANCELLED_BY_SELLER: "bg-rose-50 text-rose-700",
+  CANCEL_REJECTED: "bg-slate-100 text-slate-700",
+  CANCEL_APPROVED: "bg-orange-50 text-orange-700",
+  DELIVERY_FAILED: "bg-red-50 text-red-700",
+  RETURN_TO_SENDER: "bg-red-50 text-red-700",
+};
+
 export function formatCurrency(value: number) {
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
@@ -73,11 +101,11 @@ export function formatShortDateTime(value: string) {
 }
 
 export function getOrderStatusLabel(status: string) {
-  return orderStatusLabelMap[status] ?? status;
+  return orderStatusLabelOverrides[status] ?? orderStatusLabelMap[status] ?? status;
 }
 
 export function getOrderStatusTone(status: string) {
-  return orderStatusToneMap[status] ?? "bg-slate-100 text-slate-700";
+  return orderStatusToneOverrides[status] ?? orderStatusToneMap[status] ?? "bg-slate-100 text-slate-700";
 }
 
 export function getProductStatusLabel(status: string, stock: number) {

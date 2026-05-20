@@ -1,16 +1,25 @@
 from fastapi import HTTPException
 
 from src.core.database import prisma
+from src.modules.product.service.product import ProductService
 
 
 class WishlistService:
     @staticmethod
+    def _serialize_wishlist_item(item):
+        data = item.model_dump()
+        if data.get("product"):
+            data["product"] = ProductService._serialize_product_dict(data["product"])
+        return data
+
+    @staticmethod
     async def list_my(user_id: int):
-        return await prisma.wishlist.find_many(
+        items = await prisma.wishlist.find_many(
             where={"userId": user_id},
-            include={"product": True},
+            include={"product": {"include": ProductService.PRODUCT_INCLUDE}},
             order={"createdAt": "desc"},
         )
+        return [WishlistService._serialize_wishlist_item(item) for item in items]
 
     @staticmethod
     async def add(user_id: int, product_id: int):
@@ -22,7 +31,7 @@ class WishlistService:
         if product.status in {"BANNED", "DRAFT", "REJECTED"} or product.status != "ACTIVE":
             raise HTTPException(400, "Product is not available")
 
-        return await prisma.wishlist.upsert(
+        item = await prisma.wishlist.upsert(
             where={"userId_productId": {"userId": user_id, "productId": product_id}},
             data={
                 "create": {
@@ -31,8 +40,9 @@ class WishlistService:
                 },
                 "update": {},
             },
-            include={"product": True},
+            include={"product": {"include": ProductService.PRODUCT_INCLUDE}},
         )
+        return WishlistService._serialize_wishlist_item(item)
 
     @staticmethod
     async def remove(user_id: int, product_id: int):

@@ -66,14 +66,6 @@ export default function OrdersPage() {
     date: o.createdAt || o.created_at,
   }));
 
-  // ================= FILTER =================
-
-  const filtered = mappedOrders.filter(
-    (o: any) =>
-      o.orderId.toLowerCase().includes(search.toLowerCase()) ||
-      o.customer.toLowerCase().includes(search.toLowerCase()) ||
-      o.shop.toLowerCase().includes(search.toLowerCase())
-  );
   const columns = orderColumns(
     handleView,
     handleDelete,
@@ -95,7 +87,7 @@ export default function OrdersPage() {
       </div>
 
       <DataTable
-        data={filtered}
+        data={mappedOrders}
         columns={columns}
         pageSize={20}
         total={pagination?.total}

@@ -3,7 +3,7 @@ import { MapPin, PackageSearch, Phone, Truck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import type { IOrder } from "../types";
-import { formatDateTime, joinAddress } from "../utils/order";
+import { formatDateTime, getStatusMeta, joinAddress } from "../utils/order";
 
 interface OrderShippingProps {
   order: IOrder;
@@ -12,6 +12,7 @@ interface OrderShippingProps {
 export const OrderShipping: React.FC<OrderShippingProps> = ({ order }) => {
   const shipment = order.shipment;
   const address = order.shipping_address;
+  const packages = order.shop_package ? [order.shop_package] : order.packages ?? [];
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -65,6 +66,40 @@ export const OrderShipping: React.FC<OrderShippingProps> = ({ order }) => {
                 </div>
               </div>
             </>
+          ) : packages.length > 0 ? (
+            <div className="space-y-3">
+              {packages.map((shopPackage) => {
+                const meta = getStatusMeta(shopPackage.status);
+                return (
+                  <div key={shopPackage.id} className="rounded-2xl border border-slate-200 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-slate-950">{shopPackage.shop?.name || "Package shop"}</p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {shopPackage.tracking_number || "Chưa cập nhật mã vận đơn"}
+                        </p>
+                      </div>
+                      <span className={`rounded-full px-3 py-1 text-xs font-medium ${meta.chip}`}>
+                        {meta.label}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-2xl bg-slate-50 p-3">
+                        <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Đơn vị</p>
+                        <p className="mt-1 font-medium text-slate-950">{shopPackage.carrier || "Tự vận chuyển"}</p>
+                      </div>
+                      <div className="rounded-2xl bg-slate-50 p-3">
+                        <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Cập nhật</p>
+                        <p className="mt-1 font-medium text-slate-950">
+                          {formatDateTime(shopPackage.delivered_at || shopPackage.shipped_at || shopPackage.updated_at || shopPackage.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
               <div className="mb-2 flex items-center gap-2 font-medium text-slate-700">

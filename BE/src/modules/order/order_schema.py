@@ -52,6 +52,23 @@ class ShopShortOut(BaseModel):
         from_attributes = True
 
 
+class OrderShopPackageOut(BaseModel):
+    id: int
+    orderId: int
+    shopId: int
+    status: str
+    carrier: Optional[str] = None
+    trackingNumber: Optional[str] = None
+    shippedAt: Optional[datetime] = None
+    deliveredAt: Optional[datetime] = None
+    createdAt: datetime
+    updatedAt: datetime
+    shop: Optional[ShopShortOut] = None
+
+    class Config:
+        from_attributes = True
+
+
 class OrderItemBase(BaseModel):
     productId: int
     variantId: Optional[int] = None
@@ -184,6 +201,8 @@ class OrderOut(BaseModel):
     user: Optional[UserShortOut] = None
     shippingAddress: Optional[AddressShortOut] = None
     shipment: Optional[ShipmentShortOut] = None
+    packages: List[OrderShopPackageOut] = []
+    shopPackage: Optional[OrderShopPackageOut] = None
 
     class Config:
         from_attributes = True

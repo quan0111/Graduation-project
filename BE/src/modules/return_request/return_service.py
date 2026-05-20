@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from fastapi import HTTPException
+from prisma import Json
 
 from src.core.database import prisma
 from src.modules.audit.audit_service import AuditService
@@ -22,13 +23,37 @@ RETURN_INCLUDE = {
 }
 
 RETURNABLE_ORDER_STATUSES = {"DELIVERED", "COMPLETED"}  # COD and prepaid orders can be returned
-ACTIVE_RETURN_STATUSES = {"REQUESTED", "APPROVED", "PICKED_UP", "RECEIVED", "REFUNDED"}
+RETURN_REQUEST_STATUSES = {"REQUESTED", "REQUEST_RETURN", "SELLER_REVIEW"}
+RETURN_APPROVED_STATUSES = {"APPROVED", "RETURN_APPROVED"}
+RETURN_REJECTED_STATUSES = {"REJECTED", "RETURN_REJECTED", "REFUND_REJECTED"}
+RETURN_PICKUP_STATUSES = {"PICKED_UP", "PICKUP_RETURN_IN_TRANSIT"}
+RETURN_RECEIVED_STATUSES = {"RECEIVED", "RETURN_RECEIVED"}
+RETURN_REFUNDING_STATUSES = {"REFUNDING", "REFUND_APPROVED"}
+RETURN_REFUNDED_STATUSES = {"REFUNDED"}
+ACTIVE_RETURN_STATUSES = (
+    RETURN_REQUEST_STATUSES
+    | RETURN_APPROVED_STATUSES
+    | RETURN_PICKUP_STATUSES
+    | RETURN_RECEIVED_STATUSES
+    | RETURN_REFUNDING_STATUSES
+    | RETURN_REFUNDED_STATUSES
+)
+RETURN_REVIEW_STATUS_ALIASES = {
+    "APPROVED": "RETURN_APPROVED",
+    "REJECTED": "RETURN_REJECTED",
+}
+PAYMENT_SUCCESS_STATUSES = {"SUCCESS", "PAYMENT_SUCCESS"}
 
 
 class ReturnService:
     @staticmethod
     def _to_value(value):
         return value.value if hasattr(value, "value") else str(value)
+
+    @staticmethod
+    def _normalize_review_status(status: str) -> str:
+        normalized = status.upper()
+        return RETURN_REVIEW_STATUS_ALIASES.get(normalized, normalized)
 
     @staticmethod
     async def _get_seller_shop(user_id: int):
@@ -52,7 +77,7 @@ class ReturnService:
             raise HTTPException(404, "Return not found")
         if return_request.userId != user_id:
             raise HTTPException(403, "Forbidden")
-        if ReturnService._to_value(return_request.status) != "REQUESTED":
+        if ReturnService._to_value(return_request.status) not in RETURN_REQUEST_STATUSES:
             raise HTTPException(400, "Return request can no longer be edited")
         return return_request
 
@@ -125,8 +150,6 @@ class ReturnService:
         )
         if not order_item:
             raise HTTPException(404, "Order item not found")
-        if data.quantity > order_item.quantity:
-            raise HTTPException(400, "Return quantity exceeds ordered quantity")
 
         existing_item = await client.returnitem.find_first(
             where={
@@ -136,6 +159,23 @@ class ReturnService:
         )
         if existing_item:
             raise HTTPException(400, "Order item already added to this return")
+
+        active_quantities = await ReturnService._active_return_quantities(client, return_request.orderId)
+        remaining = int(order_item.quantity or 0) - active_quantities.get(order_item.id, 0)
+        if data.quantity > remaining:
+            raise HTTPException(400, "Return quantity exceeds remaining returnable quantity")
+
+        current_items = await client.returnitem.find_many(
+            where={"returnRequestId": return_request.id},
+            include={"orderItem": True},
+        )
+        existing_shop_ids = {
+            item.orderItem.shopId
+            for item in current_items
+            if item.orderItem is not None
+        }
+        if existing_shop_ids and order_item.shopId not in existing_shop_ids:
+            raise HTTPException(400, "Create one return request per shop")
 
         return await client.returnitem.create(
             data={
@@ -179,7 +219,7 @@ class ReturnService:
                 data={
                     "reason": data.reason,
                     "description": data.description,
-                    "status": "REQUESTED",
+                    "status": "REQUEST_RETURN",
                     "order": {"connect": {"id": data.orderId}},
                     "user": {"connect": {"id": user_id}},
                 }
@@ -197,10 +237,10 @@ class ReturnService:
                     data={"status": "RETURN_REQUESTED"},
                 )
 
-        await ReturnService._notify_return_update(return_request.id, "REQUESTED", actor_id=user_id)
+        await ReturnService._notify_return_update(return_request.id, "REQUEST_RETURN", actor_id=user_id)
         await AuditService.create(
             actor_id=user_id,
-            action="RETURN.REQUESTED",
+            action="RETURN.REQUEST_RETURN",
             entity_type="ReturnRequest",
             entity_id=return_request.id,
             target_user_id=user_id,
@@ -232,18 +272,19 @@ class ReturnService:
             )
             if not return_request:
                 raise HTTPException(404, "Return not found")
-            if ReturnService._to_value(return_request.status) != "REQUESTED":
+            if ReturnService._to_value(return_request.status) not in RETURN_REQUEST_STATUSES:
                 raise HTTPException(400, "Only requested returns can be reviewed")
             if not return_request.items:
                 raise HTTPException(400, "Return request has no items")
 
+            next_status = ReturnService._normalize_review_status(data.status)
             update_data = {
-                "status": data.status,
-                "rejectReason": data.rejectReason if data.status == "REJECTED" else None,
+                "status": next_status,
+                "rejectReason": data.rejectReason if next_status in RETURN_REJECTED_STATUSES else None,
                 "reviewedAt": datetime.utcnow(),
                 "reviewedBy": {"connect": {"id": admin_id}},
             }
-            if data.status == "REJECTED":
+            if next_status in RETURN_REJECTED_STATUSES:
                 await tx.order.update(
                     where={"id": return_request.orderId},
                     data={"status": "COMPLETED"},
@@ -255,15 +296,81 @@ class ReturnService:
                 include=RETURN_INCLUDE,
             )
 
-        await ReturnService._notify_return_update(return_id, data.status, actor_id=admin_id)
+        await ReturnService._notify_return_update(return_id, next_status, actor_id=admin_id)
         await AuditService.create(
             actor_id=admin_id,
-            action=f"RETURN.{data.status}",
+            action=f"RETURN.{next_status}",
             entity_type="ReturnRequest",
             entity_id=return_id,
             target_user_id=updated.userId,
-            severity="INFO" if data.status == "APPROVED" else "WARNING",
+            severity="INFO" if next_status in RETURN_APPROVED_STATUSES else "WARNING",
             metadata={"rejectReason": data.rejectReason},
+        )
+        return updated
+
+    @staticmethod
+    async def confirm_gateway_refund(return_id: int, admin_id: int, data):
+        async with prisma.tx() as tx:
+            return_request = await tx.returnrequest.find_unique(
+                where={"id": return_id},
+                include={"order": {"include": {"payment": True}}},
+            )
+            if not return_request:
+                raise HTTPException(404, "Return not found")
+
+            order = return_request.order
+            payment = order.payment if order else None
+            if not payment:
+                raise HTTPException(400, "Return has no payment record")
+
+            payment_method = ReturnService._to_value(payment.method)
+            payment_status = ReturnService._to_value(payment.status)
+            if payment_method not in {"MOMO", "VNPAY", "STRIPE"} or payment_status not in PAYMENT_SUCCESS_STATUSES:
+                raise HTTPException(400, "Gateway refund confirmation is only required for successful prepaid orders")
+
+            updated = await tx.returnrequest.update(
+                where={"id": return_id},
+                data={
+                    "gatewayRefundStatus": "SUCCESS",
+                    "gatewayRefundTransactionId": data.transactionId,
+                    "gatewayRefundedAt": datetime.utcnow(),
+                },
+                include=RETURN_INCLUDE,
+            )
+
+            await tx.paymentevent.create(
+                data={
+                    "paymentId": payment.id,
+                    "orderId": payment.orderId,
+                    "provider": payment_method,
+                    "eventType": "STATUS_SYNCED",
+                    "status": "SUCCESS",
+                    "providerOrderId": payment.providerOrderId,
+                    "requestId": payment.requestId,
+                    "transactionId": data.transactionId,
+                    "message": data.note or f"Gateway refund confirmed for return #{return_id}",
+                    "payload": Json(
+                        {
+                            "returnId": return_id,
+                            "refundAmount": return_request.refundAmount,
+                            "gatewayRefundStatus": "SUCCESS",
+                        }
+                    ),
+                }
+            )
+
+        await ReturnService._notify_return_update(return_id, "GATEWAY_REFUND_CONFIRMED", actor_id=admin_id)
+        await AuditService.create(
+            actor_id=admin_id,
+            action="RETURN.GATEWAY_REFUND_CONFIRMED",
+            entity_type="ReturnRequest",
+            entity_id=return_id,
+            target_user_id=updated.userId,
+            severity="INFO",
+            metadata={
+                "transactionId": data.transactionId,
+                "refundAmount": updated.refundAmount,
+            },
         )
         return updated
 
@@ -272,18 +379,18 @@ class ReturnService:
         shop = await ReturnService._get_seller_shop(seller_id)
         async with prisma.tx() as tx:
             return_request = await ReturnService._get_seller_return_for_update(tx, return_id, shop.id)
-            if ReturnService._to_value(return_request.status) != "APPROVED":
+            if ReturnService._to_value(return_request.status) not in RETURN_APPROVED_STATUSES:
                 raise HTTPException(400, "Return must be approved before pickup")
             updated = await tx.returnrequest.update(
                 where={"id": return_id},
-                data={"status": "PICKED_UP"},
+                data={"status": "PICKUP_RETURN_IN_TRANSIT"},
                 include=RETURN_INCLUDE,
             )
 
-        await ReturnService._notify_return_update(return_id, "PICKED_UP", actor_id=seller_id)
+        await ReturnService._notify_return_update(return_id, "PICKUP_RETURN_IN_TRANSIT", actor_id=seller_id)
         await AuditService.create(
             actor_id=seller_id,
-            action="RETURN.PICKED_UP",
+            action="RETURN.PICKUP_RETURN_IN_TRANSIT",
             entity_type="ReturnRequest",
             entity_id=return_id,
             target_user_id=updated.userId,
@@ -297,20 +404,20 @@ class ReturnService:
         shop = await ReturnService._get_seller_shop(seller_id)
         async with prisma.tx() as tx:
             return_request = await ReturnService._get_seller_return_for_update(tx, return_id, shop.id)
-            if ReturnService._to_value(return_request.status) not in {"APPROVED", "PICKED_UP"}:
+            if ReturnService._to_value(return_request.status) not in RETURN_APPROVED_STATUSES | RETURN_PICKUP_STATUSES:
                 raise HTTPException(400, "Return must be approved before seller receives items")
 
             await ReturnService._restore_return_stock(tx, return_request, seller_id)
             updated = await tx.returnrequest.update(
                 where={"id": return_id},
-                data={"status": "RECEIVED"},
+                data={"status": "RETURN_RECEIVED"},
                 include=RETURN_INCLUDE,
             )
 
-        await ReturnService._notify_return_update(return_id, "RECEIVED", actor_id=seller_id)
+        await ReturnService._notify_return_update(return_id, "RETURN_RECEIVED", actor_id=seller_id)
         await AuditService.create(
             actor_id=seller_id,
-            action="RETURN.RECEIVED",
+            action="RETURN.RETURN_RECEIVED",
             entity_type="ReturnRequest",
             entity_id=return_id,
             target_user_id=updated.userId,
@@ -337,11 +444,11 @@ class ReturnService:
             if not return_request:
                 raise HTTPException(404, "Return not found")
             current_status = ReturnService._to_value(return_request.status)
-            if current_status == "REQUESTED":
+            if current_status in RETURN_REQUEST_STATUSES:
                 raise HTTPException(400, "Admin must approve this return before seller refunds")
-            if current_status in {"APPROVED", "PICKED_UP"}:
+            if current_status in RETURN_APPROVED_STATUSES | RETURN_PICKUP_STATUSES:
                 raise HTTPException(400, "Seller must confirm returned items before refunding")
-            if current_status != "RECEIVED":
+            if current_status not in RETURN_RECEIVED_STATUSES | RETURN_REFUNDING_STATUSES:
                 raise HTTPException(400, "Return is not ready to refund")
             if not return_request.items:
                 raise HTTPException(400, "Return request has no items")
@@ -363,8 +470,9 @@ class ReturnService:
             if order and order.payment:
                 payment_method = ReturnService._to_value(order.payment.method)
                 payment_status = ReturnService._to_value(order.payment.status)
-                if payment_method in {"MOMO", "VNPAY", "STRIPE"} and payment_status == "SUCCESS":
-                    raise HTTPException(400, "Gateway refund is required before marking this return as refunded")
+                if payment_method in {"MOMO", "VNPAY", "STRIPE"} and payment_status in PAYMENT_SUCCESS_STATUSES:
+                    if return_request.gatewayRefundStatus != "SUCCESS":
+                        raise HTTPException(400, "Gateway refund is required before marking this return as refunded")
 
             for item in seller_items:
                 await tx.platformcommission.update_many(
@@ -475,7 +583,7 @@ class ReturnService:
                     recipients.add(item.orderItem.shop.ownerId)
             if actor_id is not None:
                 recipients.discard(actor_id)
-            notification_type = "REFUND_UPDATE" if status == "REFUNDED" else "RETURN_UPDATE"
+            notification_type = "REFUND_UPDATE" if status in RETURN_REFUNDING_STATUSES | RETURN_REFUNDED_STATUSES else "RETURN_UPDATE"
             for user_id in recipients:
                 await NotificationService.create(
                     NotificationCreate(

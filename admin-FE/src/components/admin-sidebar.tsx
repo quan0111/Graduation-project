@@ -1,23 +1,24 @@
-import { NavLink, useLocation } from "react-router-dom"
+import { NavLink, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard,
-  Store,
-  Package,
-  BarChart3,
-  Users,
-  Settings,
-  Bell,
-  MessageSquare,
-  Tag,
-  FileText,
-  LogOut,
-  ShoppingCart,
-  Grid3x3,
-  Star,
-  CreditCard,
   AlertTriangle,
+  BarChart3,
+  Bell,
+  Boxes,
+  CreditCard,
+  FileText,
+  Grid3x3,
+  LayoutDashboard,
+  LogOut,
+  MessageSquare,
+  Package,
   RotateCcw,
-} from "lucide-react"
+  Settings,
+  ShoppingCart,
+  Star,
+  Store,
+  Tag,
+  Users,
+} from "lucide-react";
 
 import {
   Sidebar,
@@ -31,43 +32,45 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useLogout } from "@/modules/auth/api/logout"
-import { useMe } from "@/modules/auth/api/get-auth-me"
+} from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useLogout } from "@/modules/auth/api/logout";
+import { useMe } from "@/modules/auth/api/get-auth-me";
 
 const mainNavItems = [
   { title: "Tổng quan", icon: LayoutDashboard, href: "/" },
-  { title: "Quản lý Shop", icon: Store, href: "/shops"},
+  { title: "Quản lý shop", icon: Store, href: "/shops" },
   { title: "Duyệt sản phẩm", icon: Package, href: "/products" },
-  { title: "Quản lý Đơn hàng", icon: ShoppingCart, href: "/orders" },
+  { title: "Quản lý đơn hàng", icon: ShoppingCart, href: "/orders" },
   { title: "Duyệt hoàn tiền", icon: RotateCcw, href: "/returns" },
+  { title: "Inventory ledger", icon: Boxes, href: "/inventory" },
   { title: "Thống kê doanh thu", icon: BarChart3, href: "/analytics" },
   { title: "Phê duyệt người bán", icon: Users, href: "/seller-applications" },
   { title: "Quản lý người dùng", icon: Users, href: "/users" },
-]
+];
 
 const contentNavItems = [
   { title: "Danh mục", icon: Grid3x3, href: "/categories" },
-  { title: "Đánh giá", icon: Star, href: "/reviews", badge: 342 },
-  { title: "Giao dịch", icon: CreditCard, href: "/transactions", badge: 185 },
-  { title: "Vi phạm", icon: AlertTriangle, href: "/violations", badge: 42 },
-]
+  { title: "Đánh giá", icon: Star, href: "/reviews" },
+  { title: "Giao dịch", icon: CreditCard, href: "/transactions" },
+  { title: "Vi phạm", icon: AlertTriangle, href: "/violations" },
+];
 
 const systemNavItems = [
-  { title: "Thông báo", icon: Bell, href: "/notifications", badge: 23 },
-  { title: "Tin nhắn hỗ trợ", icon: MessageSquare, href: "/support", badge: 8 },
+  { title: "Thông báo", icon: Bell, href: "/notifications" },
+  { title: "Tin nhắn hỗ trợ", icon: MessageSquare, href: "/support" },
   { title: "Khuyến mãi", icon: Tag, href: "/promotions" },
+  { title: "Marketing", icon: Tag, href: "/marketing" },
   { title: "Audit log", icon: FileText, href: "/audit" },
   { title: "Cài đặt", icon: Settings, href: "/settings" },
-]
+];
 
 export function AdminSidebar() {
-  const { pathname } = useLocation()
-  const { data: user } = useMe()
-  const { mutate: logout, isPending: isLogoutPending } = useLogout()
+  const { pathname } = useLocation();
+  const { data: user } = useMe();
+  const { mutate: logout, isPending: isLogoutPending } = useLogout();
 
-  const renderMenu = (items: any[]) =>
+  const renderMenu = (items: Array<{ title: string; icon: any; href: string; badge?: number }>) =>
     items.map((item) => (
       <SidebarMenuItem key={item.href}>
         <NavLink to={item.href}>
@@ -80,13 +83,13 @@ export function AdminSidebar() {
           </SidebarMenuButton>
         </NavLink>
 
-        {item.badge && (
+        {item.badge ? (
           <SidebarMenuBadge className="bg-primary/20 text-primary">
             {item.badge}
           </SidebarMenuBadge>
-        )}
+        ) : null}
       </SidebarMenuItem>
-    ))
+    ));
 
   return (
     <Sidebar>
@@ -97,9 +100,7 @@ export function AdminSidebar() {
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold">ShopHub</span>
-            <span className="text-xs text-muted-foreground">
-              Admin Panel
-            </span>
+            <span className="text-xs text-muted-foreground">Admin Panel</span>
           </div>
         </NavLink>
       </SidebarHeader>
@@ -152,6 +153,7 @@ export function AdminSidebar() {
           </NavLink>
 
           <button
+            type="button"
             className="rounded-md p-2 hover:bg-muted disabled:opacity-60"
             disabled={isLogoutPending}
             onClick={() => logout(undefined)}
@@ -161,5 +163,5 @@ export function AdminSidebar() {
         </div>
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }

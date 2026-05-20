@@ -2,6 +2,7 @@ import type {
   IOrder,
   IOrderAddress,
   IOrderItem,
+  IOrderShopPackage,
   IOrderShop,
   IOrderUser,
   IPayment,
@@ -80,6 +81,20 @@ const mapShipment = (shipment: any): IShipment | null =>
     }
     : null;
 
+const mapPackage = (shopPackage: any): IOrderShopPackage => ({
+  id: shopPackage.id,
+  order_id: shopPackage.orderId,
+  shop_id: shopPackage.shopId,
+  status: toLowerStatus<IOrderShopPackage["status"]>(shopPackage.status),
+  carrier: shopPackage.carrier ?? null,
+  tracking_number: shopPackage.trackingNumber ?? null,
+  shipped_at: shopPackage.shippedAt ?? null,
+  delivered_at: shopPackage.deliveredAt ?? null,
+  created_at: shopPackage.createdAt,
+  updated_at: shopPackage.updatedAt ?? null,
+  shop: mapShop(shopPackage.shop),
+});
+
 const mapItem = (item: any): IOrderItem => ({
   id: item.id,
   order_id: item.orderId,
@@ -111,6 +126,8 @@ export const mapOrder = (order: any): IOrder => ({
   user: mapUser(order.user),
   shipping_address: mapAddress(order.shippingAddress),
   shipment: mapShipment(order.shipment),
+  packages: Array.isArray(order.packages) ? order.packages.map(mapPackage) : [],
+  shop_package: order.shopPackage ? mapPackage(order.shopPackage) : null,
   items: Array.isArray(order.items) ? order.items.map(mapItem) : [],
   payment: mapPayment(order.payment),
 });

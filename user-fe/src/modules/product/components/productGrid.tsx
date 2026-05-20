@@ -1,18 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 
 import { Pagination } from "@/components/pagination";
-import { ProductCard } from "@/modules/product/components/productCard";
+import { ProductCard } from "@/modules/product/components/productcard";
 import type { IProduct } from "@/modules/product/types";
+import { useWishlistActions } from "@/modules/wishlist/hooks/useWishlistActions";
 
 interface ProductGridProps {
   products: IProduct[];
 }
 
 const PAGE_SIZE = 12;
+const TEXT = {
+  noProducts: "Kh\u00f4ng t\u00ecm th\u1ea5y s\u1ea3n ph\u1ea9m ph\u00f9 h\u1ee3p.",
+  hint: "H\u00e3y th\u1eed \u0111\u1ed5i t\u1eeb kh\u00f3a ho\u1eb7c b\u1ecf b\u1edbt b\u1ed9 l\u1ecdc.",
+};
 
-export const ProductGrid = ({ products }: ProductGridProps) => {
+export const ProductGrid = memo(({ products }: ProductGridProps) => {
   const [page, setPage] = useState(1);
   const totalPages = Math.ceil(products.length / PAGE_SIZE);
+  const { wishlistIds, pendingProductId, toggleWishlist } = useWishlistActions();
 
   useEffect(() => {
     setPage(1);
@@ -26,8 +32,8 @@ export const ProductGrid = ({ products }: ProductGridProps) => {
   if (products.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-orange-200 bg-orange-50/40 p-8 text-center">
-        <p className="text-sm font-medium text-slate-700">Không tìm thấy sản phẩm phù hợp.</p>
-        <p className="mt-1 text-xs text-slate-500">Hãy thử đổi từ khóa hoặc bỏ bớt bộ lọc.</p>
+        <p className="text-sm font-medium text-slate-700">{TEXT.noProducts}</p>
+        <p className="mt-1 text-xs text-slate-500">{TEXT.hint}</p>
       </div>
     );
   }
@@ -36,11 +42,17 @@ export const ProductGrid = ({ products }: ProductGridProps) => {
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
         {paginatedProducts.map((product) => (
-          <ProductCard key={product.id} product={product} />
+          <ProductCard
+            key={product.id}
+            product={product}
+            isWishlisted={wishlistIds.has(product.id)}
+            wishlistPending={pendingProductId === product.id}
+            onToggleWishlist={toggleWishlist}
+          />
         ))}
       </div>
 
-      {totalPages > 1 && (
+      {totalPages > 1 ? (
         <Pagination
           page={page}
           totalPages={totalPages}
@@ -49,7 +61,9 @@ export const ProductGrid = ({ products }: ProductGridProps) => {
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
         />
-      )}
+      ) : null}
     </div>
   );
-};
+});
+
+ProductGrid.displayName = "ProductGrid";

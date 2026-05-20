@@ -1,5 +1,6 @@
 from fastapi import HTTPException
 
+from src.core.cache import CacheManager
 from src.core.database import prisma
 from src.core.dependencies import get_role_value
 
@@ -73,5 +74,26 @@ class InventoryService:
                     "reason": reason,
                 },
             )
+            variants = await tx.productvariant.find_many(
+                where={"productId": variant.productId, "deletedAt": None},
+            )
+            total_stock = sum(int(item.stock or 0) for item in variants)
+            current_status = InventoryService._to_value(variant.product.status)
+            next_status = current_status
+            if total_stock <= 0 and current_status == "ACTIVE":
+                next_status = "OUT_OF_STOCK"
+            elif total_stock > 0 and current_status == "OUT_OF_STOCK":
+                next_status = "ACTIVE"
+            if next_status != current_status:
+                await tx.product.update(
+                    where={"id": variant.productId},
+                    data={"status": next_status},
+                )
+
+        await CacheManager.invalidate_product_cache(variant.productId)
 
         return updated
+
+    @staticmethod
+    def _to_value(value):
+        return value.value if hasattr(value, "value") else str(value)

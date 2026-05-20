@@ -23,7 +23,7 @@ export function useMediaState(uploadImage: (data: { file: File; folder: string }
       try {
         const uploaded = await Promise.all(
           Array.from(files).map((file, index) =>
-            uploadImage({ file, folder: "datn/products" }).then((result) => ({
+            uploadImage({ file, folder: "products" }).then((result) => ({
               url: result.url,
               position: images.length + index + 1,
               isPrimary: images.length === 0 && index === 0,
@@ -43,9 +43,9 @@ export function useMediaState(uploadImage: (data: { file: File; folder: string }
           }));
         });
 
-        toast.success("Da tai hinh anh san pham");
+        toast.success("Đã tải hình ảnh sản phẩm");
       } catch (error: any) {
-        toast.error(error?.response?.data?.detail || "Khong tai duoc hinh anh");
+        toast.error(error?.response?.data?.detail || "Không tải được hình ảnh");
       }
     },
     [images.length, uploadImage],

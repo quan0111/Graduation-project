@@ -15,6 +15,18 @@ const statusLabel: Record<string, string> = {
   CANCELLED: "Đã hủy",
 };
 
+const statusLabelOverrides: Record<string, string> = {
+  REQUEST_RETURN: "Yêu cầu trả hàng",
+  SELLER_REVIEW: "Seller xem xét",
+  RETURN_APPROVED: "Đồng ý trả hàng",
+  RETURN_REJECTED: "Từ chối yêu cầu",
+  PICKUP_RETURN_IN_TRANSIT: "Đang trả hàng",
+  RETURN_RECEIVED: "Shop đã nhận",
+  REFUNDING: "Đang hoàn tiền",
+  REFUND_APPROVED: "Duyệt hoàn tiền",
+  REFUND_REJECTED: "Từ chối hoàn tiền",
+};
+
 const formatCurrency = (value?: number | null) =>
   new Intl.NumberFormat("vi-VN", {
     style: "currency",
@@ -83,7 +95,7 @@ export default function ReturnHistoryPage() {
                     <td className="px-5 py-4 text-slate-600">{item.items?.length || 0}</td>
                     <td className="px-5 py-4 text-slate-900">{formatCurrency(item.refundAmount)}</td>
                     <td className="px-5 py-4">
-                      <Badge variant="outline">{statusLabel[item.status] || item.status}</Badge>
+                      <Badge variant="outline">{statusLabelOverrides[item.status] || statusLabel[item.status] || item.status}</Badge>
                     </td>
                     <td className="px-5 py-4 text-slate-500">{new Date(item.createdAt).toLocaleDateString("vi-VN")}</td>
                   </tr>

@@ -51,16 +51,26 @@ export const ProductStatusLabel: Record<ProductStatusType, string> = {
 };
 export const OrderStatus = {
   Pending: "pending",
+  PendingPayment: "pending_payment",
   Confirmed: "confirmed",
   Paid: "paid",
   PaymentFailed: "payment_failed",
+  PaymentExpired: "payment_expired",
   Processing: "processing",
   ReadyToShip: "ready_to_ship",
   Shipped: "shipped",
   InTransit: "in_transit",
+  OutForDelivery: "out_for_delivery",
   Delivered: "delivered",
   Completed: "completed",
+  CancelRequested: "cancel_requested",
+  CancelledByCustomer: "cancelled_by_customer",
+  CancelledBySeller: "cancelled_by_seller",
+  CancelRejected: "cancel_rejected",
+  CancelApproved: "cancel_approved",
   Cancelled: "cancelled",
+  DeliveryFailed: "delivery_failed",
+  ReturnToSender: "return_to_sender",
   ReturnRequested: "return_requested",
   Returned: "returned",
 } as const;
@@ -77,10 +87,17 @@ export const PaymentMethod = {
 export type PaymentMethodType =
   (typeof PaymentMethod)[keyof typeof PaymentMethod];
 
-  export const PaymentStatus = {
+export const PaymentStatus = {
   Pending: "pending",
+  PendingPayment: "pending_payment",
   Success: "success",
+  PaymentSuccess: "payment_success",
   Failed: "failed",
+  PaymentFailed: "payment_failed",
+  PaymentExpired: "payment_expired",
+  Refunding: "refunding",
+  Refunded: "refunded",
+  PartiallyRefunded: "partially_refunded",
 } as const;
 
 export type PaymentStatusType =

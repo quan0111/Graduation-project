@@ -1,11 +1,17 @@
-import { Link } from "react-router-dom";
 import { Clock } from "lucide-react";
 
+import { useWishlistActions } from "@/modules/wishlist/hooks/useWishlistActions";
 import { useRecentlyViewed } from "../hooks/useRecentlyViewed";
-import { ProductCard } from "./productCard";
+import { ProductCard } from "./productcard";
+
+const TEXT = {
+  title: "S\u1ea3n ph\u1ea9m \u0111\u00e3 xem g\u1ea7n \u0111\u00e2y",
+  clear: "X\u00f3a t\u1ea5t c\u1ea3",
+};
 
 export const RecentlyViewed = () => {
   const { recentProducts, clearRecentlyViewed } = useRecentlyViewed();
+  const { wishlistIds, pendingProductId, toggleWishlist } = useWishlistActions();
 
   if (!recentProducts || recentProducts.length === 0) {
     return null;
@@ -13,28 +19,29 @@ export const RecentlyViewed = () => {
 
   return (
     <section className="rounded-3xl border border-orange-100 bg-white p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Clock className="w-5 h-5 text-orange-500" />
-          <h2 className="text-xl font-semibold text-slate-900">Sản phẩm đã xem gần đây</h2>
+          <Clock className="h-5 w-5 text-orange-500" />
+          <h2 className="text-xl font-semibold text-slate-900">{TEXT.title}</h2>
         </div>
         <button
+          type="button"
           onClick={clearRecentlyViewed}
-          className="text-sm text-slate-500 hover:text-slate-700 transition-colors"
+          className="text-sm text-slate-500 transition-colors hover:text-slate-700"
         >
-          Xóa tất cả
+          {TEXT.clear}
         </button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
         {recentProducts.map((product) => (
-          <Link
+          <ProductCard
             key={product.id}
-            to={`/product/${product.id}`}
-            className="group"
-          >
-            <ProductCard product={product} />
-          </Link>
+            product={product}
+            isWishlisted={wishlistIds.has(product.id)}
+            wishlistPending={pendingProductId === product.id}
+            onToggleWishlist={toggleWishlist}
+          />
         ))}
       </div>
     </section>

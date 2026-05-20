@@ -14,6 +14,13 @@ async def create_review(review_data: ReviewCreate, user=Depends(get_current_user
 async def get_all_reviews(user=Depends(require_admin)):
     _ = user
     return await ReviewService.get_all_review()
+
+
+@router.get("/seller", response_model=List[ReviewOut])
+async def get_seller_reviews(user=Depends(get_current_user)):
+    return await ReviewService.get_reviews_for_seller(user)
+
+
 @router.get("/product/{product_id}", response_model=List[ReviewOut])
 async def get_reviews_by_product(product_id: int):
     return await ReviewService.get_reviews_by_product(product_id)

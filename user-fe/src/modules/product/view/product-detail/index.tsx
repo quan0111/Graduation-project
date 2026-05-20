@@ -45,7 +45,15 @@ export default function ProductDetailPage() {
     return normalizeProduct(rawProduct as unknown as Record<string, unknown>);
   }, [rawProduct]);
 
-  const { selectedVariant, setSelectedVariant, price, stock } = useProductDetail(product as IProduct);
+  const { selectedVariant, setSelectedVariant, price, originalPrice, stock } = useProductDetail(product as IProduct);
+  const galleryImages = useMemo(() => {
+    const productImages = product?.images?.map((image) => image.url).filter(Boolean) ?? [];
+    const variantImages = (selectedVariant?.variantImages ?? selectedVariant?.images ?? [])
+      .map((image) => image.url)
+      .filter(Boolean);
+
+    return Array.from(new Set([...variantImages, ...productImages]));
+  }, [product?.images, selectedVariant]);
 
   useEffect(() => {
     if (!product) {
@@ -85,12 +93,12 @@ export default function ProductDetailPage() {
       <div className="mx-auto max-w-7xl space-y-6 px-4 md:px-6">
         <div className="grid gap-6 rounded-3xl border border-orange-100 bg-white p-5 shadow-sm lg:grid-cols-12">
           <div className="lg:col-span-5">
-            <ProductGallery images={product.images?.map((image) => image.url) ?? []} name={product.name} />
+            <ProductGallery images={galleryImages} name={product.name} />
           </div>
 
           <div className="space-y-4 lg:col-span-7">
             <ProductInfo product={product} />
-            <ProductPrice price={price} originalPrice={product.price} />
+            <ProductPrice price={price} originalPrice={originalPrice > price ? originalPrice : undefined} />
             <ShippingInfo />
 
             <ProductVariants variants={product.variants ?? []} selected={selectedVariant} onSelect={setSelectedVariant} />

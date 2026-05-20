@@ -49,3 +49,37 @@ async def upload_image(file: UploadFile, folder: str = "datn") -> dict:
         "height": result.get("height"),
         "format": result.get("format"),
     }
+
+
+async def upload_media(file: UploadFile, folder: str = "datn") -> dict:
+    if not is_cloudinary_configured():
+        raise HTTPException(500, "Cloudinary is not configured")
+
+    if not file.content_type or not (
+        file.content_type.startswith("image/") or file.content_type.startswith("video/")
+    ):
+        raise HTTPException(400, "Only image and video uploads are supported")
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(400, "Uploaded file is empty")
+
+    resource_type = "video" if file.content_type.startswith("video/") else "image"
+
+    try:
+        result = cloudinary.uploader.upload(
+            content,
+            folder=folder,
+            resource_type=resource_type,
+        )
+    except Exception as exc:
+        raise HTTPException(500, f"Upload failed: {exc}") from exc
+
+    return {
+        "url": result.get("secure_url"),
+        "publicId": result.get("public_id"),
+        "width": result.get("width"),
+        "height": result.get("height"),
+        "format": result.get("format"),
+        "resourceType": resource_type,
+    }

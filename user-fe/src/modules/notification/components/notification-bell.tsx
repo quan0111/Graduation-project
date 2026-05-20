@@ -19,6 +19,8 @@ const typeLabel: Record<string, string> = {
   PRODUCT_BANNED: "Sản phẩm",
   SUPPORT_TICKET: "Hỗ trợ",
   SYSTEM: "Hệ thống",
+  PROMOTION: "Khuyến mãi",
+  CHAT: "Chat",
 };
 
 const getWsUrl = () => {
@@ -65,14 +67,14 @@ export function NotificationBell() {
     <div className="relative">
       <Button variant="ghost" size="icon" aria-label="Thông báo" onClick={() => setOpen((value) => !value)}>
         <Bell className="size-5 text-slate-600" />
-        {unreadCount > 0 && (
+        {unreadCount > 0 ? (
           <span className="absolute -right-0.5 -top-0.5 flex min-w-5 items-center justify-center rounded-full bg-[#ee4d2d] px-1 text-[10px] font-bold text-white">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
-        )}
+        ) : null}
       </Button>
 
-      {open && (
+      {open ? (
         <div className="absolute right-0 z-50 mt-3 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <div>
@@ -100,7 +102,7 @@ export function NotificationBell() {
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
                       {typeLabel[notification.type] ?? notification.type}
                     </span>
-                    {!notification.isRead && <span className="size-2 rounded-full bg-[#ee4d2d]" />}
+                    {!notification.isRead ? <span className="size-2 rounded-full bg-[#ee4d2d]" /> : null}
                   </div>
                   <p className="text-sm font-semibold text-slate-900">{notification.title}</p>
                   <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{notification.content}</p>
@@ -112,7 +114,7 @@ export function NotificationBell() {
             )}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { ChevronLeft, Save } from "lucide-react";
@@ -6,8 +6,7 @@ import { toast } from "sonner";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SellerDashboardLayout } from "@/modules/seller/component/shop-layout";
-
+import type { OrderStatusType } from "@/constant";
 import { useGetSellerOrderById } from "@/modules/order/api/get-seller-order";
 import { useUpdateOrder } from "@/modules/order/api/update-order";
 import { useUpsertShipment } from "@/modules/order/api/upsert-shipment";
@@ -16,13 +15,13 @@ import { OrderShipping } from "@/modules/order/components/shipping";
 import { OrderSummary } from "@/modules/order/components/summary";
 import { OrderTimeline } from "@/modules/order/components/orderTimeLine";
 import type { ShipmentStatusType } from "@/modules/order/types";
-import type { OrderStatusType } from "@/constant";
 import {
   formatCurrency,
   formatDateTime,
   getOrderVisibleSubtotal,
   getStatusMeta,
 } from "@/modules/order/utils/order";
+import { SellerDashboardLayout } from "@/modules/seller/component/shop-layout";
 
 const shipmentStatuses: Array<{ value: ShipmentStatusType; label: string }> = [
   { value: "ready_to_ship", label: "Sẵn sàng giao" },
@@ -30,6 +29,15 @@ const shipmentStatuses: Array<{ value: ShipmentStatusType; label: string }> = [
   { value: "in_transit", label: "Đang vận chuyển" },
   { value: "delivered", label: "Đã giao hàng" },
 ];
+const allShipmentStatuses: Array<{ value: ShipmentStatusType; label: string }> = [
+  ...shipmentStatuses,
+  { value: "out_for_delivery", label: "Đang giao hàng" },
+  { value: "delivery_failed", label: "Giao thất bại" },
+  { value: "return_to_sender", label: "Hoàn về seller" },
+];
+const shipmentStatusValues = allShipmentStatuses.map((item) => item.value);
+const isShipmentStatus = (value?: string | null): value is ShipmentStatusType =>
+  Boolean(value && shipmentStatusValues.includes(value as ShipmentStatusType));
 
 const sellerOrderTransitions: Partial<Record<OrderStatusType, Array<{ status: OrderStatusType; label: string }>>> = {
   pending: [{ status: "confirmed", label: "Xác nhận đơn" }],
@@ -42,6 +50,34 @@ const sellerOrderTransitions: Partial<Record<OrderStatusType, Array<{ status: Or
   ready_to_ship: [{ status: "shipped", label: "Đã gửi hàng" }],
   shipped: [{ status: "in_transit", label: "Đang vận chuyển" }],
   in_transit: [{ status: "delivered", label: "Đã giao hàng" }],
+};
+
+const getSellerNextStatuses = (status: OrderStatusType) => {
+  const overrides: Partial<Record<OrderStatusType, Array<{ status: OrderStatusType; label: string }>>> = {
+    pending: [
+      { status: "confirmed", label: "Xác nhận đơn" },
+      { status: "cancelled_by_seller", label: "Hủy bởi seller" },
+    ],
+    confirmed: [
+      { status: "processing", label: "Bắt đầu xử lý" },
+      { status: "cancelled_by_seller", label: "Hủy bởi seller" },
+    ],
+    processing: [
+      { status: "ready_to_ship", label: "Sẵn sàng giao" },
+      { status: "cancelled_by_seller", label: "Hủy bởi seller" },
+    ],
+    in_transit: [
+      { status: "out_for_delivery", label: "Đang giao hàng" },
+      { status: "delivery_failed", label: "Giao thất bại" },
+    ],
+    out_for_delivery: [
+      { status: "delivered", label: "Đã giao hàng" },
+      { status: "delivery_failed", label: "Giao thất bại" },
+    ],
+    delivery_failed: [{ status: "return_to_sender", label: "Hoàn về seller" }],
+  };
+
+  return overrides[status] ?? sellerOrderTransitions[status] ?? [];
 };
 
 export default function SellerOrderDetailPage() {
@@ -57,16 +93,29 @@ export default function SellerOrderDetailPage() {
   const [carrier, setCarrier] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
   const [status, setStatus] = useState<ShipmentStatusType>("ready_to_ship");
+  const packageShipment = useMemo(
+    () =>
+      order?.shop_package && isShipmentStatus(order.shop_package.status)
+        ? {
+            carrier: order.shop_package.carrier,
+            tracking_number: order.shop_package.tracking_number,
+            status: order.shop_package.status,
+          }
+        : null,
+    [order?.shop_package],
+  );
+  const activeShipment = order?.shipment ?? packageShipment;
+  const hasExistingShipment = Boolean(order?.shipment || packageShipment);
 
   useEffect(() => {
-    if (!order?.shipment) {
+    if (!activeShipment) {
       return;
     }
 
-    setCarrier(order.shipment.carrier || "");
-    setTrackingNumber(order.shipment.tracking_number || "");
-    setStatus(order.shipment.status);
-  }, [order?.shipment]);
+    setCarrier(activeShipment.carrier || "");
+    setTrackingNumber(activeShipment.tracking_number || "");
+    setStatus(activeShipment.status);
+  }, [activeShipment]);
 
   if (isLoading) {
     return (
@@ -85,7 +134,7 @@ export default function SellerOrderDetailPage() {
   }
 
   const statusMeta = getStatusMeta(order.status);
-  const nextOrderStatuses = sellerOrderTransitions[order.status] ?? [];
+  const nextOrderStatuses = getSellerNextStatuses(order.status);
 
   const handleUpdateOrderStatus = async (nextStatus: OrderStatusType) => {
     try {
@@ -109,9 +158,11 @@ export default function SellerOrderDetailPage() {
         carrier,
         trackingNumber,
         status,
-        hasExisting: Boolean(order.shipment),
+        hasExisting: hasExistingShipment,
       });
 
+      await queryClient.invalidateQueries({ queryKey: ["orders", "seller-detail", order.id] });
+      await queryClient.invalidateQueries({ queryKey: ["orders", "seller"] });
       toast.success("Đã cập nhật tracking");
     } catch (error: any) {
       const detail = error?.response?.data?.detail;
@@ -156,7 +207,7 @@ export default function SellerOrderDetailPage() {
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)]">
           <section className="space-y-6">
-            <OrderTimeline status={order.status} />
+            <OrderTimeline status={order.status} order={order} />
             <OrderShipping order={order} />
 
             <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
@@ -197,8 +248,7 @@ export default function SellerOrderDetailPage() {
             <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
               <p className="text-base font-semibold text-slate-950">Chỉnh sửa tracking</p>
               <p className="mt-1 text-sm leading-6 text-slate-500">
-                Tracking hiện được cập nhật ở cấp order. Nếu backend trả lỗi đơn nhiều shop,
-                bạn cần tách shipment theo shop ở tầng dữ liệu.
+                Với đơn nhiều shop, tracking được lưu riêng cho package của shop hiện tại.
               </p>
 
               <div className="mt-5 space-y-4">
@@ -228,28 +278,29 @@ export default function SellerOrderDetailPage() {
                     className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-[#ee4d2d]"
                   >
                     {(() => {
-                      // Normalize current status for transition check (matching backend logic)
-                      const normalize = (s: string) => s.toUpperCase();
-
-                      const currentBase = normalize(order.shipment?.status || "ready_to_ship");
+                      const currentBase = (activeShipment?.status || "ready_to_ship").toUpperCase();
                       const transitions: Record<string, string[]> = {
                         READY_TO_SHIP: ["SHIPPED"],
                         SHIPPED: ["IN_TRANSIT"],
-                        IN_TRANSIT: ["DELIVERED"],
+                        IN_TRANSIT: ["OUT_FOR_DELIVERY", "DELIVERY_FAILED"],
+                        OUT_FOR_DELIVERY: ["DELIVERED", "DELIVERY_FAILED"],
+                        DELIVERY_FAILED: ["RETURN_TO_SENDER"],
                       };
 
                       const allowedNextBase = transitions[currentBase] || [];
-                      
-                      return shipmentStatuses.filter(option => {
-                        if (option.value === status) return true; // Keep current selection
-                        const optionBase = normalize(option.value);
-                        if (optionBase === currentBase) return true; // Allow same base status
-                        return allowedNextBase.includes(optionBase);
-                      }).map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ));
+
+                      return allShipmentStatuses
+                        .filter((option) => {
+                          if (option.value === status) return true;
+                          const optionBase = option.value.toUpperCase();
+                          if (optionBase === currentBase) return true;
+                          return allowedNextBase.includes(optionBase);
+                        })
+                        .map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ));
                     })()}
                   </select>
                 </div>

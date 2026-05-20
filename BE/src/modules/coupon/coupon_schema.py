@@ -34,6 +34,18 @@ class CouponUpdate(BaseModel):
     validUntil: Optional[datetime] = None
 
 
+class CouponValidateRequest(BaseModel):
+    code: str
+    orderAmount: float = Field(ge=0)
+    shopIds: List[int] = Field(default_factory=list)
+
+
+class CouponDiscountRequest(BaseModel):
+    couponId: int
+    orderAmount: float = Field(ge=0)
+    shopIds: List[int] = Field(default_factory=list)
+
+
 class OrderShort(BaseModel):
     id: int
     totalAmount: float

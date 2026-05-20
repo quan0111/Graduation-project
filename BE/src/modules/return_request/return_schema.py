@@ -22,8 +22,13 @@ class ReturnRequestCreate(BaseModel):
 
 
 class ReturnReviewUpdate(BaseModel):
-    status: Literal["APPROVED", "REJECTED"]
+    status: Literal["APPROVED", "REJECTED", "RETURN_APPROVED", "RETURN_REJECTED"]
     rejectReason: Optional[str] = None
+
+
+class GatewayRefundConfirm(BaseModel):
+    transactionId: str
+    note: Optional[str] = None
 
 
 class UserShort(BaseModel):
@@ -81,6 +86,9 @@ class ReturnOut(BaseModel):
     refundAmount: Optional[float] = None
     status: str
     reviewedAt: Optional[datetime] = None
+    gatewayRefundStatus: Optional[str] = None
+    gatewayRefundTransactionId: Optional[str] = None
+    gatewayRefundedAt: Optional[datetime] = None
     createdAt: datetime
     updatedAt: Optional[datetime] = None
     user: Optional[UserShort] = None

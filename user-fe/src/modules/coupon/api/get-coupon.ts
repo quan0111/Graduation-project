@@ -20,13 +20,21 @@ const getCouponByCode = async (code: string): Promise<ICoupon> => {
     return res.data;
 };
 
-const validateCoupon = async (code: string, orderAmount: number) => {
-    const res = await apiClient.get(`${API_URL_COUPON}/validate/${code}/${orderAmount}`);
+const validateCoupon = async (code: string, orderAmount: number, shopIds: number[] = []) => {
+    const res = await apiClient.post(`${API_URL_COUPON}/validate`, {
+        code,
+        orderAmount,
+        shopIds,
+    });
     return res.data;
 };
 
-const calculateDiscount = async (couponId: number, orderAmount: number) => {
-    const res = await apiClient.get(`${API_URL_COUPON}/${couponId}/discount/${orderAmount}`);
+const calculateDiscount = async (couponId: number, orderAmount: number, shopIds: number[] = []) => {
+    const res = await apiClient.post(`${API_URL_COUPON}/discount`, {
+        couponId,
+        orderAmount,
+        shopIds,
+    });
     return res.data;
 };
 
@@ -57,11 +65,12 @@ export const useCouponByCode = (
 export const useValidateCoupon = (
   code: string,
   orderAmount: number,
+  shopIds: number[] = [],
   config?: Partial<UseQueryOptions<any, Error>>,
 ) => {
   return useQuery({
-    queryKey: ["coupon", "validate", code, orderAmount],
-    queryFn: () => validateCoupon(code, orderAmount),
+    queryKey: ["coupon", "validate", code, orderAmount, shopIds.join(",")],
+    queryFn: () => validateCoupon(code, orderAmount, shopIds),
     ...config,
   });
 };
@@ -69,11 +78,12 @@ export const useValidateCoupon = (
 export const useCalculateDiscount = (
   couponId: number,
   orderAmount: number,
+  shopIds: number[] = [],
   config?: Omit<UseQueryOptions<any, Error>, "queryKey" | "queryFn">,
 ) => {
   return useQuery({
-    queryKey: ["coupon", "discount", couponId, orderAmount],
-    queryFn: () => calculateDiscount(couponId, orderAmount),
+    queryKey: ["coupon", "discount", couponId, orderAmount, shopIds.join(",")],
+    queryFn: () => calculateDiscount(couponId, orderAmount, shopIds),
     ...config,
   });
 };

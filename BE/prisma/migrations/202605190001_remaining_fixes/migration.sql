@@ -3,10 +3,6 @@ ALTER TYPE "ProductStatus" ADD VALUE IF NOT EXISTS 'APPROVAL';
 ALTER TABLE "Order"
   ADD COLUMN IF NOT EXISTS "shippingMethod" TEXT;
 
-UPDATE "Product"
-SET "status" = 'APPROVAL'
-WHERE "status"::text = 'APROVAL';
-
 ALTER TABLE "CartItem" DROP CONSTRAINT IF EXISTS "CartItem_productId_fkey";
 ALTER TABLE "CartItem" DROP CONSTRAINT IF EXISTS "CartItem_variantId_fkey";
 ALTER TABLE "CartItem" DROP CONSTRAINT IF EXISTS "CartItem_shopId_fkey";

@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Star, X, Upload } from "lucide-react";
+import { Star, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 import { useCreateReview } from "../api/create-review";
 
@@ -15,6 +15,15 @@ interface ReviewFormProps {
   onSuccess: () => void;
 }
 
+type MediaPreview = {
+  url: string;
+  type: "image" | "video";
+};
+
+const MAX_MEDIA = 5;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
+
 export const ReviewForm: React.FC<ReviewFormProps> = ({
   productId,
   userId,
@@ -24,47 +33,64 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
-  const [images, setImages] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<MediaPreview[]>([]);
 
   const createMutation = useCreateReview();
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const handleMediaUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
-    if (images.length + files.length > 5) {
-      toast.error("Tối đa 5 ảnh");
+    if (mediaFiles.length + files.length > MAX_MEDIA) {
+      toast.error(`Tối đa ${MAX_MEDIA} ảnh hoặc video`);
       return;
     }
 
     const validFiles = files.filter((file) => {
-      if (!file.type.startsWith("image/")) {
-        toast.error(`File ${file.name} không phải là ảnh`);
+      const isImage = file.type.startsWith("image/");
+      const isVideo = file.type.startsWith("video/");
+
+      if (!isImage && !isVideo) {
+        toast.error(`File ${file.name} không phải ảnh hoặc video`);
         return false;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error(`File ${file.name} vượt quá 5MB`);
+
+      const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+      if (file.size > maxSize) {
+        toast.error(
+          isVideo
+            ? `Video ${file.name} vượt quá 50MB`
+            : `Ảnh ${file.name} vượt quá 5MB`,
+        );
         return false;
       }
+
       return true;
     });
 
-    setImages((prev) => [...prev, ...validFiles]);
+    setMediaFiles((current) => [...current, ...validFiles]);
 
-    // Create previews
     validFiles.forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImagePreviews((prev) => [...prev, reader.result as string]);
+        setPreviews((current) => [
+          ...current,
+          {
+            url: reader.result as string,
+            type: file.type.startsWith("video/") ? "video" : "image",
+          },
+        ]);
       };
       reader.readAsDataURL(file);
     });
+
+    event.target.value = "";
   };
 
-  const handleRemoveImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
-    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveMedia = (index: number) => {
+    setMediaFiles((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setPreviews((current) => current.filter((_, itemIndex) => itemIndex !== index));
   };
 
   const handleSubmit = async () => {
@@ -79,7 +105,7 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({
         productId,
         rating,
         comment: comment.trim() || undefined,
-        images: images.length > 0 ? images : undefined,
+        media: mediaFiles.length > 0 ? mediaFiles : undefined,
       });
 
       toast.success("Đánh giá đã được gửi");
@@ -91,17 +117,16 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-slate-900">Đánh giá sản phẩm</h2>
-          <button onClick={onCancel} className="text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onCancel} className="text-slate-400 hover:text-slate-600">
             <X className="size-6" />
           </button>
         </div>
 
         <div className="space-y-6">
-          {/* Rating */}
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">Đánh giá</label>
             <div className="flex gap-2">
@@ -126,66 +151,68 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({
             </div>
           </div>
 
-          {/* Comment */}
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-700">Nhận xét</label>
             <Textarea
               value={comment}
-              onChange={(e) => setComment(e.target.value)}
+              onChange={(event) => setComment(event.target.value)}
               placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm..."
               rows={4}
               className="w-full"
             />
           </div>
 
-          {/* Image Upload */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">Hình ảnh (tối đa 5 ảnh, mỗi ảnh tối đa 5MB)</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Ảnh/video ({MAX_MEDIA} tệp, ảnh tối đa 5MB, video tối đa 50MB)
+            </label>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <Input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,video/*"
                   multiple
-                  onChange={handleImageUpload}
+                  onChange={handleMediaUpload}
                   className="hidden"
-                  id="image-upload"
+                  id="review-media-upload"
                 />
                 <label
-                  htmlFor="image-upload"
-                  className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-slate-400 hover:bg-slate-50 transition-colors"
+                  htmlFor="review-media-upload"
+                  className="flex cursor-pointer items-center gap-2 rounded-lg border-2 border-dashed border-slate-300 px-4 py-2 transition-colors hover:border-slate-400 hover:bg-slate-50"
                 >
-                  <Upload className="w-5 h-5 text-slate-500" />
-                  <span className="text-sm text-slate-600">Chọn ảnh</span>
+                  <Upload className="size-5 text-slate-500" />
+                  <span className="text-sm text-slate-600">Chọn tệp</span>
                 </label>
-                <span className="text-sm text-slate-500">{images.length}/5</span>
+                <span className="text-sm text-slate-500">{mediaFiles.length}/{MAX_MEDIA}</span>
               </div>
 
-              {/* Image Previews */}
-              {imagePreviews.length > 0 && (
+              {previews.length > 0 ? (
                 <div className="grid grid-cols-3 gap-3">
-                  {imagePreviews.map((preview, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={preview}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-lg border border-slate-200"
-                      />
+                  {previews.map((preview, index) => (
+                    <div key={`${preview.url}-${index}`} className="group relative">
+                      {preview.type === "video" ? (
+                        <video src={preview.url} className="h-24 w-full rounded-lg border border-slate-200 object-cover" />
+                      ) : (
+                        <img
+                          src={preview.url}
+                          alt={`Preview ${index + 1}`}
+                          className="h-24 w-full rounded-lg border border-slate-200 object-cover"
+                        />
+                      )}
                       <button
                         type="button"
-                        onClick={() => handleRemoveImage(index)}
-                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleRemoveMedia(index)}
+                        className="absolute right-1 top-1 rounded-full bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
                       >
-                        <X className="w-4 h-4" />
+                        <X className="size-4" />
                       </button>
                     </div>
                   ))}
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
 
-          {/* Actions */}
           <div className="flex justify-end gap-3">
             <Button onClick={onCancel} variant="outline">
               Hủy

@@ -4,7 +4,7 @@ from src.modules.notification.notification_service import NotificationService
 from src.modules.notification.notification_schema import NotificationCreate
 from src.modules.notification.notification_websocket import notification_ws
 from src.core.dependencies import get_current_user
-from src.core.security import AUTH_SCOPE_STOREFRONT, decode_token, verify_token_type
+from src.core.security import decode_token, verify_token_type
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 service = NotificationService()
@@ -22,7 +22,7 @@ async def create_notification(
 async def websocket_endpoint(websocket: WebSocket, token: str):
     # 🔥 decode token để lấy user_id
     payload = decode_token(token)
-    if not verify_token_type(payload, "access", AUTH_SCOPE_STOREFRONT):
+    if not verify_token_type(payload, "access"):
         await websocket.close(code=1008)
         return
 

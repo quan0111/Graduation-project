@@ -17,6 +17,7 @@ import ReturnHistoryPage from "@/modules/return-request/view/history";
 
 import AccountPage from "@/modules/auth/view/me";
 import PromotionPage from "@/modules/promotion/view";
+import WishlistPage from "@/modules/wishlist/view";
 
 import { SellerRegistrationView } from "@/modules/seller/view/create";
 import SellerDashboardPage from "@/modules/seller/view/dashboard";
@@ -26,9 +27,14 @@ import SellerOrderDetailPage from "@/modules/seller/view/order-detail";
 import SellerReturnsPage from "@/modules/seller/view/returns";
 import SellerViolationsPage from "@/modules/seller/view/violations";
 import SellerProductsPage from "@/modules/seller/view/products";
+import SellerInventoryPage from "@/modules/seller/view/inventory";
 import SellerFinancePage from "@/modules/seller/view/finance";
 import SellerCouponsPage from "@/modules/seller/view/coupons";
 import SellerSupportPage from "@/modules/seller/view/support";
+import SellerReviewsPage from "@/modules/seller/view/reviews";
+import SellerMarketingPage from "@/modules/seller/view/marketing";
+import SellerAnalyticsPage from "@/modules/seller/view/analytics";
+import SellerShippingPage from "@/modules/seller/view/shipping";
 import { RequireAuth, RequireSeller } from "./guards";
 export const router = createBrowserRouter([
   {
@@ -49,11 +55,13 @@ export const router = createBrowserRouter([
       { path: "orders", element: <RequireAuth><OrderPage /></RequireAuth> },
       { path: "orders/:id", element: <RequireAuth><OrderDetailPage /></RequireAuth> },
       { path: "returns", element: <RequireAuth><ReturnHistoryPage /></RequireAuth> },
+      { path: "wishlist", element: <RequireAuth><WishlistPage /></RequireAuth> },
 
       { path: "account", element: <RequireAuth><AccountPage /></RequireAuth> },
       { path: "profile", element: <RequireAuth><AccountPage /></RequireAuth> },
 
       { path: "promotions", element: <PromotionPage /> },
+      { path: "flash-sale", element: <PromotionPage /> },
       { path: "shop/:id", element: <ShopPage /> },
     ],
   },
@@ -77,6 +85,10 @@ export const router = createBrowserRouter([
     element: <RequireSeller><SellerOrderDetailPage /></RequireSeller>,
   },
   {
+    path: "/seller/shipping",
+    element: <RequireSeller><SellerShippingPage /></RequireSeller>,
+  },
+  {
     path: "/seller/returns",
     element: <RequireSeller><SellerReturnsPage /></RequireSeller>,
   },
@@ -87,6 +99,10 @@ export const router = createBrowserRouter([
   {
     path: "/seller/products",
     element: <RequireSeller><SellerProductsPage /></RequireSeller>,
+  },
+  {
+    path: "/seller/inventory",
+    element: <RequireSeller><SellerInventoryPage /></RequireSeller>,
   },
   {
     path: "/seller/products/new",
@@ -101,7 +117,19 @@ export const router = createBrowserRouter([
     element: <RequireSeller><SellerCouponsPage /></RequireSeller>,
   },
   {
+    path: "/seller/marketing",
+    element: <RequireSeller><SellerMarketingPage /></RequireSeller>,
+  },
+  {
+    path: "/seller/analytics",
+    element: <RequireSeller><SellerAnalyticsPage /></RequireSeller>,
+  },
+  {
     path: "/seller/support",
     element: <RequireSeller><SellerSupportPage /></RequireSeller>,
+  },
+  {
+    path: "/seller/reviews",
+    element: <RequireSeller><SellerReviewsPage /></RequireSeller>,
   },
 ]);

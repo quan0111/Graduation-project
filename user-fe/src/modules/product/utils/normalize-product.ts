@@ -1,8 +1,23 @@
-import type { IProduct, IProductImage, IProductVariant } from "@/modules/product/types";
+import type { IActiveFlashSale, IProduct, IProductImage, IProductVariant, IVariantImage } from "@/modules/product/types";
 
 type UnknownRecord = Record<string, any>;
 
 const nowIso = new Date().toISOString();
+
+const normalizeActiveFlashSale = (sale?: UnknownRecord | null): IActiveFlashSale | null =>
+  sale
+    ? {
+        id: Number(sale.id ?? 0),
+        flashSaleId: Number(sale.flashSaleId ?? sale.flash_sale_id ?? 0),
+        variantId: sale.variantId ?? sale.variant_id ?? null,
+        salePrice: Number(sale.salePrice ?? sale.sale_price ?? 0),
+        stockLimit: sale.stockLimit ?? sale.stock_limit ?? null,
+        soldCount: Number(sale.soldCount ?? sale.sold_count ?? 0),
+        purchaseLimit: sale.purchaseLimit ?? sale.purchase_limit ?? null,
+        startsAt: sale.startsAt ?? sale.starts_at ?? nowIso,
+        endsAt: sale.endsAt ?? sale.ends_at ?? nowIso,
+      }
+    : null;
 
 const normalizeImage = (image: UnknownRecord): IProductImage => ({
   id: Number(image.id ?? 0),
@@ -14,19 +29,34 @@ const normalizeImage = (image: UnknownRecord): IProductImage => ({
   deleted_at: image.deleted_at ?? image.deletedAt ?? null,
 });
 
-const normalizeVariant = (variant: UnknownRecord): IProductVariant => ({
-  id: Number(variant.id ?? 0),
-  sku: variant.sku ?? null,
-  name: variant.name ?? "",
-  stock: Number(variant.stock ?? 0),
-  weight: variant.weight ?? null,
-  product_id: Number(variant.product_id ?? variant.productId ?? 0),
-  price: Number(variant.price ?? 0),
-  created_at: variant.created_at ?? variant.createdAt ?? nowIso,
-  updated_at: variant.updated_at ?? variant.updatedAt ?? nowIso,
-  deleted_at: variant.deleted_at ?? variant.deletedAt ?? null,
-  variantImages: [],
+const normalizeVariantImage = (image: UnknownRecord): IVariantImage => ({
+  id: Number(image.id ?? 0),
+  url: image.url ?? "",
+  position: Number(image.position ?? 0),
+  variant_id: Number(image.variant_id ?? image.variantId ?? 0),
+  created_at: image.created_at ?? image.createdAt ?? nowIso,
+  deleted_at: image.deleted_at ?? image.deletedAt ?? null,
 });
+
+const normalizeVariant = (variant: UnknownRecord): IProductVariant => {
+  const variantImages = (variant.images ?? variant.variantImages ?? []).map(normalizeVariantImage);
+
+  return {
+    id: Number(variant.id ?? 0),
+    sku: variant.sku ?? null,
+    name: variant.name ?? "",
+    stock: Number(variant.stock ?? 0),
+    weight: variant.weight ?? null,
+    product_id: Number(variant.product_id ?? variant.productId ?? 0),
+    price: Number(variant.price ?? 0),
+    created_at: variant.created_at ?? variant.createdAt ?? nowIso,
+    updated_at: variant.updated_at ?? variant.updatedAt ?? nowIso,
+    deleted_at: variant.deleted_at ?? variant.deletedAt ?? null,
+    variantImages,
+    images: variantImages,
+    activeFlashSale: normalizeActiveFlashSale(variant.activeFlashSale),
+  };
+};
 
 const normalizeReview = (review: UnknownRecord) => ({
   id: Number(review.id ?? 0),
@@ -62,6 +92,7 @@ export const normalizeProduct = (product: UnknownRecord): IProduct => {
     variants,
     images,
     reviews: (product.reviews ?? []).map(normalizeReview),
+    activeFlashSale: normalizeActiveFlashSale(product.activeFlashSale),
     attributes: product.attributes ?? [],
     tags: product.tags ?? [],
     stock: Number(product.stock ?? product.totalStock ?? 0),

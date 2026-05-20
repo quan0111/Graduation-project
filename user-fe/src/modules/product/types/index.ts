@@ -33,10 +33,24 @@ export interface IProduct {
   variants?: IProductVariant[];
   images?: IProductImage[];
   reviews?: IReview[];
+  activeFlashSale?: IActiveFlashSale | null;
 
   attributes?: IProductAttribute[];
   tags?: ITag[];
 }
+
+export interface IActiveFlashSale {
+  id: number;
+  flashSaleId: number;
+  variantId?: number | null;
+  salePrice: number;
+  stockLimit?: number | null;
+  soldCount: number;
+  purchaseLimit?: number | null;
+  startsAt: string;
+  endsAt: string;
+}
+
 export interface IProductVariant {
   id: number;
 
@@ -54,7 +68,9 @@ export interface IProductVariant {
   deleted_at?: string | null;
 
   variantImages?: IVariantImage[];
+  images?: IVariantImage[];
   product?: IProduct;
+  activeFlashSale?: IActiveFlashSale | null;
 }
 export interface IProductFormInputs {
   name: string

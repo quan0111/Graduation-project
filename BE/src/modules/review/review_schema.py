@@ -6,12 +6,12 @@ from datetime import datetime
 class ReviewCreate(BaseModel):
     userId: int
     productId: int
-    rating: int
+    rating: int = Field(ge=1, le=5)
     comment: Optional[str] = None
     mediaUrls: List[str] = []
 
 class ReviewUpdate(BaseModel):
-    rating: Optional[int] = None
+    rating: Optional[int] = Field(default=None, ge=1, le=5)
     comment: Optional[str] = None
 
 

@@ -6,6 +6,9 @@ from typing import Optional, Callable, Any, Union
 from src.core.redis import RedisClient
 
 logger = logging.getLogger(__name__)
+CACHE_FORMAT_VERSION = 1
+CACHE_PAYLOAD_VERSION_FIELD = "__cache_format_version"
+CACHE_PAYLOAD_DATA_FIELD = "data"
 
 
 def cache_result(
@@ -52,16 +55,33 @@ def cache_result(
             cached_value = await RedisClient.get(cache_key)
             if cached_value is not None:
                 try:
-                    return json.loads(cached_value)
+                    payload = json.loads(cached_value)
                 except json.JSONDecodeError:
-                    return cached_value
+                    payload = cached_value
+
+                if (
+                    isinstance(payload, dict)
+                    and payload.get(CACHE_PAYLOAD_VERSION_FIELD) == CACHE_FORMAT_VERSION
+                    and CACHE_PAYLOAD_DATA_FIELD in payload
+                ):
+                    return payload[CACHE_PAYLOAD_DATA_FIELD]
+
+                logger.info(f"Ignoring legacy cache payload for key: {cache_key}")
+                await RedisClient.delete(cache_key)
             
             # Execute function and cache result
             result = await func(*args, **kwargs)
             
             # Cache the result
             try:
-                await RedisClient.set(cache_key, result, expire_seconds)
+                await RedisClient.set(
+                    cache_key,
+                    {
+                        CACHE_PAYLOAD_VERSION_FIELD: CACHE_FORMAT_VERSION,
+                        CACHE_PAYLOAD_DATA_FIELD: result,
+                    },
+                    expire_seconds,
+                )
                 logger.debug(f"Cached result for key: {cache_key}")
             except Exception as e:
                 logger.error(f"Failed to cache result for key {cache_key}: {e}")
@@ -120,6 +140,7 @@ class CacheManager:
         """Invalidate product-related cache keys."""
         patterns = [
             f"{CacheManager.PRODUCT_LIST}*",
+            f"{CacheManager.PRODUCT_DETAIL}*",
             f"{CacheManager.SHOP_PRODUCTS}*",
         ]
         

@@ -11,7 +11,21 @@ import { useMarkReturnReceived, useRefundReturnRequest } from "@/modules/return-
 import { type ReturnRequest, useSellerReturnRequests } from "@/modules/return-request/api/get-return";
 import { SellerDashboardLayout } from "@/modules/seller/component/shop-layout";
 
-type ReturnStatusFilter = "ALL" | "REQUESTED" | "APPROVED" | "PICKED_UP" | "RECEIVED" | "REJECTED" | "REFUNDED";
+type ReturnStatusFilter =
+  | "ALL"
+  | "REQUEST_RETURN"
+  | "SELLER_REVIEW"
+  | "RETURN_APPROVED"
+  | "PICKUP_RETURN_IN_TRANSIT"
+  | "RETURN_RECEIVED"
+  | "RETURN_REJECTED"
+  | "REFUNDING"
+  | "REFUNDED"
+  | "REQUESTED"
+  | "APPROVED"
+  | "PICKED_UP"
+  | "RECEIVED"
+  | "REJECTED";
 
 const statusOptions: Array<{ value: ReturnStatusFilter; label: string }> = [
   { value: "ALL", label: "Tất cả trạng thái" },
@@ -31,6 +45,33 @@ const statusMeta: Record<string, { label: string; variant: "default" | "secondar
   REJECTED: { label: "Bị từ chối", variant: "destructive" },
   REFUNDED: { label: "Đã hoàn tiền", variant: "outline" },
 };
+
+const returnStatusMetaOverrides: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  REQUEST_RETURN: { label: "Khách yêu cầu trả hàng", variant: "secondary" },
+  SELLER_REVIEW: { label: "Seller xem xét", variant: "secondary" },
+  RETURN_APPROVED: { label: "Đồng ý trả hàng", variant: "default" },
+  PICKUP_RETURN_IN_TRANSIT: { label: "Đang trả hàng", variant: "secondary" },
+  RETURN_RECEIVED: { label: "Đã nhận hàng trả", variant: "default" },
+  RETURN_REJECTED: { label: "Từ chối yêu cầu", variant: "destructive" },
+  REFUND_REJECTED: { label: "Từ chối hoàn tiền", variant: "destructive" },
+  REFUNDING: { label: "Đang hoàn tiền", variant: "secondary" },
+};
+
+const returnStatusGroups: Record<string, string[]> = {
+  REQUESTED: ["REQUESTED", "REQUEST_RETURN", "SELLER_REVIEW"],
+  APPROVED: ["APPROVED", "RETURN_APPROVED"],
+  PICKED_UP: ["PICKED_UP", "PICKUP_RETURN_IN_TRANSIT"],
+  RECEIVED: ["RECEIVED", "RETURN_RECEIVED"],
+  REJECTED: ["REJECTED", "RETURN_REJECTED", "REFUND_REJECTED"],
+  REFUNDED: ["REFUNDING", "REFUNDED"],
+};
+
+const matchesReturnStatus = (status: string, filter: ReturnStatusFilter) => {
+  if (filter === "ALL") return true;
+  return (returnStatusGroups[filter] ?? [filter]).includes(status);
+};
+
+const isReturnStatus = (status: string, values: string[]) => values.includes(status);
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("vi-VN", {
@@ -65,7 +106,7 @@ export default function SellerReturnsPage() {
           !searchValue ||
           returnReq.orderId.toString().includes(searchValue) ||
           returnReq.reason.toLowerCase().includes(searchValue);
-        const matchesStatus = statusFilter === "ALL" || returnReq.status === statusFilter;
+        const matchesStatus = matchesReturnStatus(returnReq.status, statusFilter);
         return matchesSearch && matchesStatus;
       }),
     [returns, searchTerm, statusFilter],
@@ -104,7 +145,7 @@ export default function SellerReturnsPage() {
   };
 
   const renderStatusBadge = (status: string) => {
-    const meta = statusMeta[status] || { label: status, variant: "secondary" as const };
+    const meta = returnStatusMetaOverrides[status] || statusMeta[status] || { label: status, variant: "secondary" as const };
     return <Badge variant={meta.variant}>{meta.label}</Badge>;
   };
 
@@ -180,7 +221,7 @@ export default function SellerReturnsPage() {
                             <Button size="sm" variant="ghost" onClick={() => setSelectedReturn(returnReq)}>
                               <Eye className="size-4" />
                             </Button>
-                            {["APPROVED", "PICKED_UP"].includes(returnReq.status) && (
+                            {isReturnStatus(returnReq.status, ["APPROVED", "RETURN_APPROVED", "PICKED_UP", "PICKUP_RETURN_IN_TRANSIT"]) && (
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -191,7 +232,7 @@ export default function SellerReturnsPage() {
                                 Đã nhận hàng
                               </Button>
                             )}
-                            {returnReq.status === "RECEIVED" && (
+                            {isReturnStatus(returnReq.status, ["RECEIVED", "RETURN_RECEIVED", "REFUNDING"]) && (
                               <Button
                                 size="sm"
                                 onClick={() => setRefundCandidate(returnReq)}
@@ -272,7 +313,7 @@ export default function SellerReturnsPage() {
                 </div>
               )}
 
-              {["APPROVED", "PICKED_UP"].includes(selectedReturn.status) && (
+              {isReturnStatus(selectedReturn.status, ["APPROVED", "RETURN_APPROVED", "PICKED_UP", "PICKUP_RETURN_IN_TRANSIT"]) && (
                 <div className="flex justify-end border-t pt-4">
                   <Button
                     variant="outline"
@@ -285,7 +326,7 @@ export default function SellerReturnsPage() {
                 </div>
               )}
 
-              {selectedReturn.status === "RECEIVED" && (
+              {isReturnStatus(selectedReturn.status, ["RECEIVED", "RETURN_RECEIVED", "REFUNDING"]) && (
                 <div className="flex justify-end border-t pt-4">
                   <Button
                     onClick={() => setRefundCandidate(selectedReturn)}
@@ -357,7 +398,16 @@ function ReturnTimeline({ status }: { status: string }) {
     { key: "REFUNDED", label: "Seller hoàn tiền" },
   ];
   const order = ["REQUESTED", "APPROVED", "PICKED_UP", "RECEIVED", "REFUNDED"];
-  const currentIndex = order.indexOf(status);
+  const timelineStatusAliases: Record<string, string> = {
+    REQUEST_RETURN: "REQUESTED",
+    SELLER_REVIEW: "REQUESTED",
+    RETURN_APPROVED: "APPROVED",
+    PICKUP_RETURN_IN_TRANSIT: "PICKED_UP",
+    RETURN_RECEIVED: "RECEIVED",
+    REFUNDING: "RECEIVED",
+  };
+  const normalizedStatus = timelineStatusAliases[status] ?? status;
+  const currentIndex = order.indexOf(normalizedStatus);
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">

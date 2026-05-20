@@ -2,6 +2,7 @@ from datetime import datetime
 from itertools import product
 from fastapi import HTTPException
 
+from src.core.cache import CacheManager
 from src.core.database import prisma
 from src.core.dependencies import get_role_value
 from src.modules.product.product_schema import VariantCreate, VariantOut, VariantUpdate
@@ -39,6 +40,8 @@ class VariantService:
 
     @staticmethod
     async def create_variant(data: VariantCreate, viewer=None) -> VariantOut:
+        if not data.productId:
+            raise HTTPException(400, "productId is required")
         if viewer is not None:
             await VariantService._assert_product_access(data.productId, viewer)
         else:
@@ -73,18 +76,37 @@ class VariantService:
     @staticmethod
     async def update_variant(variant_id: int, data: VariantUpdate, viewer=None) -> VariantOut:
         if viewer is not None:
-            await VariantService._assert_variant_access(variant_id, viewer)
+            variant, product = await VariantService._assert_variant_access(variant_id, viewer)
         else:
             variant = await prisma.productvariant.find_unique(where={"id": variant_id})
             if not variant:
                 raise HTTPException(404, "Variant not found")
+            product = await prisma.product.find_unique(where={"id": variant.productId})
 
         update_data = data.model_dump(exclude_unset=True)
+        update_data.pop("images", None)
+        if "price" in update_data and update_data["price"] is not None and update_data["price"] <= 0:
+            raise HTTPException(400, "Variant price must be greater than 0")
+        if "stock" in update_data and update_data["stock"] is not None and update_data["stock"] < 0:
+            raise HTTPException(400, "Variant stock cannot be negative")
 
         updated = await prisma.productvariant.update(
             where={"id": variant_id},
-            data=update_data
+            data=update_data,
+            include={"images": True},
         )
+
+        if "price" in update_data and product:
+            variants = await prisma.productvariant.find_many(
+                where={"productId": product.id, "deletedAt": None},
+            )
+            prices = [item.price for item in variants if item.price is not None and item.price > 0]
+            if prices:
+                await prisma.product.update(
+                    where={"id": product.id},
+                    data={"price": min(prices)},
+                )
+            await CacheManager.invalidate_product_cache(product.id)
 
         return VariantOut.from_orm(updated)
     @staticmethod

@@ -2,16 +2,26 @@ import type { IProduct } from "../../products/types"
 import type { IUser } from "../../user/types"
 export type OrderStatusType =
   | "PENDING"
+  | "PENDING_PAYMENT"
   | "CONFIRMED"
   | "PAID"
   | "PAYMENT_FAILED"
+  | "PAYMENT_EXPIRED"
   | "PROCESSING"
   | "READY_TO_SHIP"
   | "SHIPPED"
   | "IN_TRANSIT"
+  | "OUT_FOR_DELIVERY"
   | "DELIVERED"
   | "COMPLETED"
+  | "CANCEL_REQUESTED"
+  | "CANCELLED_BY_CUSTOMER"
+  | "CANCELLED_BY_SELLER"
+  | "CANCEL_REJECTED"
+  | "CANCEL_APPROVED"
   | "CANCELLED"
+  | "DELIVERY_FAILED"
+  | "RETURN_TO_SENDER"
   | "RETURN_REQUESTED"
   | "RETURNED"
 
@@ -65,8 +75,15 @@ export type PaymentMethodType =
 
 export type PaymentStatusType =
   | "PENDING"
+  | "PENDING_PAYMENT"
   | "SUCCESS"
+  | "PAYMENT_SUCCESS"
   | "FAILED"
+  | "PAYMENT_FAILED"
+  | "PAYMENT_EXPIRED"
+  | "REFUNDING"
+  | "REFUNDED"
+  | "PARTIALLY_REFUNDED"
 
 export interface IPayment {
   id: number

@@ -8,10 +8,17 @@ export type ProductQuery = {
   limit?: number;
   search?: string;
   categoryId?: number;
+  category_id?: number;
 };
 
 const getProduct = async (params: ProductQuery = {}): Promise<unknown[]> => {
-  const response = await apiClient.get(API_URL_PRODUCT, { params });
+  const { categoryId, ...rest } = params;
+  const response = await apiClient.get(API_URL_PRODUCT, {
+    params: {
+      ...rest,
+      category_id: params.category_id ?? categoryId,
+    },
+  });
   return response.data;
 };
 

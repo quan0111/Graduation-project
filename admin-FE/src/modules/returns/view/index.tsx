@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import {
   type ReturnRequest,
   useAdminReturnRequests,
+  useConfirmGatewayRefund,
   useReviewReturnRequest,
 } from "@/modules/returns/api/returns";
 
@@ -34,6 +35,35 @@ const statusMeta: Record<string, { label: string; variant: "default" | "secondar
   REFUNDED: { label: "Đã hoàn tiền", variant: "outline" },
 };
 
+const statusMetaOverrides: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  REQUEST_RETURN: { label: "Khách yêu cầu trả hàng", variant: "secondary" },
+  SELLER_REVIEW: { label: "Seller xem xét", variant: "secondary" },
+  RETURN_APPROVED: { label: "Đồng ý trả hàng", variant: "default" },
+  PICKUP_RETURN_IN_TRANSIT: { label: "Đang trả hàng", variant: "secondary" },
+  RETURN_RECEIVED: { label: "Seller đã nhận hàng", variant: "default" },
+  RETURN_REJECTED: { label: "Từ chối", variant: "destructive" },
+  REFUNDING: { label: "Đang hoàn tiền", variant: "secondary" },
+  REFUND_APPROVED: { label: "Duyệt hoàn tiền", variant: "default" },
+  REFUND_REJECTED: { label: "Từ chối hoàn tiền", variant: "destructive" },
+};
+
+const statusGroups: Record<string, string[]> = {
+  REQUESTED: ["REQUESTED", "REQUEST_RETURN", "SELLER_REVIEW"],
+  APPROVED: ["APPROVED", "RETURN_APPROVED"],
+  PICKED_UP: ["PICKED_UP", "PICKUP_RETURN_IN_TRANSIT"],
+  RECEIVED: ["RECEIVED", "RETURN_RECEIVED"],
+  REJECTED: ["REJECTED", "RETURN_REJECTED", "REFUND_REJECTED"],
+  REFUNDED: ["REFUNDING", "REFUNDED"],
+};
+
+const matchesStatusFilter = (status: string, filter: ReturnStatusFilter) => {
+  if (filter === "ALL") return true;
+  return (statusGroups[filter] ?? [filter]).includes(status);
+};
+
+const canReviewReturn = (status: string) => statusGroups.REQUESTED.includes(status);
+const canConfirmGatewayRefund = (status: string) => statusGroups.RECEIVED.includes(status);
+
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("vi-VN", {
     style: "currency",
@@ -55,6 +85,7 @@ export default function ReturnsPage() {
 
   const { data: returns = [], isLoading, isError } = useAdminReturnRequests();
   const reviewMutation = useReviewReturnRequest();
+  const gatewayRefundMutation = useConfirmGatewayRefund();
 
   const filteredReturns = useMemo(
     () =>
@@ -65,7 +96,7 @@ export default function ReturnsPage() {
           returnReq.orderId.toString().includes(searchValue) ||
           returnReq.reason.toLowerCase().includes(searchValue) ||
           (returnReq.user?.email || "").toLowerCase().includes(searchValue);
-        const matchesStatus = statusFilter === "ALL" || returnReq.status === statusFilter;
+        const matchesStatus = matchesStatusFilter(returnReq.status, statusFilter);
         return matchesSearch && matchesStatus;
       }),
     [returns, searchTerm, statusFilter],
@@ -93,8 +124,29 @@ export default function ReturnsPage() {
     );
   };
 
+  const handleGatewayRefund = (returnReq: ReturnRequest) => {
+    const transactionId = window.prompt(`Nhập mã giao dịch hoàn tiền cho return #${returnReq.id}`);
+    if (!transactionId?.trim()) {
+      return;
+    }
+
+    gatewayRefundMutation.mutate(
+      { returnId: returnReq.id, transactionId: transactionId.trim() },
+      {
+        onSuccess: async () => {
+          toast.success("Đã xác nhận hoàn tiền gateway");
+          await queryClient.invalidateQueries({ queryKey: ["returns", "admin"] });
+        },
+        onError: (error: any) => {
+          const detail = error?.response?.data?.detail;
+          toast.error(typeof detail === "string" ? detail : "Không thể xác nhận hoàn tiền gateway");
+        },
+      },
+    );
+  };
+
   const renderStatusBadge = (status: string) => {
-    const meta = statusMeta[status] || { label: status, variant: "secondary" as const };
+    const meta = statusMetaOverrides[status] || statusMeta[status] || { label: status, variant: "secondary" as const };
     return <Badge variant={meta.variant}>{meta.label}</Badge>;
   };
 
@@ -167,7 +219,7 @@ export default function ReturnsPage() {
                           <Button size="sm" variant="ghost" onClick={() => setSelectedReturn(returnReq)}>
                             <Eye className="size-4" />
                           </Button>
-                          {returnReq.status === "REQUESTED" && (
+                          {canReviewReturn(returnReq.status) && (
                             <>
                               <Button
                                 size="sm"
@@ -186,6 +238,16 @@ export default function ReturnsPage() {
                                 <X className="size-4" />
                               </Button>
                             </>
+                          )}
+                          {canConfirmGatewayRefund(returnReq.status) && returnReq.gatewayRefundStatus !== "SUCCESS" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleGatewayRefund(returnReq)}
+                              disabled={gatewayRefundMutation.isPending}
+                            >
+                              Refund
+                            </Button>
                           )}
                         </div>
                       </td>
@@ -251,7 +313,7 @@ export default function ReturnsPage() {
                 </div>
               )}
 
-              {selectedReturn.status === "REQUESTED" && (
+              {canReviewReturn(selectedReturn.status) && (
                 <div className="flex justify-end gap-3 border-t pt-4">
                   <Button variant="destructive" onClick={() => setRejectCandidate(selectedReturn)}>
                     Từ chối

@@ -60,6 +60,24 @@ export default function AddProductPage() {
   const sellingState = useSellingState(mediaState.images);
   const shippingState = useShippingState();
 
+  const handleUploadVariantImage = useCallback(
+    async (index: number, file: File) => {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Chỉ hỗ trợ upload file ảnh cho phân loại.");
+        return;
+      }
+
+      try {
+        const uploaded = await uploadImage({ file, folder: "products" });
+        sellingState.updateVariant(index, "imageUrl", uploaded.url);
+        toast.success("Đã upload ảnh phân loại");
+      } catch (error: any) {
+        toast.error(error?.response?.data?.detail || "Không upload được ảnh phân loại");
+      }
+    },
+    [sellingState.updateVariant, uploadImage],
+  );
+
   const allErrorsByStep = useMemo(
     () => ({
       media: mediaState.mediaErrors,
@@ -229,6 +247,7 @@ export default function AddProductPage() {
                 variants={sellingState.variants}
                 images={mediaState.images}
                 sellingErrors={sellingState.sellingErrors}
+                isUploadingVariantImage={isUploading}
                 onUpdateGroupName={sellingState.updateGroupName}
                 onUpdateGroupValue={sellingState.updateGroupValue}
                 onAddGroup={sellingState.addGroup}
@@ -237,6 +256,7 @@ export default function AddProductPage() {
                 onRemoveGroupValue={sellingState.removeGroupValue}
                 onGenerateVariants={sellingState.generateVariants}
                 onUpdateVariant={sellingState.updateVariant}
+                onUploadVariantImage={handleUploadVariantImage}
               />
             )}
 

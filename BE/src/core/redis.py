@@ -2,6 +2,7 @@ import json
 import logging
 from typing import Optional, Any
 
+from fastapi.encoders import jsonable_encoder
 import redis.asyncio as redis
 from redis.asyncio import Redis
 
@@ -68,9 +69,8 @@ class RedisClient:
         """Set value in Redis with optional expiration."""
         try:
             client = await cls.get_client()
-            if isinstance(value, (dict, list)):
-                value = json.dumps(value)
-            await client.set(key, value, ex=expire)
+            encoded_value = jsonable_encoder(value)
+            await client.set(key, json.dumps(encoded_value, default=str), ex=expire)
             return True
         except Exception as e:
             logger.error(f"Redis SET error for key {key}: {e}")
@@ -92,10 +92,16 @@ class RedisClient:
         """Delete all keys matching pattern."""
         try:
             client = await cls.get_client()
-            keys = await client.keys(pattern)
-            if keys:
-                await client.delete(*keys)
-            return len(keys)
+            deleted = 0
+            batch: list[str] = []
+            async for key in client.scan_iter(match=pattern, count=500):
+                batch.append(key)
+                if len(batch) >= 500:
+                    deleted += await client.delete(*batch)
+                    batch = []
+            if batch:
+                deleted += await client.delete(*batch)
+            return deleted
         except Exception as e:
             logger.error(f"Redis DELETE_PATTERN error for pattern {pattern}: {e}")
             return 0

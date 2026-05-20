@@ -38,6 +38,20 @@ class ProductUpdate(BaseModel):
     price: Optional[float] = None
     shopId: Optional[int] = None
     status: Optional[str] = None
+
+
+class ActiveFlashSaleOut(BaseModel):
+    id: int
+    flashSaleId: int
+    variantId: Optional[int] = None
+    salePrice: float
+    stockLimit: Optional[int] = None
+    soldCount: int = 0
+    purchaseLimit: Optional[int] = None
+    startsAt: datetime
+    endsAt: datetime
+
+
 class ProductOut(ProductBase):
     id: int
     status: str
@@ -49,6 +63,7 @@ class ProductOut(ProductBase):
     attributes: Optional[List["ProductAttributeOut"]] = []
     tags: Optional[List["ProductTagOut"]] = []
     totalStock: Optional[int] = 0
+    activeFlashSale: Optional[ActiveFlashSaleOut] = None
     class Config:
         from_attributes = True
 
@@ -60,6 +75,7 @@ class VariantBase(BaseModel):
     stock: int
 
 class VariantCreate(VariantBase):
+    productId: Optional[int] = None
     images: Optional[List["VariantImageCreate"]] = []  
 
 class VariantUpdate(BaseModel):
@@ -73,6 +89,7 @@ class VariantOut(VariantBase):
     id: int
     createdAt: datetime
     images: Optional[List["VariantImageOut"]] = []
+    activeFlashSale: Optional[ActiveFlashSaleOut] = None
     class Config:
         from_attributes = True
 

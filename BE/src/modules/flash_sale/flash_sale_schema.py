@@ -27,6 +27,21 @@ class FlashSaleItemCreate(BaseModel):
     purchaseLimit: Optional[int] = None
 
 
+class FlashSaleItemOut(BaseModel):
+    id: int
+    flashSaleId: int
+    productId: int
+    variantId: Optional[int] = None
+    shopId: int
+    salePrice: float
+    stockLimit: Optional[int] = None
+    soldCount: int
+    purchaseLimit: Optional[int] = None
+    createdAt: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class FlashSaleOut(BaseModel):
     id: int
     name: str
@@ -35,5 +50,6 @@ class FlashSaleOut(BaseModel):
     status: str
     createdAt: datetime
     updatedAt: datetime
+    items: list[FlashSaleItemOut] = []
 
     model_config = {"from_attributes": True}

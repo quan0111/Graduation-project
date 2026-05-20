@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Archive, ShieldCheck, Truck, Zap } from "lucide-react";
 import { toast } from "sonner";
@@ -129,6 +129,10 @@ export default function CheckOutPage() {
   }));
 
   const state = useCheckout(checkoutItems);
+  const checkoutShopIds = useMemo(
+    () => Array.from(new Set(checkoutItems.map((item) => item.shopId).filter((shopId) => shopId > 0))),
+    [checkoutItems],
+  );
   const [paymentQrData, setPaymentQrData] = useState<any>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [discountAmount, setDiscountAmount] = useState(0);
@@ -384,6 +388,7 @@ export default function CheckOutPage() {
             <div className="space-y-6">
               <CouponInput
                 orderAmount={state.subtotal}
+                shopIds={checkoutShopIds}
                 onApplyCoupon={handleApplyCoupon}
                 onRemoveCoupon={handleRemoveCoupon}
               />

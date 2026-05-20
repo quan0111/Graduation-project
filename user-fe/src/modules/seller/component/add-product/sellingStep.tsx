@@ -4,15 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
+import type { UploadedImage, VariantDraft, VariantGroup } from "../../types/addproduct";
 import { ValidationList } from "./validationList";
 import { VariantTable } from "./variantTable";
-import type { UploadedImage, VariantDraft, VariantGroup } from "../../types/addproduct";
 
 type Props = {
   variantGroups: VariantGroup[];
   variants: VariantDraft[];
   images: UploadedImage[];
   sellingErrors: string[];
+  isUploadingVariantImage?: boolean;
   onUpdateGroupName: (index: number, value: string) => void;
   onUpdateGroupValue: (groupIndex: number, valueIndex: number, value: string) => void;
   onAddGroup: () => void;
@@ -21,6 +22,7 @@ type Props = {
   onRemoveGroupValue: (groupIndex: number, valueIndex: number) => void;
   onGenerateVariants: () => void;
   onUpdateVariant: (index: number, field: keyof VariantDraft, value: string | number) => void;
+  onUploadVariantImage: (index: number, file: File) => Promise<void>;
 };
 
 export function SellingStep({
@@ -28,6 +30,7 @@ export function SellingStep({
   variants,
   images,
   sellingErrors,
+  isUploadingVariantImage = false,
   onUpdateGroupName,
   onUpdateGroupValue,
   onAddGroup,
@@ -36,13 +39,14 @@ export function SellingStep({
   onRemoveGroupValue,
   onGenerateVariants,
   onUpdateVariant,
+  onUploadVariantImage,
 }: Props) {
   return (
     <Card className="border-0 bg-white shadow-sm ring-1 ring-slate-200/70">
       <CardHeader>
         <CardTitle>Thông tin bán hàng và phân loại</CardTitle>
         <CardDescription>
-          Tạo các nhóm phân loại như màu sắc, kích thước, giới tính... Sau đó thêm các giá trị tương ứng. Cuối cùng nhấn "Tạo bảng phân loại" để hệ thống tự động sinh ra các biến thể sản phẩm.
+          Tạo các nhóm phân loại như màu sắc, kích thước, giới tính. Mỗi biến thể có thể chọn ảnh sản phẩm sẵn có hoặc upload ảnh riêng từ máy.
         </CardDescription>
       </CardHeader>
 
@@ -54,7 +58,7 @@ export function SellingStep({
                 <Input
                   value={group.name}
                   onChange={(event) => onUpdateGroupName(groupIndex, event.target.value)}
-                  placeholder="Tên nhóm phân loại: Màu sắc, kích thước, giới tính..."
+                  placeholder="Tên nhóm phân loại: Màu sắc, Kích thước, Giới tính..."
                 />
                 <Button variant="ghost" onClick={() => onRemoveGroup(groupIndex)}>
                   <Trash2 className="size-4" />
@@ -67,7 +71,7 @@ export function SellingStep({
                     <Input
                       value={value}
                       onChange={(event) => onUpdateGroupValue(groupIndex, valueIndex, event.target.value)}
-                      placeholder="Giá trị: đen, trắng, xám.."
+                      placeholder="Giá trị: đen, trắng, xám..."
                     />
                     <Button variant="ghost" onClick={() => onRemoveGroupValue(groupIndex, valueIndex)}>
                       <Trash2 className="size-4" />
@@ -95,7 +99,9 @@ export function SellingStep({
         <VariantTable
           variants={variants}
           images={images}
+          isUploadingVariantImage={isUploadingVariantImage}
           updateVariant={onUpdateVariant}
+          uploadVariantImage={onUploadVariantImage}
         />
 
         <ValidationList errors={sellingErrors} />

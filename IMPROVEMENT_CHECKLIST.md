@@ -411,20 +411,20 @@
 
 | # | Tính năng | Schema/API BE | user-fe | admin-fe | Ghi chú |
 |---|-----------|---------------|---------|----------|---------|
-| 26 | Wishlist | ✅ `/wishlist` | ❌ Chưa có UI | — | Cần trang + nút tim trên product card |
+| 26 | Wishlist | ✅ `/wishlist` | ✅ Trang + nút tim product card | — | Đã thêm `/wishlist` |
 | 27 | Chat buyer ↔ seller | ✅ module `chat` | ❌ Không có module | — | Chỉ chatbot AI, không chat seller |
-| 28 | Review ảnh/video | ✅ `mediaUrls` | ⚠️ Form gửi sai format (xem **[28]**) | — | |
-| 29 | Seller reply review | ✅ API | ❓ Chưa verify UI seller | — | |
-| 30 | `usageLimitPerUser` + redemption | ✅ | ⚠️ Coupon UI broken (**[27]**) | — | |
-| 31 | Flash sale | ✅ model | ❌ Chưa thấy UI | ❌ | |
-| 32 | ShipmentEvent | ✅ API | ⚠️ `get-shipment.ts` OK; timeline UI? | — | Verify order-detail |
-| 33 | Pagination list lớn | ⚠️ Một phần | ❌ Admin orders cap 1000 | — | |
+| 28 | Review ảnh/video | ✅ `mediaUrls` + `/uploads/media` | ✅ Upload ảnh/video rồi gửi `mediaUrls` | — | |
+| 29 | Seller reply review | ✅ API | ✅ `/seller/reviews` | — | |
+| 30 | `usageLimitPerUser` + redemption | ✅ | ✅ Coupon validate/discount đồng bộ hơn | — | |
+| 31 | Flash sale | ✅ model + router | ✅ `/promotions`/`/flash-sale` | ✅ `/marketing` | |
+| 32 | ShipmentEvent | ✅ API | ✅ Timeline order detail | — | |
+| 33 | Pagination list lớn | ⚠️ Một phần | ⚠️ Catalog có server query | ✅ Admin orders pagination | |
 | 34 | Export Excel/CSV admin | ❌ | — | ❌ | Nice-to-have |
-| 35 | Banner / Marketing admin | ✅ `/marketing` | ❌ | ❌ | Schema `Banner` có, admin không có page |
-| 36 | Flash sale | ✅ model | ❌ | ❌ | Không có router BE riêng |
-| 37 | Seller payout duyệt | ✅ `PATCH /finance/payout` | ❌ | ❌ | Admin không có UI |
-| 38 | Inventory ledger admin | ✅ `/inventory` | ❌ | ❌ | |
-| 39 | Real-time notification | ✅ WS + REST | ⚠️ WS auth yếu **[73]** | ❌ route 404 **[108]** | |
+| 35 | Banner / Marketing admin | ✅ `/marketing` | ✅ Banner promotions | ✅ Page + form banner | Admin form không còn `window.prompt` |
+| 36 | Flash sale | ✅ model + router | ✅ Flash-sale page/cards | ✅ Page + form flash sale/item | |
+| 37 | Seller payout duyệt | ✅ `PATCH /finance/payout` | — | ✅ `/finance` approve/reject | |
+| 38 | Inventory ledger admin | ✅ `/inventory` | — | ✅ `/inventory` ledger | |
+| 39 | Real-time notification | ✅ WS + REST auth token | ✅ Notification bell | ✅ `/notifications` thật | |
 
 ---
 
@@ -550,3 +550,93 @@ Tính đồng bộ FE↔BE:        █████░░░░░  5/10  ↓ nhi
 - ✅ admin-FE: orders pagination thật, order detail có line items/payment/cancellation, bulk approve partial failure, dashboard widgets dùng API thật, promotions có create/edit/toggle, security settings dùng incidents API, xóa dead API modules, admin profile dùng `auth/admin/me`, thêm payout approve `/finance`, thêm marketing `/marketing`.
 - ⚠️ Lỗi phát sinh khi verify và đã xử lý: PowerShell chặn `npm.ps1` nên build lại bằng `npm.cmd`; TypeScript bắt lỗi `Button asChild`, hook return history config, và analytics chưa unwrap response pagination.
 - ✅ Verification: `BE` compileall pass, `npx prisma validate` pass, `user-fe` build pass, `admin-FE` build pass.
+
+## ✅ Cập nhật Codex 2026-05-20 (logic nghiệp vụ demo thật)
+
+- ✅ Backend order: thêm `OrderShopPackage` + migration, mỗi shop trong đơn có `status`, tracking/shipment fields riêng; seller update chỉ đổi package của shop mình, không còn cập nhật toàn bộ đơn multi-shop.
+- ✅ Backend payment/order: payment success/failure sync trạng thái package; admin/customer update toàn đơn vẫn đồng bộ package; seller view nhận `shopPackage` và status theo shop.
+- ✅ Backend return/refund: endpoint add item kiểm tra single-shop, duplicate, active return khác và số lượng còn lại; thêm tracking gateway refund (`gatewayRefundStatus`, transaction id) + endpoint admin `/returns/{id}/gateway-refund`.
+- ✅ Backend review: chỉ buyer có đơn `DELIVERED/COMPLETED` chứa sản phẩm mới được review; rating bị giới hạn 1–5.
+- ✅ Backend/FE coupon: validate voucher nhận `shopIds`, chặn voucher shop sai ngay ở UI validate thay vì đợi checkout fail; discount endpoint mới cũng validate cùng context.
+- ✅ Backend flash sale: checkout/create order lấy `FlashSaleItem.salePrice` khi flash sale active, kiểm tra `stockLimit`/`purchaseLimit`, tăng `soldCount` bằng update có điều kiện.
+- ✅ Admin orders: backend search tìm theo order id, customer và shop trên toàn bộ dataset; FE không còn lọc lại trên page hiện tại; bỏ transition `PAID -> CANCELLED` ở admin UI.
+- ✅ Product catalog/config/text: product API nhận cả `categoryId/category_id`, catalog gửi filter server-side nhiều hơn; admin `VITE_API_URL` được normalize dấu `/`; sửa chuỗi guest cart bị mojibake ở product action/card.
+- ⚠️ Lỗi phát sinh khi verify và đã xử lý: `npx prisma generate` mặc định bị lệch Prisma CLI version với `prisma-client-py`; đã regenerate bằng `npx prisma@5.17.0 generate`. Vite build vẫn cảnh báo chunk lớn >500kB nhưng không fail.
+- ✅ Verification: `BE` compileall pass, `npx prisma validate` pass, Prisma client có `ordershoppackage`, `user-fe` build pass, `admin-FE` build pass.
+
+## ✅ Cập nhật Codex 2026-05-20 (bổ sung front-end theo API mới)
+
+- ✅ user-fe checkout/coupon: `CouponInput` gửi `shopIds` vào validate/discount, checkout truyền danh sách shop từ item đang thanh toán để voucher shop sai bị chặn ngay trước khi đặt hàng.
+- ✅ user-fe seller order: seller list/detail đọc `shop_package`, hiển thị tracking riêng theo shop và gọi create/update shipment theo package khi đơn nhiều shop.
+- ✅ user-fe flash sale: product list/home card/product detail đọc `activeFlashSale`, hiển thị giá sale + giá gốc gạch ngang; hook detail đổi giá theo variant sale nếu có.
+- ✅ Backend cache flash sale: invalidate cả product list/shop/detail cache khi flash sale item hoặc trạng thái flash sale đổi, tránh trang chi tiết giữ giá cũ.
+- ✅ admin-FE flash sale/return/order: marketing có thêm item flash sale và bật/tạm dừng; returns có nút xác nhận gateway refund; orders bỏ filter client-side theo page và bỏ transition `PAID -> CANCELLED`.
+- ✅ Front-end polish: sửa chuỗi mojibake ở checkout, product action/card, seller order, admin return/marketing; chuẩn hóa import `productcard` để tránh lỗi case-sensitive khi build.
+- ⚠️ Lỗi phát sinh khi verify và đã xử lý: `user-fe` build fail `TS1261` do import `productCard` lệch casing với file `productcard.tsx`; đã sửa import về đúng casing. PowerShell hiển thị sai UTF-8 không BOM khi `Get-Content`, đã kiểm lại nội dung bằng Node theo UTF-8/codepoint.
+- ✅ Verification bổ sung: `python -m compileall BE\src` pass, `npx prisma validate` pass, `npm.cmd run build` pass ở `user-fe`, `npm.cmd run build` pass ở `admin-FE`, `git diff --check` không có whitespace error.
+
+## ✅ Cập nhật Codex 2026-05-20 (variant image upload)
+
+- ✅ user-fe seller product: mỗi dòng variant trong bước bán hàng có nút upload ảnh riêng từ máy; vẫn cho chọn ảnh product có sẵn nếu muốn.
+- ✅ user-fe seller product: ảnh variant upload được lưu vào `variant.imageUrl` và gửi lên backend qua `variants[].images[]` khi tạo sản phẩm.
+- ✅ user-fe upload: đổi folder upload product/variant về `products`, khớp whitelist backend `/uploads/image`.
+- ✅ user-fe product detail: normalize `variant.images` từ backend thành `variantImages`; khi người dùng chọn variant, gallery ưu tiên ảnh variant và variant button hiển thị thumbnail.
+- ⚠️ Lỗi phát sinh khi verify và đã xử lý: chưa phát sinh lỗi TypeScript mới; Vite vẫn cảnh báo chunk lớn >500kB nhưng build pass.
+- ✅ Verification bổ sung: `npm.cmd run build` pass ở `user-fe`, `git diff --check` không có whitespace error.
+
+## ✅ Cập nhật Codex 2026-05-20 (fix migration flash sale)
+
+- ✅ DB/migration: lỗi `public.FlashSaleItem does not exist` do DB local chưa apply các migration marketplace/flash sale; đã apply các migration còn thiếu vào database `DATN`.
+- ✅ DB/migration: lỗi `P3006 unsafe use of new value "APPROVAL"` do migration thêm enum `APPROVAL` và dùng ngay trong cùng file; đã tách update dữ liệu `APROVAL -> APPROVAL` sang migration riêng `202605190002_fix_product_status_approval`.
+- ✅ Prisma client: regenerate bằng `npx.cmd prisma@5.17.0 generate` để khớp `prisma-client-py`.
+- ✅ Verification bổ sung: `npx.cmd prisma migrate status` báo `Database schema is up to date`, `npx.cmd prisma validate` pass, Prisma Python query `flashsaleitem.count()` pass.
+
+## ✅ Cập nhật Codex 2026-05-20 (seller variant stock/price)
+
+- ✅ Backend product variant: `PATCH /products/variants/{variant_id}` cho seller sửa giá variant, validate giá > 0 và tự đồng bộ `Product.price` về giá variant thấp nhất.
+- ✅ Backend inventory: tăng/giảm kho dùng endpoint ledger `/inventory/variants/{variant_id}/adjust`, ghi `InventoryLedger`, sync trạng thái product `ACTIVE/OUT_OF_STOCK` và invalidate product cache.
+- ✅ user-fe seller inventory: thêm route/menu `/seller/inventory`, hiển thị từng variant thay vì từng product; seller nhập số lượng tăng thêm theo variant và sửa giá từng variant ngay trên bảng.
+- ✅ user-fe seller dashboard: top products/inventory dashboard chuyển thao tác tăng kho sang inventory ledger và sửa giá theo `variantId`, không còn sửa giá product chung.
+- ✅ user-fe seller dashboard data: dashboard flatten sản phẩm theo variant, thống kê tồn kho/giá theo variant để seller chọn đúng phân loại.
+- ⚠️ Lỗi phát sinh khi verify và đã xử lý: chưa phát sinh lỗi compile/build mới; Vite vẫn cảnh báo chunk lớn >500kB nhưng build pass.
+- ✅ Verification bổ sung: `python -m compileall BE\src` pass, `npm.cmd run build` pass ở `user-fe`, `git diff --check` không có whitespace error.
+
+## ✅ Cập nhật Codex 2026-05-20 (wishlist, notification, ledger, marketing UI)
+
+- ✅ user-fe Wishlist: thêm API/hooks `/wishlist`, route `/wishlist`, page danh sách yêu thích, nút tim trên `ProductCard`, link wishlist ở header và dropdown.
+- ✅ Backend Wishlist: response trả product đầy đủ relations/active flash sale để wishlist page hiển thị đúng ảnh, shop, variant và giá sale.
+- ✅ user-fe seller review reply: thêm route/menu `/seller/reviews`, gom review theo sản phẩm của shop và gọi `POST /reviews/{review_id}/reply`.
+- ✅ user-fe shipment event timeline: order detail gọi `/shipments/order/{order_id}/events` và `ShipmentTracking` hiển thị timeline event thật, fallback về mốc shipment cũ nếu chưa có event.
+- ✅ admin-FE inventory ledger: thêm route/sidebar `/inventory`, chọn shop và xem ledger từ `/inventory/shops/{shop_id}/ledger` với search, thống kê nhập/xuất và bảng variant.
+- ✅ admin-FE notification thật: route `/notifications` không còn placeholder, đọc `/notifications`, mark read/read-all/delete và refresh realtime qua WS.
+- ✅ Backend notification WS: chấp nhận mọi access token hợp lệ thay vì chỉ scope storefront, để admin token dùng được realtime notification.
+- ✅ user-fe marketing/flash sale: `/promotions`/`/flash-sale` hiển thị banner từ `/marketing/banners`, track click banner và section sản phẩm có `activeFlashSale`.
+- ✅ Review media: backend thêm `/uploads/media` cho image/video; review form user-fe hỗ trợ upload ảnh/video và gửi đúng `mediaUrls`.
+- ✅ Mojibake demo: sửa lại tiếng Việt ở header, product card/grid/list, order detail, review form, shipment tracking, seller layout, admin sidebar và admin notifications.
+- ⚠️ Lỗi phát sinh khi verify và đã xử lý: `user-fe` build fail do type hook shipment dùng `UseQueryOptions` bắt buộc `queryKey`; đã đổi signature sang `Omit<UseQueryOptions, "queryKey" | "queryFn">`.
+- ⚠️ Ghi chú còn lại: Vite vẫn cảnh báo chunk JS >500kB ở cả user-fe/admin-FE, không làm build fail; chưa tách code-splitting trong lượt này.
+- ✅ Verification bổ sung: `python -m compileall BE\src` pass, `npm.cmd run build` pass ở `user-fe`, `npm.cmd run build` pass ở `admin-FE`, `git diff --check` không có whitespace error.
+
+## ✅ Cập nhật Codex 2026-05-20 (performance & scalability)
+
+- ✅ Backend Redis: `delete_pattern` chuyển từ `KEYS` sang `SCAN` theo batch, tránh block Redis khi cache key tăng lớn.
+- ✅ Backend cache: `RedisClient.set` serialize được Pydantic model qua `model_dump(mode="json")`, giúp cache các response typed ổn định hơn.
+- ✅ Backend admin dashboard: thêm cache ngắn hạn 5 phút cho dashboard stats để giảm tải các truy vấn tổng hợp nhiều bảng khi admin reload liên tục.
+- ✅ Backend product list: cache key ổn định theo `viewer_role` thay vì object user, thêm `order createdAt desc` để pagination có thứ tự deterministic.
+- ✅ Backend seller reviews: thêm `GET /reviews/seller`, gom review của shop trong 1 request thay vì user-fe gọi N request theo từng product.
+- ✅ user-fe catalog: debounce search 300ms trước khi gọi `/products`, giảm request khi người dùng gõ nhanh.
+- ✅ user-fe product grid: wishlist query/mutation được gom ở grid/section, không còn mỗi `ProductCard` tự subscribe wishlist; giảm observer/render khi list lớn.
+- ✅ user-fe render: product/recommendation image thêm `loading="lazy"` và `decoding="async"`, giảm tải initial render cho grid nhiều ảnh.
+- ✅ user-fe seller reviews: đổi sang endpoint `/reviews/seller`, bỏ N+1 API request theo sản phẩm.
+- ✅ Mojibake bổ sung: các component product card/grid/catalog/recommendation/recently-viewed dùng escaped text constants để tránh file bị lưu sai encoding.
+- ⚠️ Ghi chú còn lại: bundle Vite vẫn lớn >500kB; bước scalability tiếp theo nên là lazy route/code splitting và tách vendor chunks.
+- ✅ Verification bổ sung: `python -m compileall BE\src` pass, `npm.cmd run build` pass ở `user-fe`, `npm.cmd run build` pass ở `admin-FE`, `git diff --check` không có whitespace error.
+
+## ✅ Cập nhật Codex 2026-05-20 (admin marketing form/module)
+
+- ✅ admin-FE marketing: tách `/marketing` theo cấu trúc module `api/types/components/utils/view`, không còn gom API, type và UI trong `view/index.tsx`.
+- ✅ admin-FE banner: tạo banner bằng dialog form có `title/subtitle/imageUrl/mobileImageUrl/redirectUrl/buttonText/position/status/priority/startAt/endAt`, validate required, priority và thời gian.
+- ✅ admin-FE flash sale: tạo chương trình bằng dialog form có tên, thời gian, status; thêm item bằng form `productId/shopId/variantId/salePrice/stockLimit/purchaseLimit`, bỏ toàn bộ `window.prompt`.
+- ✅ Checklist marketplace: cập nhật lại trạng thái Wishlist, review media, seller review reply, shipment timeline, banner/flash sale, payout, inventory ledger và notification theo phần đã triển khai.
+- ⚠️ Lỗi phát sinh khi verify và đã xử lý: patch đầu tiên vào `marketing/view/index.tsx` không khớp do file cũ có mojibake/line mismatch; đã chia patch và replace view an toàn. `admin-FE` build vẫn cảnh báo chunk JS >500kB nhưng không fail.
+- ✅ Verification bổ sung: `npm.cmd run build` pass ở `admin-FE`.

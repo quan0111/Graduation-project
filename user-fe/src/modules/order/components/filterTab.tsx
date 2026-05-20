@@ -12,13 +12,17 @@ interface OrdersFilterTabsProps {
 const tabs: { label: string; value: OrderFilterType }[] = [
   { label: "Tất cả", value: "ALL" },
   { label: getStatusMeta("pending").label, value: "pending" },
+  { label: getStatusMeta("pending_payment").label, value: "pending_payment" },
   { label: getStatusMeta("confirmed").label, value: "confirmed" },
   { label: getStatusMeta("processing").label, value: "processing" },
   { label: getStatusMeta("ready_to_ship").label, value: "ready_to_ship" },
   { label: getStatusMeta("shipped").label, value: "shipped" },
   { label: getStatusMeta("in_transit").label, value: "in_transit" },
+  { label: getStatusMeta("out_for_delivery").label, value: "out_for_delivery" },
   { label: getStatusMeta("delivered").label, value: "delivered" },
+  { label: getStatusMeta("cancel_requested").label, value: "cancel_requested" },
   { label: getStatusMeta("cancelled").label, value: "cancelled" },
+  { label: getStatusMeta("return_requested").label, value: "return_requested" },
 ];
 
 export const OrdersFilterTabs: React.FC<OrdersFilterTabsProps> = ({

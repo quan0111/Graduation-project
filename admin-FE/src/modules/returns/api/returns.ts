@@ -12,6 +12,9 @@ export interface ReturnRequest {
   rejectReason?: string | null;
   refundAmount?: number | null;
   status: string;
+  gatewayRefundStatus?: string | null;
+  gatewayRefundTransactionId?: string | null;
+  gatewayRefundedAt?: string | null;
   createdAt: string;
   reviewedAt?: string | null;
   user?: {
@@ -49,6 +52,19 @@ const reviewReturnRequest = async ({
   return response.data;
 };
 
+const confirmGatewayRefund = async ({
+  returnId,
+  transactionId,
+}: {
+  returnId: number;
+  transactionId: string;
+}) => {
+  const response = await apiClient.patch(`${API_URL_RETURN}/${returnId}/gateway-refund`, {
+    transactionId,
+  });
+  return response.data;
+};
+
 export const useAdminReturnRequests = () =>
   useQuery({
     queryKey: ["returns", "admin"],
@@ -58,4 +74,9 @@ export const useAdminReturnRequests = () =>
 export const useReviewReturnRequest = () =>
   useMutation({
     mutationFn: reviewReturnRequest,
+  });
+
+export const useConfirmGatewayRefund = () =>
+  useMutation({
+    mutationFn: confirmGatewayRefund,
   });

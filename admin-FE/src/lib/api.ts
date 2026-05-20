@@ -1,6 +1,6 @@
 import axios from "axios";
 
-import { API_URL_LOGIN } from "../constant/config";
+import { API_URL, API_URL_LOGIN } from "../constant/config";
 import {
   clearAdminSession,
   getAdminAccessToken,
@@ -8,7 +8,7 @@ import {
 } from "./auth-storage";
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: API_URL,
   withCredentials: true,
 });
 

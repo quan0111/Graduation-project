@@ -1,77 +1,168 @@
-import { useState } from "react";
-import { Search, AlertTriangle, Package, TrendingUp, TrendingDown } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AlertTriangle, Package, Search, TrendingDown, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useUpdateVariant } from "@/modules/product/api/update-variant";
+import { useUpdateVariantStock } from "@/modules/product/api/update-variant-stock";
+import { type SellerProduct, useSellerProducts } from "@/modules/seller/api/get-seller-products";
 import { SellerDashboardLayout } from "@/modules/seller/component/shop-layout";
-import { useSellerProducts } from "@/modules/seller/api/get-seller-products";
-import { useUpdateStock } from "@/modules/seller/api/update-stock";
+
+type InventoryVariantRow = {
+  productId: number;
+  productName: string;
+  productStatus: string;
+  categoryName?: string;
+  imageUrl?: string;
+  variantId: number;
+  variantName: string;
+  sku?: string | null;
+  price: number;
+  stock: number;
+};
+type SellerVariant = NonNullable<SellerProduct["variants"]>[number];
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+
+const getProductImage = (product: SellerProduct, variant?: SellerVariant) =>
+  variant?.images?.[0]?.url ||
+  product.images?.find((image) => image.isPrimary)?.url ||
+  product.images?.[0]?.url;
+
+const flattenProductVariants = (products: SellerProduct[]): InventoryVariantRow[] =>
+  products.flatMap((product) => {
+    const variants = product.variants ?? [];
+    if (!variants.length) {
+      return [];
+    }
+
+    return variants.map((variant) => ({
+      productId: product.id,
+      productName: product.name,
+      productStatus: product.status,
+      categoryName: product.category?.name,
+      imageUrl: getProductImage(product, variant),
+      variantId: variant.id,
+      variantName: variant.name,
+      sku: variant.sku,
+      price: Number(variant.price || 0),
+      stock: Number(variant.stock || 0),
+    }));
+  });
 
 export default function SellerInventoryPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [stockUpdates, setStockUpdates] = useState<Record<number, string>>({});
-  
-  const { data: products = [], isLoading, refetch } = useSellerProducts();
-  const updateStockMutation = useUpdateStock();
+  const [stockIncrements, setStockIncrements] = useState<Record<number, string>>({});
+  const [priceUpdates, setPriceUpdates] = useState<Record<number, string>>({});
 
-  const filteredProducts = products.filter((product: any) =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const { data: products = [], isLoading, refetch } = useSellerProducts();
+  const updateStockMutation = useUpdateVariantStock();
+  const updateVariantMutation = useUpdateVariant();
+
+  const variantRows = useMemo(() => flattenProductVariants(products), [products]);
+  const filteredRows = useMemo(
+    () =>
+      variantRows.filter((row) => {
+        const value = searchQuery.trim().toLowerCase();
+        if (!value) return true;
+        return (
+          row.productName.toLowerCase().includes(value) ||
+          row.variantName.toLowerCase().includes(value) ||
+          (row.sku || "").toLowerCase().includes(value) ||
+          (row.categoryName || "").toLowerCase().includes(value)
+        );
+      }),
+    [searchQuery, variantRows],
   );
 
-  const lowStockProducts = filteredProducts.filter((p: any) => p.stock < 10);
-  const outOfStockProducts = filteredProducts.filter((p: any) => p.stock === 0);
-  const totalStock = filteredProducts.reduce((sum: number, p: any) => sum + (p.stock || 0), 0);
+  const lowStockRows = filteredRows.filter((row) => row.stock > 0 && row.stock < 10);
+  const outOfStockRows = filteredRows.filter((row) => row.stock === 0);
+  const totalStock = filteredRows.reduce((sum, row) => sum + row.stock, 0);
 
-  const handleStockUpdate = async (productId: number, newStock: number) => {
-    if (newStock < 0) {
-      toast.error("Số lượng không thể âm");
+  const handleIncreaseStock = async (row: InventoryVariantRow) => {
+    const quantity = Number(stockIncrements[row.variantId] || 0);
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      toast.error("Số lượng tăng kho phải là số nguyên lớn hơn 0");
       return;
     }
 
     try {
-      await updateStockMutation.mutateAsync({ productId, stock: newStock });
-      toast.success("Cập nhật kho thành công");
-      setStockUpdates((prev) => {
-        const updated = { ...prev };
-        delete updated[productId];
-        return updated;
+      await updateStockMutation.mutateAsync({
+        variantId: row.variantId,
+        quantity,
+        reason: `Seller tăng kho ${row.productName} - ${row.variantName}`,
       });
-      refetch();
-    } catch (error) {
-      toast.error("Không thể cập nhật kho");
+      toast.success(`Đã tăng kho +${quantity} cho ${row.variantName}`);
+      setStockIncrements((current) => {
+        const next = { ...current };
+        delete next[row.variantId];
+        return next;
+      });
+      await refetch();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || "Không thể tăng kho variant");
+    }
+  };
+
+  const handleUpdatePrice = async (row: InventoryVariantRow) => {
+    const price = Number(priceUpdates[row.variantId] ?? row.price);
+    if (!Number.isFinite(price) || price <= 0) {
+      toast.error("Giá variant phải lớn hơn 0");
+      return;
+    }
+
+    try {
+      await updateVariantMutation.mutateAsync({
+        variantId: row.variantId,
+        data: { price },
+      });
+      toast.success(`Đã cập nhật giá ${row.variantName}`);
+      setPriceUpdates((current) => {
+        const next = { ...current };
+        delete next[row.variantId];
+        return next;
+      });
+      await refetch();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || "Không thể cập nhật giá variant");
     }
   };
 
   return (
     <SellerDashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Quản lý kho hàng</h1>
-            <p className="text-sm text-slate-500 mt-1">Theo dõi và quản lý tồn kho sản phẩm</p>
+            <h1 className="text-2xl font-bold text-slate-900">Quản lý kho và giá theo phân loại</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Chọn đúng variant để tăng tồn kho hoặc sửa giá, không cập nhật gộp ở cấp sản phẩm.
+            </p>
           </div>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-3xl bg-white p-6 border border-slate-200">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-blue-100 rounded-2xl">
-                <Package className="w-6 h-6 text-blue-600" />
+              <div className="rounded-2xl bg-blue-100 p-3">
+                <Package className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-slate-500">Tổng sản phẩm</p>
-                <p className="text-2xl font-bold text-slate-900">{filteredProducts.length}</p>
+                <p className="text-sm text-slate-500">Tổng variant</p>
+                <p className="text-2xl font-bold text-slate-900">{filteredRows.length}</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-3xl bg-white p-6 border border-slate-200">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-emerald-100 rounded-2xl">
-                <TrendingUp className="w-6 h-6 text-emerald-600" />
+              <div className="rounded-2xl bg-emerald-100 p-3">
+                <TrendingUp className="h-6 w-6 text-emerald-600" />
               </div>
               <div>
                 <p className="text-sm text-slate-500">Tổng tồn kho</p>
@@ -80,126 +171,157 @@ export default function SellerInventoryPage() {
             </div>
           </div>
 
-          <div className="rounded-3xl bg-white p-6 border border-slate-200">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-amber-100 rounded-2xl">
-                <AlertTriangle className="w-6 h-6 text-amber-600" />
+              <div className="rounded-2xl bg-amber-100 p-3">
+                <AlertTriangle className="h-6 w-6 text-amber-600" />
               </div>
               <div>
                 <p className="text-sm text-slate-500">Sắp hết hàng</p>
-                <p className="text-2xl font-bold text-slate-900">{lowStockProducts.length}</p>
+                <p className="text-2xl font-bold text-slate-900">{lowStockRows.length}</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-3xl bg-white p-6 border border-slate-200">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-red-100 rounded-2xl">
-                <TrendingDown className="w-6 h-6 text-red-600" />
+              <div className="rounded-2xl bg-red-100 p-3">
+                <TrendingDown className="h-6 w-6 text-red-600" />
               </div>
               <div>
                 <p className="text-sm text-slate-500">Hết hàng</p>
-                <p className="text-2xl font-bold text-slate-900">{outOfStockProducts.length}</p>
+                <p className="text-2xl font-bold text-slate-900">{outOfStockRows.length}</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
-            placeholder="Tìm kiếm sản phẩm..."
+            placeholder="Tìm theo sản phẩm, phân loại, SKU hoặc danh mục..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(event) => setSearchQuery(event.target.value)}
             className="pl-10"
           />
         </div>
 
-        {/* Inventory List */}
         {isLoading ? (
-          <div className="text-center py-12 text-slate-500">Đang tải dữ liệu kho...</div>
-        ) : filteredProducts.length === 0 ? (
-          <div className="text-center py-12 text-slate-500">Không có sản phẩm nào</div>
+          <div className="py-12 text-center text-slate-500">Đang tải dữ liệu kho...</div>
+        ) : filteredRows.length === 0 ? (
+          <div className="rounded-3xl border border-dashed border-slate-300 bg-white py-12 text-center text-slate-500">
+            Không có variant phù hợp
+          </div>
         ) : (
-          <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden">
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
+              <table className="w-full min-w-[1040px]">
+                <thead className="border-b border-slate-200 bg-slate-50">
                   <tr>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-slate-700">Sản phẩm</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-slate-700">SKU</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-slate-700">Tồn kho</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-slate-700">Đã bán</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-slate-700">Trạng thái</th>
-                    <th className="text-right px-6 py-4 text-sm font-semibold text-slate-700">Cập nhật</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Sản phẩm / Variant</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">SKU</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Tồn hiện tại</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Tăng thêm</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Giá variant</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Trạng thái</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredProducts.map((product: any) => {
-                    const isLowStock = product.stock > 0 && product.stock < 10;
-                    const isOutOfStock = product.stock === 0;
-                    const currentUpdate = stockUpdates[product.id] ?? product.stock;
+                  {filteredRows.map((row) => {
+                    const isLowStock = row.stock > 0 && row.stock < 10;
+                    const isOutOfStock = row.stock === 0;
+                    const priceValue = priceUpdates[row.variantId] ?? String(row.price);
+                    const stockValue = stockIncrements[row.variantId] ?? "";
 
                     return (
-                      <tr key={product.id} className="border-b border-slate-100 hover:bg-slate-50">
+                      <tr key={row.variantId} className="border-b border-slate-100 hover:bg-slate-50">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            {product.images && product.images[0] && (
+                            {row.imageUrl ? (
                               <img
-                                src={product.images[0].url}
-                                alt={product.name}
-                                className="w-12 h-12 rounded-lg object-cover"
+                                src={row.imageUrl}
+                                alt={row.productName}
+                                className="h-12 w-12 rounded-lg object-cover"
                               />
+                            ) : (
+                              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+                                <Package className="h-5 w-5" />
+                              </div>
                             )}
                             <div>
-                              <p className="font-medium text-slate-900">{product.name}</p>
-                              <p className="text-sm text-slate-500">{product.category?.name || "N/A"}</p>
+                              <p className="font-medium text-slate-900">{row.productName}</p>
+                              <p className="text-sm text-slate-500">{row.variantName}</p>
+                              <p className="text-xs text-slate-400">{row.categoryName || "Chưa có danh mục"}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-600">{product.sku || "N/A"}</td>
+                        <td className="px-6 py-4 text-slate-600">{row.sku || "N/A"}</td>
+                        <td className="px-6 py-4 font-semibold text-slate-900">{row.stock}</td>
                         <td className="px-6 py-4">
-                          <Input
-                            type="number"
-                            value={currentUpdate}
-                            onChange={(e) => setStockUpdates((prev) => ({
-                              ...prev,
-                              [product.id]: e.target.value,
-                            }))}
-                            className="w-24"
-                            min="0"
-                          />
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              min="1"
+                              value={stockValue}
+                              onChange={(event) =>
+                                setStockIncrements((current) => ({
+                                  ...current,
+                                  [row.variantId]: event.target.value,
+                                }))
+                              }
+                              placeholder="+10"
+                              className="w-24"
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => handleIncreaseStock(row)}
+                              disabled={updateStockMutation.isPending || !stockValue}
+                            >
+                              Tăng
+                            </Button>
+                          </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-900">{product.sold_count || 0}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              min="1"
+                              value={priceValue}
+                              onChange={(event) =>
+                                setPriceUpdates((current) => ({
+                                  ...current,
+                                  [row.variantId]: event.target.value,
+                                }))
+                              }
+                              className="w-32"
+                            />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleUpdatePrice(row)}
+                              disabled={updateVariantMutation.isPending || Number(priceValue) === row.price}
+                            >
+                              Lưu giá
+                            </Button>
+                          </div>
+                          <p className="mt-1 text-xs text-slate-400">{formatCurrency(row.price)}</p>
+                        </td>
                         <td className="px-6 py-4">
                           {isOutOfStock && (
-                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">
+                            <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
                               Hết hàng
                             </span>
                           )}
                           {isLowStock && (
-                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">
+                            <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
                               Sắp hết
                             </span>
                           )}
                           {!isOutOfStock && !isLowStock && (
-                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700">
+                            <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
                               Đủ hàng
                             </span>
                           )}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <Button
-                            size="sm"
-                            onClick={() => handleStockUpdate(product.id, parseInt(currentUpdate) || 0)}
-                            disabled={
-                              updateStockMutation.isPending ||
-                              currentUpdate === product.stock?.toString()
-                            }
-                          >
-                            Lưu
-                          </Button>
                         </td>
                       </tr>
                     );

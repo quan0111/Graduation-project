@@ -1,11 +1,24 @@
 import type { OrderStatusType } from "@/constant";
 
 export type PaymentMethodType = "COD" | "VNPAY" | "MOMO" | "STRIPE";
-export type PaymentStatusType = "pending" | "success" | "failed";
+export type PaymentStatusType =
+  | "pending"
+  | "pending_payment"
+  | "success"
+  | "payment_success"
+  | "failed"
+  | "payment_failed"
+  | "payment_expired"
+  | "refunding"
+  | "refunded"
+  | "partially_refunded";
 export type ShipmentStatusType =
   | "ready_to_ship"
   | "shipped"
   | "in_transit"
+  | "out_for_delivery"
+  | "delivery_failed"
+  | "return_to_sender"
   | "delivered";
 
 export interface IOrderUser {
@@ -77,6 +90,20 @@ export interface IShipment {
   created_at: string;
 }
 
+export interface IOrderShopPackage {
+  id: number;
+  order_id: number;
+  shop_id: number;
+  status: OrderStatusType;
+  carrier?: string | null;
+  tracking_number?: string | null;
+  shipped_at?: string | null;
+  delivered_at?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+  shop?: IOrderShop;
+}
+
 export interface IOrder {
   id: number;
   user_id: number;
@@ -93,6 +120,8 @@ export interface IOrder {
   user?: IOrderUser | null;
   shipping_address?: IOrderAddress | null;
   shipment?: IShipment | null;
+  packages?: IOrderShopPackage[];
+  shop_package?: IOrderShopPackage | null;
   items: IOrderItem[];
   payment?: IPayment | null;
 }

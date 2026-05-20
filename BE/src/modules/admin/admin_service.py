@@ -1,4 +1,5 @@
 from src.core.database import prisma
+from src.core.cache import CacheManager, cache_result
 from src.core.security import hash_password
 from fastapi import HTTPException
 from src.modules.admin.admin_schema import (
@@ -124,6 +125,7 @@ class AdminService:
         )
 
     @staticmethod
+    @cache_result("admin:dashboard", expire_seconds=CacheManager.SHORT_TTL, include_args=False)
     async def get_dashboard_stats() -> DashboardStats:
 
         total_users = await prisma.user.count(where={"deletedAt": None})
@@ -267,9 +269,31 @@ class AdminService:
             where["items"] = {"some": {"shopId": filter_data.shopId, "deletedAt": None}}
 
         if pagination.search:
-            where["OR"] = [
-                {"user": {"email": {"contains": pagination.search}}},
-            ]
+            search = pagination.search.strip()
+            matching_users = await prisma.user.find_many(
+                where={
+                    "OR": [
+                        {"email": {"contains": search, "mode": "insensitive"}},
+                        {"fullName": {"contains": search, "mode": "insensitive"}},
+                    ]
+                },
+                take=50,
+            )
+            matching_shops = await prisma.shop.find_many(
+                where={"name": {"contains": search, "mode": "insensitive"}},
+                take=50,
+            )
+            search_or = []
+            user_ids = [user.id for user in matching_users]
+            shop_ids = [shop.id for shop in matching_shops]
+            if user_ids:
+                search_or.append({"userId": {"in": user_ids}})
+            if shop_ids:
+                search_or.append({"items": {"some": {"shopId": {"in": shop_ids}, "deletedAt": None}}})
+            normalized_order_id = search[1:] if search.startswith("#") else search
+            if normalized_order_id.isdigit():
+                search_or.append({"id": int(normalized_order_id)})
+            where["OR"] = search_or or [{"id": -1}]
 
         skip = (pagination.page - 1) * pagination.limit
 

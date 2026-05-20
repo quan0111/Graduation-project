@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import HTTPException
 
@@ -15,6 +15,16 @@ from src.modules.product.product_schema import (
 
 
 class ProductService:
+    PRODUCT_INCLUDE = {
+        "shop": True,
+        "variants": {"include": {"images": True, "flashSaleItems": {"include": {"flashSale": True}}}},
+        "tags": True,
+        "category": True,
+        "images": True,
+        "attributes": True,
+        "flashSaleItems": {"include": {"flashSale": True}},
+    }
+
     @staticmethod
     def _is_admin(viewer) -> bool:
         return get_role_value(viewer) == "ADMIN"
@@ -129,26 +139,75 @@ class ProductService:
     async def _serialize_product(product_id: int) -> ProductOut:
         product = await prisma.product.find_unique(
             where={"id": product_id},
-            include={
-                "shop": True,
-                "variants": {"include": {"images": True}},
-                "tags": True,
-                "category": True,
-                "images": True,
-                "attributes": True,
-            },
+            include=ProductService.PRODUCT_INCLUDE,
         )
 
         if not product:
             raise HTTPException(404, "Product not found")
 
+        data = ProductService._serialize_product_dict(product)
+        return ProductOut(**data)
+
+    @staticmethod
+    def _as_utc_naive(value):
+        if isinstance(value, str):
+            value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if value.tzinfo is not None:
+            return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value
+
+    @staticmethod
+    def _active_flash_sale_payload(items, now: datetime):
+        active_items = []
+        for item in items or []:
+            flash_sale = item.get("flashSale") if isinstance(item, dict) else getattr(item, "flashSale", None)
+            if not flash_sale:
+                continue
+            status = flash_sale.get("status") if isinstance(flash_sale, dict) else flash_sale.status
+            starts_at = flash_sale.get("startsAt") if isinstance(flash_sale, dict) else flash_sale.startsAt
+            ends_at = flash_sale.get("endsAt") if isinstance(flash_sale, dict) else flash_sale.endsAt
+            starts_at = ProductService._as_utc_naive(starts_at)
+            ends_at = ProductService._as_utc_naive(ends_at)
+            if status != "ACTIVE" or starts_at > now or ends_at < now:
+                continue
+            active_items.append(item)
+
+        if not active_items:
+            return None
+
+        item = min(active_items, key=lambda entry: float(entry.get("salePrice") if isinstance(entry, dict) else entry.salePrice))
+        flash_sale = item.get("flashSale") if isinstance(item, dict) else item.flashSale
+        return {
+            "id": item.get("id") if isinstance(item, dict) else item.id,
+            "flashSaleId": item.get("flashSaleId") if isinstance(item, dict) else item.flashSaleId,
+            "variantId": item.get("variantId") if isinstance(item, dict) else item.variantId,
+            "salePrice": float(item.get("salePrice") if isinstance(item, dict) else item.salePrice),
+            "stockLimit": item.get("stockLimit") if isinstance(item, dict) else item.stockLimit,
+            "soldCount": item.get("soldCount") if isinstance(item, dict) else item.soldCount,
+            "purchaseLimit": item.get("purchaseLimit") if isinstance(item, dict) else item.purchaseLimit,
+            "startsAt": flash_sale.get("startsAt") if isinstance(flash_sale, dict) else flash_sale.startsAt,
+            "endsAt": flash_sale.get("endsAt") if isinstance(flash_sale, dict) else flash_sale.endsAt,
+        }
+
+    @staticmethod
+    def _serialize_product_dict(product):
         data = product.model_dump()
+        now = datetime.utcnow()
         data["variants"] = data.get("variants") or []
         data["tags"] = data.get("tags") or []
         data["images"] = data.get("images") or []
         data["attributes"] = data.get("attributes") or []
+        product_level_sale = ProductService._active_flash_sale_payload(
+            [item for item in data.get("flashSaleItems", []) if item.get("variantId") is None],
+            now,
+        )
+        card_sale = ProductService._active_flash_sale_payload(data.get("flashSaleItems", []), now)
+        data["activeFlashSale"] = card_sale or product_level_sale
+        for variant in data["variants"]:
+            variant_sale = ProductService._active_flash_sale_payload(variant.get("flashSaleItems", []), now)
+            variant["activeFlashSale"] = variant_sale or product_level_sale
         data["totalStock"] = sum((variant.get("stock") or 0) for variant in data["variants"])
-        return ProductOut(**data)
+        return data
 
     @staticmethod
     @cache_invalidate(f"{CacheManager.PRODUCT_LIST}*")
@@ -188,10 +247,10 @@ class ProductService:
 
     @staticmethod
     @cache_result(CacheManager.PRODUCT_LIST, expire_seconds=CacheManager.MEDIUM_TTL)
-    async def get_all_products(viewer=None, page: int = 1, limit: int = 24, search: str | None = None, category_id: int | None = None):
+    async def get_all_products(viewer_role: str | None = None, page: int = 1, limit: int = 24, search: str | None = None, category_id: int | None = None):
         where = {"deletedAt": None}
 
-        if not viewer or get_role_value(viewer) != "ADMIN":
+        if viewer_role != "ADMIN":
             where["status"] = "ACTIVE"
         if search:
             where["OR"] = [
@@ -205,41 +264,18 @@ class ProductService:
             where=where,
             skip=(max(page, 1) - 1) * min(max(limit, 1), 100),
             take=min(max(limit, 1), 100),
-            include={
-                "shop": True,
-                "variants": {"include": {"images": True}},
-                "tags": True,
-                "category": True,
-                "images": True,
-                "attributes": True,
-            },
+            include=ProductService.PRODUCT_INCLUDE,
+            order={"createdAt": "desc"},
         )
 
-        result = []
-        for product in products:
-            data = product.model_dump()
-            data["variants"] = data.get("variants") or []
-            data["tags"] = data.get("tags") or []
-            data["images"] = data.get("images") or []
-            data["attributes"] = data.get("attributes") or []
-            data["totalStock"] = sum((variant.get("stock") or 0) for variant in data["variants"])
-            result.append(data)
-
-        return result
+        return [ProductService._serialize_product_dict(product) for product in products]
 
     @staticmethod
     @cache_result(CacheManager.PRODUCT_DETAIL, expire_seconds=CacheManager.LONG_TTL)
     async def get_product_by_id(product_id: int, viewer=None) -> ProductOut:
         product = await prisma.product.find_unique(
             where={"id": product_id},
-            include={
-                "shop": True,
-                "variants": {"include": {"images": True}},
-                "tags": True,
-                "category": True,
-                "images": True,
-                "attributes": True,
-            },
+            include=ProductService.PRODUCT_INCLUDE,
         )
 
         if not product or product.deletedAt is not None:
@@ -255,12 +291,7 @@ class ProductService:
             if not is_admin and not is_owner:
                 raise HTTPException(404, "Product not found")
 
-        data = product.model_dump()
-        data["variants"] = data.get("variants") or []
-        data["tags"] = data.get("tags") or []
-        data["images"] = data.get("images") or []
-        data["attributes"] = data.get("attributes") or []
-        data["totalStock"] = sum((variant.get("stock") or 0) for variant in data["variants"])
+        data = ProductService._serialize_product_dict(product)
         return ProductOut(**data)
 
     @staticmethod
@@ -276,27 +307,10 @@ class ProductService:
 
         products = await prisma.product.find_many(
             where=where,
-            include={
-                "shop": True,
-                "variants": {"include": {"images": True}},
-                "tags": True,
-                "category": True,
-                "images": True,
-                "attributes": True,
-            },
+            include=ProductService.PRODUCT_INCLUDE,
         )
 
-        result = []
-        for product in products:
-            data = product.model_dump()
-            data["variants"] = data.get("variants") or []
-            data["tags"] = data.get("tags") or []
-            data["images"] = data.get("images") or []
-            data["attributes"] = data.get("attributes") or []
-            data["totalStock"] = sum((variant.get("stock") or 0) for variant in data["variants"])
-            result.append(data)
-
-        return result
+        return [ProductService._serialize_product_dict(product) for product in products]
 
     @staticmethod
     async def get_my_products(user_id: int):
