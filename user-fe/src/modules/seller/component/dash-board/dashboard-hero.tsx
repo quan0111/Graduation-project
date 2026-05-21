@@ -13,7 +13,7 @@ interface SellerDashboardHeroProps {
 
 export function SellerDashboardHero({ shop, user }: SellerDashboardHeroProps) {
   return (
-    <div className="flex flex-col gap-4 rounded-3xl bg-gradient-to-r from-[#ee4d2d] via-[#f05d31] to-[#ff8a3d] p-6 text-white shadow-sm lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex flex-col gap-4 rounded-3xl bg-linear-to-r from-[#ee4d2d] via-[#f05d31] to-[#ff8a3d] p-6 text-white shadow-sm lg:flex-row lg:items-center lg:justify-between">
       <div>
         <Badge className="mb-4 bg-white/15 text-white hover:bg-white/20">Dashboard người bán</Badge>
         <h1 className="text-3xl font-bold tracking-tight md:text-4xl">{shop.name}</h1>

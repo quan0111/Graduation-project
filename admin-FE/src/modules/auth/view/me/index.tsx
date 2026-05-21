@@ -188,7 +188,7 @@ export default function AdminProfilePage() {
 
   return (
     <div className="space-y-6 p-6">
-      <section className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#111827_0%,#1d4ed8_45%,#06b6d4_100%)] p-8 text-white shadow-[0_26px_80px_rgba(29,78,216,0.25)]">
+      <section className="relative overflow-hidden rounded-4xl-[linear-gradient(135deg,#111827_0%,#1d4ed8_45%,#06b6d4_100%)] p-8 text-white shadow-[0_26px_80px_rgba(29,78,216,0.25)]">
         <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.18),transparent_58%)]" />
         <div className="relative flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
           <div className="flex items-center gap-5">

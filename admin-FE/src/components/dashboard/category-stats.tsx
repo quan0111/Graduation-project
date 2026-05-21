@@ -27,7 +27,7 @@ export function CategoryStats({ data }: { data: Array<{ name: string; value: num
       </CardHeader>
       <CardContent>
         <div className="flex flex-col items-center gap-4 md:flex-row">
-          <div className="h-[200px] w-[200px]">
+          <div className="h-50 w-50">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie

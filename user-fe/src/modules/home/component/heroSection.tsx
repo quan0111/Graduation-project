@@ -41,14 +41,14 @@ export const HeroSection = ({ banner, onBannerClick }: HeroSectionProps) => {
   );
 
   return (
-    <section className="relative min-h-[420px] overflow-hidden rounded-b-[2rem] bg-slate-950 text-white md:min-h-[520px]">
+    <section className="relative min-h-105 overflow-hidden rounded-b-4xl bg-slate-950 text-white md:min-h-130">
       <picture className="absolute inset-0">
         <source media="(max-width: 768px)" srcSet={mobileImageUrl} />
         <img src={imageUrl} alt={title} className="h-full w-full object-cover" />
       </picture>
       <div className="absolute inset-0 bg-linear-to-r from-slate-950/85 via-slate-950/48 to-slate-950/12" />
 
-      <div className="relative mx-auto flex max-w-7xl min-h-[420px] items-center px-4 py-12 md:min-h-[520px] md:px-6">
+      <div className="relative mx-auto flex max-w-7xl min-h-105 items-center px-4 py-12 md:min-h-130 md:px-6">
         <div className="max-w-2xl space-y-5">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-orange-100 backdrop-blur">
             <Sparkles className="h-3.5 w-3.5" />

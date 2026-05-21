@@ -430,7 +430,7 @@ function ConfirmProductDeleteModal({
   onConfirm: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
+    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 px-4">
       <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>

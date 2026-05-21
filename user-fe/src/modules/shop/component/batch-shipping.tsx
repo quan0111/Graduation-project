@@ -55,7 +55,7 @@ export function BatchShipping() {
           {/* Alert */}
           <Card className="p-4 border border-border bg-amber-50">
             <div className="flex gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
               <div>
                 <p className="text-sm font-medium text-amber-900">Bưu cục gần bạn nhất:</p>
                 <p className="text-sm text-amber-800 mt-1">

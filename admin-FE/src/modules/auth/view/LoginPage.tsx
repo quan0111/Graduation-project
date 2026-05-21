@@ -47,7 +47,7 @@ export default function AdminLoginPage() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
-      <div className="hidden lg:flex flex-col justify-between bg-gradient-to-br from-black via-gray-900 to-gray-800 p-10 text-white">
+      <div className="hidden lg:flex flex-col justify-between bg-linear-to-br from-black via-gray-900 to-gray-800 p-10 text-white">
         <div>
           <h1 className="text-3xl font-bold mb-4">Bảng quản trị</h1>
           <p className="text-gray-400">

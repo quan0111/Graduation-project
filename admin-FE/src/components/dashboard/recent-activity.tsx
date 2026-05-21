@@ -20,7 +20,7 @@ export function RecentActivity({ activities = [] }: { activities?: any[] }) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[400px] pr-4">
+        <ScrollArea className="h-100 pr-4">
           <div className="space-y-4">
             {activities.map((activity) => {
               const Icon = iconBySeverity[activity.severity] || FileText

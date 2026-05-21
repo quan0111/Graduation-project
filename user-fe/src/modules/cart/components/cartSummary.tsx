@@ -24,8 +24,8 @@ export const CartSummary: React.FC<CartSummaryProps> = ({
   onCheckout,
 }) => {
   return (
-    <div className="sticky top-24 overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-slate-200/80">
-      <div className="bg-[radial-gradient(circle_at_top_left,_rgba(238,77,45,0.18),_transparent_40%),linear-gradient(135deg,#111827,#1f2937)] p-6 text-white">
+    <div className="sticky top-24 overflow-hidden rounded-4xl bg-white shadow-sm ring-1 ring-slate-200/80">
+      <div className="bg-[radial-gradient(circle_at_top_left,rgba(238,77,45,0.18),transparent_40%),linear-gradient(135deg,#111827,#1f2937)] p-6 text-white">
         <p className="text-xs uppercase tracking-[0.24em] text-orange-200">Tóm tắt giỏ hàng</p>
         <p className="mt-3 text-3xl font-semibold">{formatCurrency(subtotal)}</p>
         <p className="mt-2 text-sm text-slate-300">

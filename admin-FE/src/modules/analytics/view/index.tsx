@@ -303,7 +303,7 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 {categoryData.length === 0 ? (
-                  <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">Chưa có dữ liệu danh mục</div>
+                  <div className="flex h-75 items-center justify-center text-sm text-muted-foreground">Chưa có dữ liệu danh mục</div>
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>

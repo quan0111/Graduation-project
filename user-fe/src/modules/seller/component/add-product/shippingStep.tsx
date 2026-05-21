@@ -21,7 +21,7 @@ export function ShippingStep({ shipping, onShippingChange }: Props) {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        <div className="rounded-[24px] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             <p className="font-semibold">Lưu ý khi nhập thông tin vận chuyển:</p>
             <ul className="mt-2 list-disc space-y-1 pl-5">
               <li>Các thông số kích thước (dài, rộng, cao) nên được đo bằng cm và chỉ nhập số.</li>

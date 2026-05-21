@@ -25,7 +25,7 @@ export const MarketingBannerStrip = ({ banners, onBannerClick }: MarketingBanner
               {banner.mobileImageUrl ? <source media="(max-width: 768px)" srcSet={banner.mobileImageUrl} /> : null}
               <img src={banner.imageUrl} alt={banner.title} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
             </picture>
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/82 via-slate-950/28 to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-t from-slate-950/82 via-slate-950/28 to-transparent" />
             <div className="relative flex min-h-44 flex-col justify-end p-4">
               <p className="line-clamp-1 text-base font-semibold">{banner.title}</p>
               {banner.subtitle ? <p className="mt-1 line-clamp-2 text-sm text-slate-100">{banner.subtitle}</p> : null}

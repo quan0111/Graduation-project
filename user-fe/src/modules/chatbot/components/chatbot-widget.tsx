@@ -251,7 +251,7 @@ export function ChatbotWidget() {
   return (
     <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3 sm:bottom-5 sm:right-5">
       {open && (
-        <section className="w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-orange-200 bg-white shadow-2xl sm:w-[390px]">
+        <section className="w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-orange-200 bg-white shadow-2xl sm:w-97.5">
           <div className="flex items-center justify-between border-b border-orange-100 bg-orange-50 px-4 py-3">
             <div className="flex items-center gap-2">
               <span className="flex size-9 items-center justify-center rounded-full bg-orange-600 text-white">
@@ -267,7 +267,7 @@ export function ChatbotWidget() {
             </Button>
           </div>
 
-          <div ref={scrollRef} className="max-h-[430px] space-y-3 overflow-y-auto px-4 py-4">
+          <div ref={scrollRef} className="max-h-107.5 space-y-3 overflow-y-auto px-4 py-4">
             {messages.map((message) => (
               <div key={message.id} className={message.role === "user" ? "flex justify-end" : "flex justify-start"}>
                 <div

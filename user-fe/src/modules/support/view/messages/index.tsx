@@ -183,14 +183,14 @@ export default function CustomerMessagesPage() {
           </Button>
         </div>
 
-        <div className="grid min-h-[680px] overflow-hidden rounded-4xl bg-white shadow-sm ring-1 ring-slate-200/80 lg:grid-cols-[340px_minmax(0,1fr)]">
+        <div className="grid min-h-170 overflow-hidden rounded-4xl bg-white shadow-sm ring-1 ring-slate-200/80 lg:grid-cols-[340px_minmax(0,1fr)]">
           <aside className="border-b border-slate-200 bg-slate-50/80 lg:border-b-0 lg:border-r">
             <div className="border-b border-slate-200 p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#ee4d2d]">Tin nhắn</p>
               <h1 className="mt-2 text-2xl font-bold text-slate-950">Chat với shop</h1>
             </div>
 
-            <div className="max-h-[610px] space-y-2 overflow-y-auto p-3">
+            <div className="max-h-152.5 space-y-2 overflow-y-auto p-3">
               {isLoading ? <p className="p-4 text-sm text-slate-500">Đang tải tin nhắn...</p> : null}
               {isError ? <p className="p-4 text-sm text-rose-500">Không thể tải danh sách tin nhắn.</p> : null}
 
@@ -314,7 +314,7 @@ export default function CustomerMessagesPage() {
                           }`}
                         >
                           <p className="mb-1 text-xs opacity-75">{senderLabel[message.senderRole] ?? message.senderRole}</p>
-                          <p className="whitespace-pre-wrap break-words leading-6">{message.message}</p>
+                          <p className="whitespace-pre-wrap wrap-break-word leading-6">{message.message}</p>
                           <p className="mt-2 text-[11px] opacity-70">{formatDateTime(message.createdAt)}</p>
                         </div>
                       </div>

@@ -6,7 +6,7 @@ interface CatalogHeaderProps {
 
 export const CatalogHeader = ({ totalProducts }: CatalogHeaderProps) => {
   return (
-    <section className="rounded-3xl border border-orange-100 bg-gradient-to-r from-orange-50 via-white to-amber-50 p-6 shadow-sm">
+    <section className="rounded-3xl border border-orange-100 bg-linear-to-r from-orange-50 via-white to-amber-50 p-6 shadow-sm">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="mb-2 text-xs uppercase tracking-[0.2em] text-orange-500">Khám phá sản phẩm</p>

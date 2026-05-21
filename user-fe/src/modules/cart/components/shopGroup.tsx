@@ -30,7 +30,7 @@ export const ShopGroup: React.FC<ShopGroupProps> = ({
   onRemove,
 }) => {
   return (
-    <section className="overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-slate-200/80">
+    <section className="overflow-hidden rounded-4xl bg-white shadow-sm ring-1 ring-slate-200/80">
       <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4">
         <div className="flex size-10 items-center justify-center rounded-2xl bg-orange-100 text-[#ee4d2d]">
           <Store className="size-4" />
