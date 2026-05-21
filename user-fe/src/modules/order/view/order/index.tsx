@@ -51,7 +51,7 @@ export default function OrderPage() {
         <section className="rounded-4xl bg-[radial-gradient(circle_at_top_left,rgba(238,77,45,0.18),transparent_36%),linear-gradient(135deg,#111827,#1f2937)] px-6 py-8 text-white shadow-lg">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
             <div>
-              <p className="text-sm uppercase tracking-[0.28em] text-orange-200">Order Center</p>
+              <p className="text-sm uppercase tracking-[0.28em] text-orange-200">Trung tâm đơn hàng</p>
               <h1 className="mt-3 text-3xl font-semibold">Đơn hàng và hóa đơn của bạn</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
                 Theo dõi trạng thái đơn, xem hóa đơn chi tiết và kiểm tra tiến độ giao hàng trong cùng một nơi.

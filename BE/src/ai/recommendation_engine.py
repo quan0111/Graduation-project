@@ -8,7 +8,10 @@ from typing import Dict, Iterable, List, Optional, Set, Tuple
 import joblib
 
 from src.ai.model import ItemBasedRecommendationModel
-from src.ai.train import MODEL_PATH
+from src.ai.pgvector_store import PGVectorStore
+from src.ai.ranking_models import GradientBoostingLTRModel, NeuralCollaborativeFilteringModel, TwoTowerEmbeddingModel
+from src.ai.semantic_retrieval import ProductSemanticRetriever
+from src.ai.train import LTR_MODEL_PATH, MODEL_PATH, NCF_MODEL_PATH, TWO_TOWER_MODEL_PATH
 from src.core.database import prisma
 
 
@@ -17,9 +20,28 @@ class RecommendationEngine:
     ORDER_WEIGHT = 7.0
     MAX_TOP_K = 30
     CACHE_TTL_SECONDS = 90
+    RANKING_WEIGHTS = {
+        "semantic": 12.0,
+        "pgvector": 14.0,
+        "ltr": 8.0,
+        "two_tower": 6.0,
+        "ncf": 6.0,
+        "popularity": 0.25,
+        "co_purchase": 1.4,
+        "user_affinity": 1.0,
+        "context_affinity": 1.0,
+        "session_affinity": 1.25,
+        "quality": 1.0,
+    }
 
     _model: Optional[ItemBasedRecommendationModel] = None
     _model_mtime: Optional[float] = None
+    _ltr_model: Optional[GradientBoostingLTRModel] = None
+    _ltr_model_mtime: Optional[float] = None
+    _two_tower_model: Optional[TwoTowerEmbeddingModel] = None
+    _two_tower_model_mtime: Optional[float] = None
+    _ncf_model: Optional[NeuralCollaborativeFilteringModel] = None
+    _ncf_model_mtime: Optional[float] = None
     _active_products_cache: Optional[Tuple[float, List]] = None
     _popularity_scores_cache: Optional[Tuple[float, Dict[int, float]]] = None
 
@@ -47,11 +69,66 @@ class RecommendationEngine:
         return cls._model
 
     @classmethod
+    def _load_ltr_model_if_needed(cls) -> Optional[GradientBoostingLTRModel]:
+        return cls._load_cached_model(
+            path=Path(LTR_MODEL_PATH),
+            expected_type=GradientBoostingLTRModel,
+            attr_name="_ltr_model",
+            mtime_attr_name="_ltr_model_mtime",
+        )
+
+    @classmethod
+    def _load_two_tower_model_if_needed(cls) -> Optional[TwoTowerEmbeddingModel]:
+        return cls._load_cached_model(
+            path=Path(TWO_TOWER_MODEL_PATH),
+            expected_type=TwoTowerEmbeddingModel,
+            attr_name="_two_tower_model",
+            mtime_attr_name="_two_tower_model_mtime",
+        )
+
+    @classmethod
+    def _load_ncf_model_if_needed(cls) -> Optional[NeuralCollaborativeFilteringModel]:
+        return cls._load_cached_model(
+            path=Path(NCF_MODEL_PATH),
+            expected_type=NeuralCollaborativeFilteringModel,
+            attr_name="_ncf_model",
+            mtime_attr_name="_ncf_model_mtime",
+        )
+
+    @classmethod
+    def _load_cached_model(cls, path: Path, expected_type, attr_name: str, mtime_attr_name: str):
+        if not path.exists():
+            setattr(cls, attr_name, None)
+            setattr(cls, mtime_attr_name, None)
+            return None
+
+        mtime = path.stat().st_mtime
+        cached_model = getattr(cls, attr_name)
+        cached_mtime = getattr(cls, mtime_attr_name)
+        if cached_model is not None and cached_mtime == mtime:
+            return cached_model
+
+        payload = joblib.load(path)
+        model = payload.get("model") if isinstance(payload, dict) else payload
+        if not isinstance(model, expected_type):
+            setattr(cls, attr_name, None)
+            setattr(cls, mtime_attr_name, None)
+            return None
+
+        setattr(cls, attr_name, model)
+        setattr(cls, mtime_attr_name, mtime)
+        return model
+
+    @classmethod
     async def recommend_product_ids(
         cls,
         user_id: Optional[int],
         top_k: int = 10,
         context_product_id: Optional[int] = None,
+        query: Optional[str] = None,
+        session_id: Optional[str] = None,
+        recent_product_ids: Optional[List[int]] = None,
+        exclude_seen: bool = True,
     ) -> Tuple[List[int], str]:
         top_k = max(1, min(top_k, cls.MAX_TOP_K))
         scores: Dict[int, float] = defaultdict(float)
@@ -66,18 +143,51 @@ class RecommendationEngine:
                 for rank, product_id in enumerate(recommended_ids):
                     scores[product_id] += max(top_k * 3 - rank, 1) * 2.5
 
+        two_tower_model = cls._load_two_tower_model_if_needed()
+        if two_tower_model and user_id is not None:
+            recommended_ids = two_tower_model.recommend(user_id=user_id, top_k=top_k * 3)
+            if recommended_ids:
+                algorithms.append("two_tower")
+                for rank, product_id in enumerate(recommended_ids):
+                    scores[product_id] += cls._rank_boost(rank, top_k) * cls.RANKING_WEIGHTS["two_tower"]
+
+        ncf_model = cls._load_ncf_model_if_needed()
+        if ncf_model and user_id is not None:
+            recommended_ids = ncf_model.recommend(user_id=user_id, top_k=top_k * 3)
+            if recommended_ids:
+                algorithms.append("ncf")
+                for rank, product_id in enumerate(recommended_ids):
+                    scores[product_id] += cls._rank_boost(rank, top_k) * cls.RANKING_WEIGHTS["ncf"]
+
         user_profile = await cls._build_user_profile(user_id) if user_id is not None else cls._empty_profile()
         context_profile = await cls._build_context_profile(context_product_id) if context_product_id else cls._empty_profile()
-        excluded_ids.update(user_profile["seen_product_ids"])
+        session_profile = await cls._build_session_profile(user_id, session_id, recent_product_ids)
+
+        if exclude_seen:
+            excluded_ids.update(user_profile["seen_product_ids"])
+            excluded_ids.update(session_profile["seen_product_ids"])
         excluded_ids.update(context_profile["seen_product_ids"])
 
         if user_profile["weight_total"] > 0:
             algorithms.append("behavior_profile")
         if context_profile["weight_total"] > 0:
             algorithms.append("context_product")
+        if session_profile["weight_total"] > 0:
+            algorithms.append("session_profile")
 
         products = await cls._get_active_products()
+        pgvector_scores = await PGVectorStore.search_products(query or "", top_k=top_k * 6)
+        if pgvector_scores:
+            algorithms.append("pgvector")
+
+        semantic_scores = ProductSemanticRetriever.score_map(query or "", products, top_k=top_k * 6)
+        if semantic_scores:
+            algorithms.append("semantic_retrieval")
+
         popularity_scores = await cls._get_popularity_scores()
+        ltr_scores = cls._learning_to_rank_scores(products, popularity_scores)
+        if ltr_scores:
+            algorithms.append("learning_to_rank")
         context_related_scores = (
             await cls._get_context_related_scores(context_product_id, excluded_ids)
             if context_product_id
@@ -91,10 +201,24 @@ class RecommendationEngine:
             if product_id in excluded_ids:
                 continue
 
-            scores[product_id] += popularity_scores.get(product_id, 0.0) * 0.35
-            scores[product_id] += context_related_scores.get(product_id, 0.0) * 1.4
-            scores[product_id] += cls._score_product_affinity(product, user_profile, category_weight=1.4, shop_weight=0.7)
-            scores[product_id] += cls._score_product_affinity(product, context_profile, category_weight=2.2, shop_weight=1.0)
+            scores[product_id] += pgvector_scores.get(product_id, 0.0) * cls.RANKING_WEIGHTS["pgvector"]
+            scores[product_id] += semantic_scores.get(product_id, 0.0) * cls.RANKING_WEIGHTS["semantic"]
+            scores[product_id] += ltr_scores.get(product_id, 0.0) * cls.RANKING_WEIGHTS["ltr"]
+            scores[product_id] += popularity_scores.get(product_id, 0.0) * cls.RANKING_WEIGHTS["popularity"]
+            scores[product_id] += context_related_scores.get(product_id, 0.0) * cls.RANKING_WEIGHTS["co_purchase"]
+            scores[product_id] += (
+                cls._score_product_affinity(product, user_profile, category_weight=1.4, shop_weight=0.7)
+                * cls.RANKING_WEIGHTS["user_affinity"]
+            )
+            scores[product_id] += (
+                cls._score_product_affinity(product, context_profile, category_weight=2.2, shop_weight=1.0)
+                * cls.RANKING_WEIGHTS["context_affinity"]
+            )
+            scores[product_id] += (
+                cls._score_product_affinity(product, session_profile, category_weight=2.6, shop_weight=1.2)
+                * cls.RANKING_WEIGHTS["session_affinity"]
+            )
+            scores[product_id] += cls._score_product_quality(product) * cls.RANKING_WEIGHTS["quality"]
 
         ranked_ids = [product_id for product_id, _ in sorted(scores.items(), key=lambda pair: pair[1], reverse=True)]
         ranked_ids = await cls._filter_active_ids(ranked_ids, excluded_ids=excluded_ids)
@@ -104,7 +228,7 @@ class RecommendationEngine:
             ranked_ids.extend(fallback_ids)
 
         if ranked_ids:
-            algorithm = "+".join(dict.fromkeys(algorithms + ["popular_rank"]))
+            algorithm = "+".join(dict.fromkeys(algorithms + ["hybrid_ranker_v2", "popular_rank"]))
             return ranked_ids[:top_k], algorithm
 
         fallback_ids = await cls._get_popular_product_ids(top_k=top_k, exclude_ids=excluded_ids)
@@ -167,6 +291,73 @@ class RecommendationEngine:
             profile["seen_product_ids"].add(product.id)
         return profile
 
+    @classmethod
+    async def _build_session_profile(
+        cls,
+        user_id: Optional[int],
+        session_id: Optional[str],
+        recent_product_ids: Optional[List[int]],
+    ):
+        profile = cls._empty_profile()
+
+        await cls._add_recent_products_to_profile(profile, recent_product_ids or [])
+
+        if user_id is None or not session_id:
+            return profile
+
+        since = datetime.now(timezone.utc) - timedelta(days=2)
+        behaviors = await prisma.userbehavior.find_many(
+            where={
+                "userId": user_id,
+                "sessionId": session_id,
+                "deletedAt": None,
+                "createdAt": {"gte": since},
+            },
+            include={"product": {"include": {"tags": True}}},
+            order={"createdAt": "desc"},
+            take=60,
+        )
+
+        for index, behavior in enumerate(behaviors):
+            product = getattr(behavior, "product", None)
+            if not product or product.deletedAt is not None:
+                continue
+            action_value = cls._to_value(behavior.action)
+            recency_boost = max(0.35, 1.0 - index * 0.015)
+            weight = cls.BEHAVIOR_WEIGHTS.get(action_value, 1.0) * cls._recency_multiplier(behavior.createdAt) * recency_boost
+            cls._add_product_to_profile(profile, product, weight)
+            profile["seen_product_ids"].add(behavior.productId)
+
+        return profile
+
+    @classmethod
+    async def _add_recent_products_to_profile(cls, profile, recent_product_ids: List[int]) -> None:
+        clean_ids = []
+        for product_id in recent_product_ids:
+            if not isinstance(product_id, int):
+                continue
+            if product_id <= 0 or product_id in clean_ids:
+                continue
+            clean_ids.append(product_id)
+            if len(clean_ids) >= 20:
+                break
+
+        if not clean_ids:
+            return
+
+        products = await prisma.product.find_many(
+            where={"id": {"in": clean_ids}, "status": "ACTIVE", "deletedAt": None},
+            include={"tags": True},
+        )
+        product_map = {product.id: product for product in products}
+        for index, product_id in enumerate(clean_ids):
+            product = product_map.get(product_id)
+            if not product:
+                continue
+            weight = max(1.0, 6.0 - index * 0.35)
+            cls._add_product_to_profile(profile, product, weight)
+            profile["seen_product_ids"].add(product_id)
+
     @staticmethod
     def _empty_profile():
         return {
@@ -217,6 +408,68 @@ class RecommendationEngine:
 
         return score
 
+    @staticmethod
+    def _score_product_quality(product) -> float:
+        score = 0.0
+
+        stock = sum(max(getattr(variant, "stock", 0) or 0, 0) for variant in getattr(product, "variants", []) or [])
+        if stock > 0:
+            score += min(stock, 50) / 50 * 1.4
+
+        reviews = getattr(product, "reviews", []) or []
+        if reviews:
+            ratings = [float(getattr(review, "rating", 0) or 0) for review in reviews]
+            average_rating = sum(ratings) / len(ratings) if ratings else 0.0
+            if average_rating > 0:
+                score += max(0.0, average_rating - 3.0) * 0.45
+            score += min(len(reviews), 30) / 30 * 0.6
+
+        if getattr(product, "description", None):
+            score += 0.2
+
+        return score
+
+    @classmethod
+    def _learning_to_rank_scores(cls, products, popularity_scores: Dict[int, float]) -> Dict[int, float]:
+        model = cls._load_ltr_model_if_needed()
+        if not model:
+            return {}
+
+        feature_map = {
+            product.id: cls._ranking_features(product, popularity_scores.get(product.id, 0.0))
+            for product in products
+        }
+        predictions = model.predict(feature_map)
+        if not predictions:
+            return {}
+
+        max_score = max(prediction.score for prediction in predictions)
+        min_score = min(prediction.score for prediction in predictions)
+        spread = max(max_score - min_score, 1.0)
+        return {prediction.product_id: (prediction.score - min_score) / spread for prediction in predictions}
+
+    @staticmethod
+    def _ranking_features(product, popularity: float) -> Dict[str, float]:
+        reviews = getattr(product, "reviews", []) or []
+        rating = 0.0
+        if reviews:
+            rating = sum(float(getattr(review, "rating", 0) or 0) for review in reviews) / len(reviews)
+
+        stock = sum(max(getattr(variant, "stock", 0) or 0, 0) for variant in getattr(product, "variants", []) or [])
+        return {
+            "price_log": math.log(float(getattr(product, "price", 0) or 0) + 1),
+            "stock": float(stock),
+            "rating": rating,
+            "review_count": float(len(reviews)),
+            "tag_count": float(len(getattr(product, "tags", []) or [])),
+            "popularity": float(popularity),
+            "has_description": 1.0 if getattr(product, "description", None) else 0.0,
+        }
+
+    @staticmethod
+    def _rank_boost(rank: int, top_k: int) -> float:
+        return max(top_k * 3 - rank, 1) / max(top_k * 3, 1)
+
     @classmethod
     async def _get_active_products(cls):
         now = time.monotonic()
@@ -225,7 +478,14 @@ class RecommendationEngine:
 
         products = await prisma.product.find_many(
             where={"status": "ACTIVE", "deletedAt": None},
-            include={"tags": True},
+            include={
+                "tags": True,
+                "category": True,
+                "shop": True,
+                "attributes": True,
+                "variants": True,
+                "reviews": True,
+            },
             take=250,
         )
         cls._active_products_cache = (now, products)

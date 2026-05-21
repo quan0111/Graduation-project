@@ -18,7 +18,7 @@ export default function SellerOrdersPage() {
         <div className="rounded-4xl bg-[radial-gradient(circle_at_top_left,rgba(238,77,45,0.14),transparent_36%),linear-gradient(135deg,#111827,#1f2937)] px-6 py-8 text-white shadow-lg">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.24em] text-orange-200">Seller Orders</p>
+              <p className="text-sm uppercase tracking-[0.24em] text-orange-200">Đơn hàng người bán</p>
               <h1 className="mt-3 text-3xl font-semibold">Hóa đơn và tracking theo shop của bạn</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
                 Chỉ các sản phẩm thuộc shop hiện tại mới được hiển thị. Seller không thấy dữ liệu của shop khác trong cùng một đơn.

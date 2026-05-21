@@ -1,6 +1,10 @@
 from typing import List, Optional
 
 from src.ai.recommendation_engine import RecommendationEngine
+from src.ai.feature_builder import FeatureBuilder
+from src.ai.model import ItemBasedRecommendationModel
+from src.ai.pgvector_store import PGVectorStore
+from src.ai.recommendation_metrics import behavior_rates, offline_evaluate
 from src.ai.train import train_model
 from src.core.database import prisma
 from src.modules.analytics.analytics_schema import BehaviorTrackPayload, BehaviorType
@@ -99,11 +103,17 @@ class AnalyticsService:
         top_k: int = 10,
         context_product_id: Optional[int] = None,
         explain: bool = False,
+        query: Optional[str] = None,
+        session_id: Optional[str] = None,
+        recent_product_ids: Optional[List[int]] = None,
     ):
         product_ids, algorithm = await RecommendationEngine.recommend_product_ids(
             user_id=user_id,
             top_k=top_k,
             context_product_id=context_product_id,
+            query=query,
+            session_id=session_id,
+            recent_product_ids=recent_product_ids,
         )
         products = await AnalyticsService._get_products_by_rank(product_ids)
 
@@ -114,7 +124,7 @@ class AnalyticsService:
             current_product = await AnalyticsService._get_current_product(context_product_id)
             return {
                 "algorithm": algorithm,
-                "products": AnalyticsService._attach_reasons(products, algorithm, user_id, current_product),
+                "products": AnalyticsService._attach_reasons(products, algorithm, user_id, current_product, query),
             }
         return products
 
@@ -137,6 +147,47 @@ class AnalyticsService:
     @staticmethod
     async def retrain_model():
         return await train_model()
+
+    @staticmethod
+    async def sync_product_embeddings():
+        products = await prisma.product.find_many(
+            where={"status": "ACTIVE", "deletedAt": None},
+            include={
+                "category": True,
+                "shop": True,
+                "tags": True,
+                "attributes": True,
+            },
+            take=1000,
+        )
+        written = await PGVectorStore.upsert_products(products)
+        return {"requested": len(products), "written": written, "backend": "pgvector"}
+
+    @staticmethod
+    async def evaluate_recommendations(k: int = 10, days_back: int = 180):
+        builder = FeatureBuilder()
+        interactions = await builder.build_interactions(days_back=days_back, min_weight=0.1)
+
+        model = ItemBasedRecommendationModel(k_items=40)
+        model.fit(interactions)
+        metrics = offline_evaluate(interactions, lambda user_id, top_k: model.recommend(user_id=user_id, top_k=top_k), k=k)
+
+        views = await prisma.userbehavior.count(where={"action": BehaviorType.VIEW.value, "deletedAt": None})
+        clicks = await prisma.userbehavior.count(where={"action": BehaviorType.CLICK.value, "deletedAt": None})
+        purchases = await prisma.userbehavior.count(where={"action": BehaviorType.PURCHASE.value, "deletedAt": None})
+        ctr, conversion_rate = behavior_rates(views=views, clicks=clicks, purchases=purchases)
+
+        return {
+            "k": k,
+            "daysBack": days_back,
+            "hitRateAtK": metrics.hit_rate_at_k,
+            "ndcgAtK": metrics.ndcg_at_k,
+            "ctr": ctr,
+            "conversionRate": conversion_rate,
+            "usersEvaluated": metrics.users_evaluated,
+            "interactionsEvaluated": metrics.interactions_evaluated,
+            "events": {"views": views, "clicks": clicks, "purchases": purchases},
+        }
 
     @staticmethod
     async def _get_products_by_rank(product_ids: List[int]):
@@ -176,10 +227,14 @@ class AnalyticsService:
             return
 
     @staticmethod
-    def _attach_reasons(products: List, algorithm: str, user_id: Optional[int], current_product=None):
+    def _attach_reasons(products: List, algorithm: str, user_id: Optional[int], current_product=None, query: Optional[str] = None):
         reason = "Sản phẩm đang được nhiều người quan tâm trên MarketHub."
         if current_product:
             reason = "Gợi ý vì liên quan đến sản phẩm bạn đang xem."
+        elif query and "semantic_retrieval" in algorithm:
+            reason = "Gợi ý vì nội dung sản phẩm khớp với nhu cầu bạn vừa nhập."
+        elif "session_profile" in algorithm:
+            reason = "Gợi ý theo các sản phẩm bạn vừa xem hoặc tương tác trong phiên hiện tại."
         elif user_id is not None and "behavior_profile" in algorithm:
             reason = "Gợi ý vì bạn đã xem, thêm giỏ hoặc mua sản phẩm tương tự."
         elif "co_purchase" in algorithm:

@@ -98,7 +98,7 @@ export default function SupportPage() {
                     <th className="px-4 py-3 text-left font-semibold">ID</th>
                     <th className="px-4 py-3 text-left font-semibold">Chủ đề</th>
                     <th className="px-4 py-3 text-left font-semibold">Khách hàng</th>
-                    <th className="px-4 py-3 text-left font-semibold">Shop</th>
+                    <th className="px-4 py-3 text-left font-semibold">Cửa hàng</th>
                     <th className="px-4 py-3 text-left font-semibold">Ưu tiên</th>
                     <th className="px-4 py-3 text-left font-semibold">Trạng thái</th>
                     <th className="px-4 py-3 text-left font-semibold">Cập nhật</th>

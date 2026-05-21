@@ -18,6 +18,7 @@ import ReturnHistoryPage from "@/modules/return-request/view/history";
 import AccountPage from "@/modules/auth/view/me";
 import PromotionPage from "@/modules/promotion/view";
 import WishlistPage from "@/modules/wishlist/view";
+import CustomerMessagesPage from "@/modules/support/view/messages";
 
 import { SellerRegistrationView } from "@/modules/seller/view/create";
 import SellerDashboardPage from "@/modules/seller/view/dashboard";
@@ -35,6 +36,7 @@ import SellerReviewsPage from "@/modules/seller/view/reviews";
 import SellerMarketingPage from "@/modules/seller/view/marketing";
 import SellerAnalyticsPage from "@/modules/seller/view/analytics";
 import SellerShippingPage from "@/modules/seller/view/shipping";
+import SellerCustomersPage from "@/modules/seller/view/customers";
 import { RequireAuth, RequireSeller } from "./guards";
 export const router = createBrowserRouter([
   {
@@ -56,6 +58,7 @@ export const router = createBrowserRouter([
       { path: "orders/:id", element: <RequireAuth><OrderDetailPage /></RequireAuth> },
       { path: "returns", element: <RequireAuth><ReturnHistoryPage /></RequireAuth> },
       { path: "wishlist", element: <RequireAuth><WishlistPage /></RequireAuth> },
+      { path: "messages", element: <RequireAuth><CustomerMessagesPage /></RequireAuth> },
 
       { path: "account", element: <RequireAuth><AccountPage /></RequireAuth> },
       { path: "profile", element: <RequireAuth><AccountPage /></RequireAuth> },
@@ -123,6 +126,10 @@ export const router = createBrowserRouter([
   {
     path: "/seller/analytics",
     element: <RequireSeller><SellerAnalyticsPage /></RequireSeller>,
+  },
+  {
+    path: "/seller/customers",
+    element: <RequireSeller><SellerCustomersPage /></RequireSeller>,
   },
   {
     path: "/seller/support",

@@ -9,4 +9,4 @@ async def notification_ws(websocket: WebSocket, user_id: int):
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        notification_manager.disconnect(user_id)
+        notification_manager.disconnect(user_id, websocket)

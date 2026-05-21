@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { useGetShopById } from "../api/get-shop-id";
 import { useFollowShop, useIsFollowingShop, useShopFollowerCount, useUnfollowShop } from "../api/follow-shop";
 import { useGetProductsByShop } from "@/modules/product/api/get-product-by-shop";
+import { ChatWithShopButton } from "@/modules/support/components/chat-with-shop-button";
 import { useAuthStore } from "@/stores/auth.store";
 
 export default function ShopPage() {
@@ -113,12 +114,17 @@ export default function ShopPage() {
                 </div>
               </div>
 
-              <Button
-                onClick={handleToggleFollow}
-                disabled={followMutation.isPending || unfollowMutation.isPending}
-              >
-                {isFollowing ? "Đã theo dõi" : "Theo dõi"}
-              </Button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <ChatWithShopButton shopId={shop.id} shopName={shop.name} className="border-[#ee4d2d] text-[#ee4d2d]">
+                  Chat với shop
+                </ChatWithShopButton>
+                <Button
+                  onClick={handleToggleFollow}
+                  disabled={followMutation.isPending || unfollowMutation.isPending}
+                >
+                  {isFollowing ? "Đã theo dõi" : "Theo dõi"}
+                </Button>
+              </div>
             </div>
           </Card>
         </div>

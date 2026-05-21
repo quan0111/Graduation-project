@@ -5,6 +5,7 @@ from src.core.dependencies import get_role_value
 from src.modules.audit.audit_service import AuditService
 from src.modules.notification.notification_schema import NotificationCreate
 from src.modules.notification.notification_service import NotificationService
+from src.modules.support.support_realtime import build_support_message_event, support_realtime_manager
 
 
 class SupportService:
@@ -42,6 +43,12 @@ class SupportService:
             order = await prisma.order.find_first(where={"id": data.orderId, "userId": user_id, "deletedAt": None})
             if not order:
                 raise HTTPException(404, "Order not found")
+            if data.shopId:
+                order_item = await prisma.orderitem.find_first(
+                    where={"orderId": data.orderId, "shopId": data.shopId, "deletedAt": None}
+                )
+                if not order_item:
+                    raise HTTPException(400, "Shop does not belong to this order")
         if data.returnRequestId:
             return_request = await prisma.returnrequest.find_first(where={"id": data.returnRequestId, "userId": user_id})
             if not return_request:
@@ -71,6 +78,12 @@ class SupportService:
                 include=SupportService.INCLUDE,
             )
 
+        initial_message = ticket.messages[-1] if ticket.messages else None
+        if initial_message:
+            await support_realtime_manager.send_to_users(
+                await SupportService._participant_user_ids(ticket),
+                build_support_message_event(ticket, initial_message),
+            )
         await SupportService._notify_counterpart(ticket, "SUPPORT_TICKET.CREATED", user_id)
         await AuditService.create(
             actor_id=user_id,
@@ -143,6 +156,10 @@ class SupportService:
             await tx.supportticket.update(where={"id": ticket_id}, data={"status": next_status})
 
         full_ticket = await prisma.supportticket.find_unique(where={"id": ticket_id}, include=SupportService.INCLUDE)
+        await support_realtime_manager.send_to_users(
+            await SupportService._participant_user_ids(full_ticket),
+            build_support_message_event(full_ticket, message),
+        )
         await SupportService._notify_counterpart(full_ticket, "SUPPORT_TICKET.MESSAGE", user.id)
         return message
 
@@ -200,3 +217,20 @@ class SupportService:
                     metadata={"ticketId": ticket.id, "event": event},
                 )
             )
+
+    @staticmethod
+    async def _participant_user_ids(ticket):
+        if not ticket:
+            return set()
+
+        recipients = {ticket.userId}
+        if ticket.shopId:
+            owner_id = getattr(getattr(ticket, "shop", None), "ownerId", None)
+            if not owner_id:
+                shop = await prisma.shop.find_unique(where={"id": ticket.shopId})
+                owner_id = shop.ownerId if shop else None
+            if owner_id:
+                recipients.add(owner_id)
+        if ticket.assignedAdminId:
+            recipients.add(ticket.assignedAdminId)
+        return recipients

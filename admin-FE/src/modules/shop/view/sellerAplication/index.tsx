@@ -11,7 +11,7 @@ import { useRejectSeller } from "@/modules/shop/api/seller/reject";
 const columns = (onApprove: any, onReject: any) => [
   {
     key: "shopName",
-    label: "Ten Shop",
+    label: "Tên shop",
     render: (seller: any) => (
       <div>
         <p className="font-medium">{seller.shopName}</p>
@@ -21,7 +21,7 @@ const columns = (onApprove: any, onReject: any) => [
   },
   {
     key: "user",
-    label: "Nguoi dang ky",
+    label: "Người đăng ký",
     render: (seller: any) => (
       <div>
         <p>{seller.user?.fullName}</p>
@@ -31,7 +31,7 @@ const columns = (onApprove: any, onReject: any) => [
   },
   {
     key: "status",
-    label: "Trang thai",
+    label: "Trạng thái",
     render: (seller: any) => (
       <span
         className={`rounded px-2 py-1 text-xs ${
@@ -48,16 +48,16 @@ const columns = (onApprove: any, onReject: any) => [
   },
   {
     key: "actions",
-    label: "Thao tac",
+    label: "Thao tác",
     render: (seller: any) => (
       <div className="flex gap-2">
         {seller.status === "PENDING" && (
           <>
             <Button size="sm" onClick={() => onApprove(seller)}>
-              Duyet
+              Duyệt
             </Button>
             <Button size="sm" variant="destructive" onClick={() => onReject(seller)}>
-              Tu choi
+              Từ chối
             </Button>
           </>
         )}
@@ -65,6 +65,13 @@ const columns = (onApprove: any, onReject: any) => [
     ),
   },
 ];
+
+const filterLabels: Record<string, string> = {
+  ALL: "Tất cả",
+  PENDING: "Chờ duyệt",
+  APPROVED: "Đã duyệt",
+  REJECTED: "Đã từ chối",
+};
 
 export default function SellerApplicationsPage() {
   const [filter, setFilter] = useState("ALL");
@@ -77,8 +84,8 @@ export default function SellerApplicationsPage() {
     approveMutation.mutate(
       { id: item.id },
       {
-        onSuccess: () => toast.success("Duyet thanh cong"),
-        onError: () => toast.error("Duyet that bai"),
+        onSuccess: () => toast.success("Duyệt thành công"),
+        onError: () => toast.error("Duyệt thất bại"),
       },
     );
   };
@@ -87,8 +94,8 @@ export default function SellerApplicationsPage() {
     rejectMutation.mutate(
       { id: item.id },
       {
-        onSuccess: () => toast.success("Tu choi thanh cong"),
-        onError: () => toast.error("Tu choi that bai"),
+        onSuccess: () => toast.success("Từ chối thành công"),
+        onError: () => toast.error("Từ chối thất bại"),
       },
     );
   };
@@ -99,18 +106,18 @@ export default function SellerApplicationsPage() {
   });
 
   if (isLoading) {
-    return <div className="p-6">Dang tai...</div>;
+    return <div className="p-6">Đang tải...</div>;
   }
 
   if (isError) {
-    return <div className="p-6 text-red-500">Loi tai du lieu</div>;
+    return <div className="p-6 text-red-500">Lỗi tải dữ liệu</div>;
   }
 
   return (
     <div className="p-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Duyet Seller</h1>
-        <p className="text-muted-foreground">Quan ly yeu cau dang ky ban hang</p>
+        <h1 className="text-3xl font-bold">Duyệt người bán</h1>
+        <p className="text-muted-foreground">Quản lý yêu cầu đăng ký bán hàng</p>
       </div>
 
       <div className="mb-4 flex gap-2">
@@ -120,7 +127,7 @@ export default function SellerApplicationsPage() {
             variant={filter === item ? "default" : "outline"}
             onClick={() => setFilter(item)}
           >
-            {item}
+            {filterLabels[item]}
           </Button>
         ))}
       </div>
@@ -128,7 +135,7 @@ export default function SellerApplicationsPage() {
       <DataTable
         data={filtered}
         columns={columns(handleApprove, handleReject)}
-        title="Danh sach dang ky seller"
+        title="Danh sách đăng ký người bán"
       />
     </div>
   );

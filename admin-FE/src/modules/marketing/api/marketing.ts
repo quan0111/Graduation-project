@@ -6,6 +6,7 @@ import { apiClient } from "@/lib/api";
 import type {
   Banner,
   BannerCreatePayload,
+  BannerStats,
   FlashSale,
   FlashSaleCreatePayload,
   FlashSaleItemCreatePayload,
@@ -14,6 +15,7 @@ import type {
 
 export const marketingQueryKeys = {
   banners: ["admin", "banners"] as const,
+  bannerStats: (id: number) => ["admin", "banners", id, "stats"] as const,
   flashSales: ["admin", "flash-sales"] as const,
 };
 
@@ -24,6 +26,11 @@ export const getAdminBanners = async (): Promise<Banner[]> => {
 
 export const createBanner = async (payload: BannerCreatePayload): Promise<Banner> => {
   const response = await apiClient.post<Banner>(`${API_URL_MARKETING}/banners`, payload);
+  return response.data;
+};
+
+export const getBannerStats = async (bannerId: number): Promise<BannerStats> => {
+  const response = await apiClient.get<BannerStats>(`${API_URL_MARKETING}/banners/${bannerId}/stats`);
   return response.data;
 };
 
@@ -74,6 +81,14 @@ export const useCreateBanner = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: marketingQueryKeys.banners });
     },
+  });
+};
+
+export const useBannerStats = (bannerId: number) => {
+  return useQuery({
+    queryKey: marketingQueryKeys.bannerStats(bannerId),
+    queryFn: () => getBannerStats(bannerId),
+    enabled: Boolean(bannerId),
   });
 };
 

@@ -205,7 +205,7 @@ export default function AccountPage() {
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white/80">
                   <Sparkles className="size-3.5" />
-                  profile center
+                  trung tâm tài khoản
                 </div>
                 <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
                   {profileForm.fullName || "Tài khoản của bạn"}
@@ -260,7 +260,7 @@ export default function AccountPage() {
             {isSeller && (
               <Card className="rounded-[28px] border-0 bg-[#fff6ec] shadow-[0_20px_50px_rgba(234,88,12,0.08)] ring-1 ring-orange-100/90">
                 <CardHeader>
-                  <CardTitle>Seller controls</CardTitle>
+                  <CardTitle>Công cụ người bán</CardTitle>
                   <CardDescription>
                     Chỉnh avatar và thông tin shop để gian hàng trong, rõ và đồng bộ hơn.
                   </CardDescription>
@@ -344,7 +344,7 @@ export default function AccountPage() {
               <div className="px-6 pb-6">
                 <Button disabled={isSavingProfile || isUploadingImage} onClick={handleSaveProfile}>
                   <Save className="size-4" />
-                  Lưu profile
+                  Lưu hồ sơ
                 </Button>
               </div>
             </Card>
@@ -358,7 +358,7 @@ export default function AccountPage() {
                   </div>
                   <CardAction>
                     <FilePicker
-                      label={isUploadingImage ? "Dang tai..." : "Anh shop"}
+                      label={isUploadingImage ? "Đang tải..." : "Ảnh shop"}
                       disabled={isUploadingImage}
                       onPick={handleShopAvatarChange}
                     />
@@ -379,7 +379,7 @@ export default function AccountPage() {
 
                     <div className="grid gap-4">
                       <div className="grid gap-4 md:grid-cols-2">
-                        <Field label="Ten shop">
+                        <Field label="Tên shop">
                           <Input
                             value={shopForm.name}
                             onChange={(event) =>

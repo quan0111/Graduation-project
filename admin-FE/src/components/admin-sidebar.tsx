@@ -43,7 +43,7 @@ const mainNavItems = [
   { title: "Duyệt sản phẩm", icon: Package, href: "/products" },
   { title: "Quản lý đơn hàng", icon: ShoppingCart, href: "/orders" },
   { title: "Duyệt hoàn tiền", icon: RotateCcw, href: "/returns" },
-  { title: "Inventory ledger", icon: Boxes, href: "/inventory" },
+  { title: "Lịch sử kho", icon: Boxes, href: "/inventory" },
   { title: "Thống kê doanh thu", icon: BarChart3, href: "/analytics" },
   { title: "Phê duyệt người bán", icon: Users, href: "/seller-applications" },
   { title: "Quản lý người dùng", icon: Users, href: "/users" },
@@ -61,7 +61,7 @@ const systemNavItems = [
   { title: "Tin nhắn hỗ trợ", icon: MessageSquare, href: "/support" },
   { title: "Khuyến mãi", icon: Tag, href: "/promotions" },
   { title: "Marketing", icon: Tag, href: "/marketing" },
-  { title: "Audit log", icon: FileText, href: "/audit" },
+  { title: "Nhật ký audit", icon: FileText, href: "/audit" },
   { title: "Cài đặt", icon: Settings, href: "/settings" },
 ];
 
@@ -100,7 +100,7 @@ export function AdminSidebar() {
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold">ShopHub</span>
-            <span className="text-xs text-muted-foreground">Admin Panel</span>
+            <span className="text-xs text-muted-foreground">Bảng quản trị</span>
           </div>
         </NavLink>
       </SidebarHeader>

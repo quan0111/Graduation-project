@@ -14,9 +14,9 @@ export function ShippingStep({ shipping, onShippingChange }: Props) {
   return (
     <Card className="border-0 bg-white shadow-sm ring-1 ring-slate-200/70">
       <CardHeader>
-        <CardTitle>Thong tin van chuyen</CardTitle>
+        <CardTitle>Thông tin vận chuyển</CardTitle>
         <CardDescription>
-          Phan nay tam thoi de thong tin co ban. Khi backend shipping hoan thien hon, co the noi tiep vao bang cau hinh rieng.
+          Phần này tạm thời để thông tin cơ bản. Khi backend shipping hoàn thiện hơn, có thể nối tiếp vào bảng cấu hình riêng.
         </CardDescription>
       </CardHeader>
 

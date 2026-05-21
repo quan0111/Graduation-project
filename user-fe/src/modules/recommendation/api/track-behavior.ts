@@ -1,4 +1,4 @@
-import { useMutation, type UseMutationOptions } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type UseMutationOptions } from "@tanstack/react-query";
 
 import { API_URL_ANALYTICS } from "@/constant/config";
 import { apiClient } from "@/lib/api";
@@ -16,8 +16,14 @@ const trackBehavior = async (payload: TrackBehaviorPayload): Promise<TrackBehavi
 export const useTrackBehavior = (
   config?: UseMutationOptions<TrackBehaviorResponse, Error, TrackBehaviorPayload>,
 ) => {
+  const queryClient = useQueryClient();
+
   return useMutation<TrackBehaviorResponse, Error, TrackBehaviorPayload>({
     mutationFn: trackBehavior,
     ...config,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries({ queryKey: ["recommendations"] });
+      config?.onSuccess?.(...args);
+    },
   });
 };

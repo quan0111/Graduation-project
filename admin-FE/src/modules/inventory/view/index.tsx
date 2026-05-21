@@ -78,8 +78,8 @@ export default function AdminInventoryPage() {
     <main className="flex-1 space-y-6 overflow-auto p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Inventory</p>
-          <h1 className="mt-2 text-2xl font-bold">Inventory ledger</h1>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Kho hàng</p>
+          <h1 className="mt-2 text-2xl font-bold">Lịch sử kho</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Theo dõi lịch sử tăng/giảm kho theo shop, sản phẩm và variant.
           </p>
@@ -131,11 +131,11 @@ export default function AdminInventoryPage() {
           ) : null}
 
           {isLoading ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">Đang tải ledger...</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">Đang tải lịch sử kho...</p>
           ) : null}
 
           {isError ? (
-            <p className="py-8 text-center text-sm text-destructive">Không thể tải inventory ledger.</p>
+            <p className="py-8 text-center text-sm text-destructive">Không thể tải lịch sử kho.</p>
           ) : null}
 
           {shopId && !isLoading && !isError ? (
@@ -145,7 +145,7 @@ export default function AdminInventoryPage() {
                   <tr className="border-b">
                     <th className="px-4 py-3 text-left font-semibold">Thời gian</th>
                     <th className="px-4 py-3 text-left font-semibold">Sản phẩm</th>
-                    <th className="px-4 py-3 text-left font-semibold">Variant</th>
+                    <th className="px-4 py-3 text-left font-semibold">Phân loại</th>
                     <th className="px-4 py-3 text-right font-semibold">Thay đổi</th>
                     <th className="px-4 py-3 text-right font-semibold">Tồn trước/sau</th>
                     <th className="px-4 py-3 text-left font-semibold">Lý do</th>
@@ -177,8 +177,8 @@ export default function AdminInventoryPage() {
                       </td>
                       <td className="max-w-xs px-4 py-3">
                         <p className="line-clamp-2">{item.reason || item.type}</p>
-                        {item.orderId ? <p className="text-xs text-muted-foreground">Order #{item.orderId}</p> : null}
-                        {item.returnRequestId ? <p className="text-xs text-muted-foreground">Return #{item.returnRequestId}</p> : null}
+                        {item.orderId ? <p className="text-xs text-muted-foreground">Đơn #{item.orderId}</p> : null}
+                        {item.returnRequestId ? <p className="text-xs text-muted-foreground">Yêu cầu đổi trả #{item.returnRequestId}</p> : null}
                       </td>
                     </tr>
                   ))}

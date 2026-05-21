@@ -68,7 +68,7 @@ export function DashboardOverview({ stats }: Props) {
             <p className="text-xs text-muted-foreground">- 0.00%</p>
           </div>
           <div className="text-center">
-            <p className="text-muted-foreground text-xs mb-1">Product Clicks</p>
+            <p className="text-muted-foreground text-xs mb-1">Lượt nhấp sản phẩm</p>
             <p className="text-2xl font-bold text-foreground">0</p>
             <p className="text-xs text-muted-foreground">- 0.00%</p>
           </div>
@@ -78,7 +78,7 @@ export function DashboardOverview({ stats }: Props) {
             <p className="text-xs text-muted-foreground">- 0.00%</p>
           </div>
           <div className="text-center">
-            <p className="text-muted-foreground text-xs mb-1">Order Conversion Rate</p>
+            <p className="text-muted-foreground text-xs mb-1">Tỷ lệ chuyển đổi đơn hàng</p>
             <p className="text-2xl font-bold text-foreground">0.00%</p>
             <p className="text-xs text-muted-foreground">- 0.00%</p>
           </div>

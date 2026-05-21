@@ -23,6 +23,13 @@ export type Banner = {
   updatedAt?: string;
 };
 
+export type BannerStats = {
+  bannerId: number;
+  clicks: number;
+  views: number;
+  ctr: number;
+};
+
 export type BannerCreatePayload = {
   title: string;
   subtitle?: string | null;

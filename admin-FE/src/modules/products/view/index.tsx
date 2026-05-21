@@ -55,11 +55,11 @@ export default function ProductsPage() {
       });
       toast.success(successMessage);
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || "Cap nhat trang thai that bai");
+      toast.error(error?.response?.data?.detail || "Cập nhật trạng thái thất bại");
     }
   };
 
-  const handleApprove = (product: any) => patchStatus(product.id, "ACTIVE", "Da duyet san pham");
+  const handleApprove = (product: any) => patchStatus(product.id, "ACTIVE", "Đã duyệt sản phẩm");
   const handleReject = async (product: any) => {
     const reason = window.prompt("Nhập lý do từ chối sản phẩm");
     if (!reason?.trim()) return;
@@ -98,9 +98,9 @@ export default function ProductsPage() {
     const failedCount = results.length - successCount;
     setSelectedIds([]);
     if (failedCount > 0) {
-      toast.error(`Duyet ${successCount}/${results.length} san pham, ${failedCount} loi`);
+      toast.error(`Duyệt ${successCount}/${results.length} sản phẩm, ${failedCount} lỗi`);
     } else {
-      toast.success("Da duyet cac san pham duoc chon");
+      toast.success("Đã duyệt các sản phẩm được chọn");
     }
   };
 
@@ -114,7 +114,7 @@ export default function ProductsPage() {
           onChange={(event) => setCategory(event.target.value)}
           className="rounded border px-3 py-2"
         >
-          <option value="all">Tat ca danh muc</option>
+          <option value="all">Tất cả danh mục</option>
           {categories.map((item) => (
             <option key={item.id} value={item.name}>
               {item.name}
@@ -125,14 +125,14 @@ export default function ProductsPage() {
 
       <div className="mb-4 flex gap-2">
         <Button disabled={selectedIds.length === 0} onClick={handleBulkApprove}>
-          Duyet ({selectedIds.length})
+          Duyệt ({selectedIds.length})
         </Button>
       </div>
 
       <DataTable
         data={filtered}
         columns={productColumns(handleApprove, handleReject, handleBan, handleView)}
-        title="Danh sach san pham"
+        title="Danh sách sản phẩm"
         onSelectChange={setSelectedIds}
       />
 

@@ -14,9 +14,9 @@ export function RecentActivity({ activities = [] }: { activities?: any[] }) {
   return (
     <Card className="bg-card border-border">
       <CardHeader>
-        <CardTitle className="text-foreground">Hoat dong gan day</CardTitle>
+        <CardTitle className="text-foreground">Hoạt động gần đây</CardTitle>
         <CardDescription className="text-muted-foreground">
-          Lay tu audit log backend
+          Lấy từ nhật ký audit backend
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -41,7 +41,7 @@ export function RecentActivity({ activities = [] }: { activities?: any[] }) {
                 </div>
               )
             })}
-            {!activities.length && <p className="text-sm text-muted-foreground">Chua co audit log.</p>}
+            {!activities.length && <p className="text-sm text-muted-foreground">Chưa có audit log.</p>}
           </div>
         </ScrollArea>
       </CardContent>

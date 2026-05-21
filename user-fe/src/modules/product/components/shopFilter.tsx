@@ -31,7 +31,7 @@ export const ShopFilter: React.FC<ShopFilterProps> = ({
 
   return (
     <div className="bg-white rounded-2xl shadow p-4 border">
-  <h3 className="font-semibold mb-3 text-gray-800">Shop</h3>
+  <h3 className="font-semibold mb-3 text-gray-800">Cửa hàng</h3>
 
   <div className="space-y-2">
     {/* Tất cả */}

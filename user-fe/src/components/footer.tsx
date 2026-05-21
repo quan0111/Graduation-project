@@ -48,7 +48,7 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold mb-4 text-foreground">Dành cho Người Bán</h4>
             <ul className="space-y-2">
-              <li><Link to="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Seller Center</Link></li>
+              <li><Link to="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Kênh người bán</Link></li>
               <li><Link to="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Đăng ký bán hàng</Link></li>
               <li><Link to="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Công cụ kinh doanh</Link></li>
               <li><Link to="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Chính sách bán hàng</Link></li>

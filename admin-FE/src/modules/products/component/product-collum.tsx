@@ -4,7 +4,7 @@ import { ProductStatusBadge } from "./product-badge";
 export const productColumns = (onApprove: any, onReject: any, onBan: any, onView: any) => [
   {
     key: "name",
-    label: "San pham",
+    label: "Sản phẩm",
     render: (product: any) => (
       <div className="flex items-center gap-3">
         <span className="text-2xl">📦</span>
@@ -17,12 +17,12 @@ export const productColumns = (onApprove: any, onReject: any, onBan: any, onView
   },
   {
     key: "category",
-    label: "Danh muc",
+    label: "Danh mục",
     render: (product: any) => product.category?.name,
   },
   {
     key: "price",
-    label: "Gia",
+    label: "Giá",
     render: (product: any) => new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
@@ -31,7 +31,7 @@ export const productColumns = (onApprove: any, onReject: any, onBan: any, onView
   },
   {
     key: "status",
-    label: "Trang thai",
+    label: "Trạng thái",
     render: (product: any) => {
       const statusMap: Record<string, string> = {
         DRAFT: "pending",
@@ -44,12 +44,12 @@ export const productColumns = (onApprove: any, onReject: any, onBan: any, onView
   },
   {
     key: "submitDate",
-    label: "Ngay gui",
+    label: "Ngày gửi",
     render: (product: any) => new Date(product.createdAt).toLocaleDateString(),
   },
   {
     key: "actions",
-    label: "Thao tac",
+    label: "Thao tác",
     render: (product: any) => (
       <ProductActions
         product={product}

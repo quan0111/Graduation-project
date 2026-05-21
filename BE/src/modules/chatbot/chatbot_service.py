@@ -3,6 +3,7 @@ import re
 import unicodedata
 from typing import Dict, List, Optional, Set
 
+from src.ai.rag_engine import RagEngine, RagSource
 from src.ai.recommendation_engine import RecommendationEngine
 from src.core.database import prisma
 from src.modules.chatbot.chatbot_schema import ChatbotProductOut
@@ -11,6 +12,7 @@ from src.utils.recommendation_reason import product_reason as build_product_reas
 
 
 class ChatService:
+    ANSWER_MAX_LENGTH = 1200
     PRODUCT_INCLUDE = {
         "shop": True,
         "category": True,
@@ -62,31 +64,34 @@ class ChatService:
         normalized = cls._normalize(clean_message)
 
         if not normalized:
-            return cls._response("Bạn muốn mình hỗ trợ tìm sản phẩm, kiểm tra giỏ hàng hay xem đơn hàng?", "empty")
+            return cls._response(
+                "Bạn muốn mình hỗ trợ phần nào trên MarketHub? Mình có thể gợi ý sản phẩm theo nhu cầu, tìm sản phẩm theo ngân sách, kiểm tra giỏ hàng hoặc giải thích trạng thái đơn hàng nếu bạn đã đăng nhập.",
+                "empty",
+            )
 
         if cls._is_out_of_scope(normalized):
             return cls._response(
-                "Mình chỉ hỗ trợ các câu hỏi trong MarketHub như sản phẩm, giỏ hàng, đơn hàng, thanh toán, vận chuyển và kênh người bán.",
+                "Mình chỉ hỗ trợ các câu hỏi trong phạm vi MarketHub như sản phẩm, giỏ hàng, đơn hàng, thanh toán, vận chuyển, đổi trả và kênh người bán. Nếu bạn muốn, hãy mô tả nhu cầu mua sắm, ngân sách hoặc vấn đề đơn hàng để mình tư vấn cụ thể hơn.",
                 "out_of_scope",
             )
 
         intent = cls._detect_intent(normalized)
         context = await cls._build_context(intent, clean_message, user_id, product_id, history or [])
 
-        if intent in {"cart", "orders", "payment", "shipping", "seller", "auth", "promotion", "order_guide", "return_policy", "greeting"}:
-            return cls._response(
-                cls._fallback_answer(intent, context, ""),
-                intent,
-                context.get("suggestions") or cls.SCOPE_SUGGESTIONS,
-                context.get("products") or [],
-            )
-
         if intent in {"recommend", "product_search"} and context.get("products"):
+            try:
+                answer = await cls._ask_ollama(clean_message, context["context_lines"])
+                if cls._looks_like_reasoning(answer):
+                    answer = cls._product_recommendation_answer(intent, context)
+            except OllamaUnavailable:
+                answer = cls._product_recommendation_answer(intent, context)
+
             return cls._response(
-                cls._product_recommendation_answer(intent, context),
+                answer,
                 intent,
                 context.get("suggestions") or cls.PRODUCT_SUGGESTIONS,
                 context.get("products") or [],
+                context.get("sources") or [],
             )
 
         try:
@@ -101,6 +106,7 @@ class ChatService:
             intent,
             context.get("suggestions") or cls.SCOPE_SUGGESTIONS,
             context.get("products") or [],
+            context.get("sources") or [],
         )
 
     @classmethod
@@ -110,7 +116,6 @@ class ChatService:
 
     @staticmethod
     def _history_context_lines(history: List) -> List[str]:
-        return []
         if not history:
             return []
 
@@ -127,7 +132,7 @@ class ChatService:
 
     @classmethod
     async def _ask_ollama(cls, question: str, context_lines: List[str]) -> str:
-        context_text = "\n".join(f"- {line}" for line in context_lines[:20])
+        context_text = "\n".join(f"- {line}" for line in context_lines[:32])
         if not context_text:
             context_text = "- Không có dữ liệu phù hợp trong hệ thống."
 
@@ -137,8 +142,12 @@ class ChatService:
                 "content": (
                     "Bạn là trợ lý mua sắm của MarketHub. "
                     "Chỉ trả lời trong phạm vi sản phẩm, gợi ý, giỏ hàng, đơn hàng, thanh toán, vận chuyển và kênh người bán. "
-                    "Chỉ dùng dữ liệu trong CONTEXT, không tự bịa thông tin. "
-                    "Xưng hô mình/bạn, trả lời như nhân viên tư vấn thật, tối đa 3 câu và không nhắc chữ CONTEXT. "
+                    "Chỉ dùng dữ liệu trong CONTEXT và các nguồn có mã [K...], [P...] hoặc [U...], không tự bịa thông tin. "
+                    "Xưng hô mình/bạn, trả lời như nhân viên tư vấn thật. "
+                    "Câu trả lời nên đủ ý hơn một chút: nêu kết luận trước, giải thích lý do hoặc bước thực hiện, thêm lưu ý cần thiết và gợi ý hành động tiếp theo. "
+                    "Khi gợi ý sản phẩm, hãy nhắc tên sản phẩm kèm mã #id trong context và nêu lý do chọn dựa trên dữ liệu đã có. "
+                    "Ưu tiên 3-5 câu ngắn hoặc 3-4 gạch đầu dòng, không nhắc chữ CONTEXT. "
+                    "Nếu dùng nguồn, thêm dòng cuối dạng: Nguồn: [K2], [P15]. "
                     "Nếu dữ liệu chưa đủ, nói rõ hệ thống chưa có dữ liệu phù hợp."
                 ),
             },
@@ -165,6 +174,10 @@ class ChatService:
             "Các chức năng chính: xem sản phẩm, tìm kiếm sản phẩm, giỏ hàng, checkout, đơn hàng, seller center.",
         ]
         context_lines.extend(cls._history_context_lines(history))
+        rag_sources = await RagEngine.retrieve(message, user_id=user_id, product_id=product_id, top_k=8)
+        if rag_sources:
+            context_lines.append("Nguồn RAG đã truy xuất:")
+            context_lines.extend(cls._rag_context_lines(rag_sources))
         products: List[ChatbotProductOut] = []
         suggestions = cls.SCOPE_SUGGESTIONS
         needs_current_product = bool(product_id) and intent in {"recommend", "product_search", "general"}
@@ -245,7 +258,31 @@ class ChatService:
             "suggestions": suggestions,
             "preferences": preferences,
             "current_product": current_product,
+            "sources": cls._serialize_sources(rag_sources),
         }
+
+    @staticmethod
+    def _rag_context_lines(sources: List[RagSource]) -> List[str]:
+        lines = []
+        for source in sources:
+            lines.append(f"[{source.source_id}] {source.title}: {source.content}")
+        return lines
+
+    @staticmethod
+    def _serialize_sources(sources: List[RagSource]) -> List[Dict]:
+        serialized_sources = []
+        for source in sources:
+            serialized_sources.append(
+                {
+                    "sourceId": source.source_id,
+                    "title": source.title,
+                    "type": source.kind,
+                    "score": round(float(source.score), 4),
+                    "productId": source.metadata.get("productId"),
+                    "route": source.metadata.get("route"),
+                }
+            )
+        return serialized_sources
 
     @classmethod
     async def _find_products_for_message(
@@ -255,13 +292,27 @@ class ChatService:
         product_id: Optional[int],
         prefer_recommend: bool,
     ):
+        budget = cls._extract_budget(message)
         if prefer_recommend:
             product_ids, _algorithm = await RecommendationEngine.recommend_product_ids(
                 user_id=user_id,
                 top_k=4,
                 context_product_id=product_id,
+                query=message,
             )
-            return await cls._products_by_rank(product_ids)
+            products = await cls._products_by_rank(product_ids)
+            return cls._apply_budget_filter(products, budget)[:4]
+
+        product_ids, _algorithm = await RecommendationEngine.recommend_product_ids(
+            user_id=user_id,
+            top_k=12,
+            context_product_id=product_id,
+            query=message,
+            exclude_seen=False,
+        )
+        ranked_products = cls._apply_budget_filter(await cls._products_by_rank(product_ids), budget)
+        if ranked_products:
+            return ranked_products[:4]
 
         products = await prisma.product.find_many(
             where={"status": "ACTIVE", "deletedAt": None},
@@ -269,7 +320,6 @@ class ChatService:
             take=140,
         )
         terms = cls._extract_terms(message)
-        budget = cls._extract_budget(message)
         scored_products = []
 
         for product in products:
@@ -279,15 +329,14 @@ class ChatService:
                 scored_products.append((score, product))
 
         scored_products.sort(key=lambda pair: pair[0], reverse=True)
-        if scored_products:
-            return [product for _, product in scored_products[:4]]
+        return [product for _, product in scored_products[:4]]
 
-        product_ids, _algorithm = await RecommendationEngine.recommend_product_ids(
-            user_id=user_id,
-            top_k=4,
-            context_product_id=product_id,
-        )
-        return await cls._products_by_rank(product_ids)
+    @staticmethod
+    def _apply_budget_filter(products, budget: Optional[float]):
+        if not budget:
+            return products
+        matched = [product for product in products if float(getattr(product, "price", 0) or 0) <= budget]
+        return matched or products
 
     @classmethod
     async def _get_current_product(cls, product_id: int):
@@ -580,17 +629,31 @@ class ChatService:
     def _product_recommendation_answer(cls, intent: str, context) -> str:
         products: List[ChatbotProductOut] = context.get("products") or []
         if not products:
-            return "Mình chưa tìm thấy sản phẩm đủ phù hợp. Bạn thử nói rõ hơn về danh mục, ngân sách hoặc nhu cầu sử dụng nhé."
+            return (
+                "Mình chưa tìm thấy sản phẩm đủ phù hợp với dữ liệu hiện có. "
+                "Bạn mô tả thêm danh mục cần mua, ngân sách dự kiến, thương hiệu hoặc nhu cầu sử dụng chính nhé. "
+                "Ví dụ: “tìm tai nghe dưới 500k”, “gợi ý áo đi làm”, hoặc “sản phẩm tương tự món này”."
+            )
 
         lead = products[0]
         other_names = ", ".join(product.name for product in products[1:3])
         reason = lead.reason or "Sản phẩm này phù hợp với dữ liệu hiện có."
+        lead_price = f"{lead.price:,.0f} VND"
+        category = f" trong danh mục {lead.categoryName}" if lead.categoryName else ""
+        shop = f" từ {lead.shopName}" if lead.shopName else ""
         if other_names:
             return (
-                f"Mình gợi ý {lead.name} trước. {reason} "
-                f"Mình cũng đặt thêm {other_names} bên dưới để bạn so sánh; hệ thống ưu tiên sản phẩm có liên quan qua danh mục, tag, shop, mức giá hoặc thói quen mua sắm gần đây."
+                f"Mình gợi ý {lead.name}{category}{shop} trước, giá khoảng {lead_price}. "
+                f"Lý do: {reason} "
+                f"Mình cũng đặt thêm {other_names} bên dưới để bạn so sánh về giá, shop và mức độ liên quan. "
+                "Nếu bạn ưu tiên giá rẻ, hãy xem lựa chọn có giá thấp hơn; nếu ưu tiên độ phù hợp, hãy mở sản phẩm đầu tiên để xem mô tả, tồn kho và đánh giá chi tiết."
             )
-        return f"Mình gợi ý {lead.name}. {reason} Bạn mở thẻ sản phẩm bên dưới để xem chi tiết nhé."
+        return (
+            f"Mình gợi ý {lead.name}{category}{shop}, giá khoảng {lead_price}. "
+            f"Lý do: {reason} "
+            "Bạn có thể mở thẻ sản phẩm bên dưới để xem mô tả, phân loại, tồn kho và thông tin shop. "
+            "Nếu muốn mình lọc kỹ hơn, hãy nói thêm ngân sách hoặc tiêu chí như bền, đẹp, chính hãng hay giao nhanh."
+        )
 
     @classmethod
     def _score_product_match(cls, product, terms: List[str]) -> float:
@@ -689,25 +752,31 @@ class ChatService:
             return cls._product_recommendation_answer(intent, context)
 
         if intent == "cart":
-            return cls._first_context_line(context_lines, "Giỏ hàng") or "Mình chỉ kiểm tra được giỏ hàng khi bạn đã đăng nhập."
+            cart_line = cls._first_context_line(context_lines, "Giỏ hàng")
+            if cart_line:
+                return f"{cart_line} Bạn có thể vào giỏ hàng để kiểm tra lại số lượng, chọn sản phẩm cần mua, áp voucher nếu có rồi chuyển sang checkout. Nếu muốn, mình cũng có thể gợi ý thêm sản phẩm phù hợp với các món đang quan tâm."
+            return "Mình chỉ kiểm tra được giỏ hàng khi bạn đã đăng nhập. Sau khi đăng nhập, mình có thể tóm tắt số sản phẩm trong giỏ và gợi ý bước tiếp theo như áp voucher, chọn địa chỉ hoặc chuyển sang thanh toán."
         if intent == "order_guide":
-            return "Bạn đặt hàng bằng cách chọn sản phẩm, chọn phân loại và số lượng, thêm vào giỏ hoặc mua ngay, rồi chọn địa chỉ, voucher và phương thức thanh toán ở checkout. Sau khi xác nhận, đơn sẽ lần lượt qua chờ xác nhận, đã xác nhận, đang xử lý, chờ lấy hàng, đang vận chuyển, đã giao và hoàn tất."
+            return "Bạn đặt hàng bằng cách mở sản phẩm, chọn phân loại và số lượng, sau đó bấm thêm vào giỏ hoặc mua ngay. Ở bước checkout, bạn kiểm tra địa chỉ nhận hàng, phí vận chuyển, voucher và phương thức thanh toán trước khi xác nhận. Sau khi đặt, đơn sẽ lần lượt qua các trạng thái như chờ xác nhận, đã xác nhận, đang xử lý, chờ lấy hàng, đang vận chuyển, đã giao và hoàn tất. Bạn nên kiểm tra kỹ địa chỉ và số điện thoại trước khi tạo đơn để tránh lỗi giao hàng."
         if intent == "orders":
-            return cls._first_context_line(context_lines, "Đơn ") or cls._first_context_line(context_lines, "Người dùng") or "Mình chỉ xem được đơn hàng khi bạn đã đăng nhập."
+            order_line = cls._first_context_line(context_lines, "Đơn ") or cls._first_context_line(context_lines, "Người dùng")
+            if order_line:
+                return f"{order_line} Bạn có thể mở trang Đơn hàng để xem chi tiết sản phẩm, thanh toán, vận chuyển và lịch sử trạng thái. Nếu đơn đã giao, bạn có thể xác nhận hoàn tất hoặc gửi yêu cầu trả hàng khi sản phẩm có vấn đề."
+            return "Mình chỉ xem được đơn hàng khi bạn đã đăng nhập. Sau khi đăng nhập, mình có thể tóm tắt các đơn gần đây, trạng thái hiện tại và gợi ý bước tiếp theo như theo dõi vận chuyển, thanh toán lại hoặc tạo yêu cầu trả hàng."
         if intent == "payment":
-            return "MarketHub hỗ trợ COD, MoMo QR, VNPay QR và Stripe. Với MoMo/VNPay, đơn chỉ được ghi nhận đã thanh toán khi cổng thanh toán trả kết quả thành công; COD thì bạn thanh toán khi nhận hàng."
+            return "MarketHub hỗ trợ COD, MoMo QR, VNPay QR và Stripe ở bước checkout. Với MoMo hoặc VNPay, đơn chỉ được ghi nhận đã thanh toán khi cổng thanh toán trả kết quả thành công về hệ thống. Nếu thanh toán bị hủy hoặc hết hạn, bạn nên quay lại đơn hàng để chọn lại phương thức hoặc tạo thanh toán mới. Với COD, bạn thanh toán khi nhận hàng và seller sẽ tiếp tục xử lý đơn theo quy trình vận chuyển."
         if intent == "shipping":
-            return "Phí vận chuyển được tính tại checkout theo địa chỉ và đơn hàng."
+            return "Phí vận chuyển được tính tại checkout dựa trên địa chỉ nhận hàng, sản phẩm trong đơn và cấu hình vận chuyển của shop. Trên giao diện hiện có thông điệp miễn phí vận chuyển cho đơn hàng trên 500k, nhưng điều kiện cụ thể vẫn cần kiểm tra ở bước thanh toán. Sau khi đơn được xử lý, bạn có thể theo dõi trạng thái giao hàng trong trang chi tiết đơn. Nếu phí ship chưa hiển thị, hãy kiểm tra lại địa chỉ hoặc thử cập nhật giỏ hàng."
         if intent == "auth":
-            return "Bạn có thể đăng ký bằng email, mật khẩu, họ tên và số điện thoại; sau đó đăng nhập bằng email và mật khẩu đó. Nếu muốn bán hàng, hãy đăng nhập rồi gửi hồ sơ mở Kênh người bán để admin duyệt."
+            return "Bạn có thể đăng ký tài khoản bằng email, mật khẩu, họ tên và số điện thoại. Sau khi có tài khoản, hãy đăng nhập để đặt hàng, lưu sản phẩm yêu thích, xem giỏ hàng và theo dõi đơn. Nếu muốn bán hàng, bạn cần đăng nhập bằng tài khoản khách hàng trước, sau đó gửi hồ sơ mở Kênh người bán để admin duyệt. Nếu tài khoản bị khóa hoặc đăng nhập lỗi, bạn nên kiểm tra lại email/mật khẩu hoặc liên hệ hỗ trợ."
         if intent == "promotion":
-            return "Bạn có thể dùng voucher ở bước checkout; hệ thống sẽ tự kiểm tra điều kiện áp dụng trước khi trừ tiền. Ngoài ra MarketHub còn có banner ưu đãi và thông điệp miễn phí vận chuyển khi đơn đủ điều kiện."
+            return "Bạn có thể dùng voucher ở bước checkout; hệ thống sẽ tự kiểm tra điều kiện như giá trị đơn, sản phẩm áp dụng, thời hạn và số lượt sử dụng trước khi trừ tiền. Ngoài voucher, MarketHub còn có banner ưu đãi, flash sale và thông điệp miễn phí vận chuyển khi đơn đủ điều kiện. Nếu mã không áp dụng được, thường là do chưa đạt giá trị tối thiểu, sai danh mục hoặc voucher đã hết hạn."
         if intent == "return_policy":
-            return "Nếu cần trả hàng, bạn vào chi tiết đơn, chọn sản phẩm muốn trả, nhập lý do và gửi bằng chứng như ảnh/video. Sau khi yêu cầu được xem xét, hệ thống sẽ cập nhật trạng thái trả hàng và hoàn tiền tương ứng."
+            return "Nếu cần trả hàng, bạn vào chi tiết đơn, chọn sản phẩm muốn trả, nhập lý do và gửi bằng chứng như ảnh hoặc video. Yêu cầu sẽ được hệ thống ghi nhận để admin/seller xem xét theo trạng thái trả hàng. Khi được duyệt, quy trình hoàn tiền sẽ tiếp tục theo phương thức và dữ liệu của đơn hàng. Bạn nên mô tả rõ lỗi sản phẩm hoặc lý do không đúng mô tả để việc xử lý nhanh hơn."
         if intent == "seller":
-            return "Để bán hàng, bạn vào Kênh người bán, gửi thông tin shop và chờ admin duyệt."
+            return "Để bán hàng, bạn vào Kênh người bán, điền thông tin shop và gửi hồ sơ để admin duyệt. Sau khi được duyệt, seller có thể quản lý sản phẩm, đơn hàng, vận chuyển, tồn kho, marketing và tài chính trong Seller Center. Bạn nên chuẩn bị tên shop, mô tả, thông tin liên hệ và cấu hình vận chuyển rõ ràng để hồ sơ dễ được xét duyệt hơn."
         if intent == "greeting":
-            return "Chào bạn, mình có thể giúp tìm sản phẩm phù hợp, xem giỏ hàng, kiểm tra đơn hàng hoặc giải thích chính sách trên MarketHub."
+            return "Chào bạn, mình là trợ lý mua sắm của MarketHub. Mình có thể giúp bạn tìm sản phẩm phù hợp, gợi ý theo thói quen mua sắm, kiểm tra giỏ hàng, xem đơn hàng hoặc giải thích các chính sách như thanh toán, vận chuyển và đổi trả. Bạn chỉ cần nói nhu cầu cụ thể, ví dụ “tìm sản phẩm dưới 500k” hoặc “đơn hàng của tôi đang ở trạng thái nào”."
         return "Hiện hệ thống chưa có dữ liệu phù hợp để trả lời câu này."
 
     @staticmethod
@@ -786,7 +855,7 @@ class ChatService:
         answer = re.sub(r"<think>.*?</think>", "", answer, flags=re.DOTALL | re.IGNORECASE)
         answer = re.sub(r"^(final answer|tra loi|trả lời|cau tra loi|câu trả lời)\s*:\s*", "", answer, flags=re.IGNORECASE)
         answer = re.sub(r"\s+", " ", answer).strip()
-        return answer[:650] if answer else "Hiện hệ thống chưa có dữ liệu phù hợp để trả lời câu này."
+        return answer[: ChatService.ANSWER_MAX_LENGTH] if answer else "Hiện hệ thống chưa có dữ liệu phù hợp để trả lời câu này."
 
     @staticmethod
     def _looks_like_reasoning(answer: str) -> bool:
@@ -810,10 +879,24 @@ class ChatService:
         intent: str,
         suggestions: Optional[List[str]] = None,
         products: Optional[List[ChatbotProductOut]] = None,
+        sources: Optional[List[Dict]] = None,
     ):
+        source_items = sources or []
+        answer = cls._append_source_note(answer, source_items)
         return {
-            "answer": answer[:650],
+            "answer": answer[: cls.ANSWER_MAX_LENGTH],
             "intent": intent,
             "suggestions": suggestions or cls.SCOPE_SUGGESTIONS,
             "products": products or [],
+            "sources": source_items,
         }
+
+    @staticmethod
+    def _append_source_note(answer: str, sources: List[Dict]) -> str:
+        if not sources or "Nguồn:" in answer:
+            return answer
+
+        source_ids = [f"[{source['sourceId']}]" for source in sources[:3] if source.get("sourceId")]
+        if not source_ids:
+            return answer
+        return f"{answer}\n\nNguồn: {', '.join(source_ids)}"

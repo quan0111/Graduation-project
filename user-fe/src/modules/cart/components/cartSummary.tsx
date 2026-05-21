@@ -26,10 +26,10 @@ export const CartSummary: React.FC<CartSummaryProps> = ({
   return (
     <div className="sticky top-24 overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-slate-200/80">
       <div className="bg-[radial-gradient(circle_at_top_left,_rgba(238,77,45,0.18),_transparent_40%),linear-gradient(135deg,#111827,#1f2937)] p-6 text-white">
-        <p className="text-xs uppercase tracking-[0.24em] text-orange-200">Cart Summary</p>
+        <p className="text-xs uppercase tracking-[0.24em] text-orange-200">Tóm tắt giỏ hàng</p>
         <p className="mt-3 text-3xl font-semibold">{formatCurrency(subtotal)}</p>
         <p className="mt-2 text-sm text-slate-300">
-          {selectedCount} sản phẩm đã chọn sẵn sàng cho bước checkout.
+          {selectedCount} sản phẩm đã chọn sẵn sàng cho bước thanh toán.
         </p>
       </div>
 
@@ -41,7 +41,7 @@ export const CartSummary: React.FC<CartSummaryProps> = ({
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-slate-500">Vận chuyển</span>
-            <span className="text-slate-500">Tính ở bước checkout</span>
+            <span className="text-slate-500">Tính ở bước thanh toán</span>
           </div>
         </div>
 
@@ -61,7 +61,7 @@ export const CartSummary: React.FC<CartSummaryProps> = ({
           className="h-11 w-full bg-[#ee4d2d] text-white hover:bg-[#d93f21]"
           onClick={onCheckout}
         >
-          Tiến hành checkout
+          Tiến hành thanh toán
         </Button>
       </div>
     </div>

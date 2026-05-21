@@ -11,14 +11,14 @@ export default function AuditPage() {
         <div className="flex items-center gap-3">
           <FileClock className="size-5 text-orange-600" />
           <div>
-            <h1 className="text-xl font-semibold text-slate-950">Audit log</h1>
+            <h1 className="text-xl font-semibold text-slate-950">Nhật ký audit</h1>
             <p className="text-sm text-slate-500">Ghi nhận đăng nhập, khóa user, xử lý đơn hàng và kiểm duyệt sản phẩm.</p>
           </div>
         </div>
       </section>
 
       <section className="overflow-hidden rounded-lg border bg-white">
-        {isLoading ? <p className="p-5 text-sm text-slate-500">Đang tải audit log...</p> : null}
+        {isLoading ? <p className="p-5 text-sm text-slate-500">Đang tải nhật ký audit...</p> : null}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="border-b bg-slate-50 text-xs uppercase text-slate-500">

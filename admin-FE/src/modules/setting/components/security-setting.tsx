@@ -15,16 +15,16 @@ export function SecuritySettings() {
       <CardHeader>
         <CardTitle className="flex gap-2">
           <Lock className="h-5 w-5" />
-          Bao mat
+          Bảo mật
         </CardTitle>
-        <CardDescription>Du lieu lay tu API security incidents.</CardDescription>
+        <CardDescription>Dữ liệu lấy từ API sự cố bảo mật.</CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-4">
         <div className="grid gap-3 md:grid-cols-3">
-          <Metric label="Incident dang mo" value={openIncidents.length} />
-          <Metric label="Tong incident" value={incidents.length} />
-          <Metric label="Trang thai API" value={isError ? "Loi" : isLoading ? "Dang tai" : "OK"} />
+          <Metric label="Incident đang mở" value={openIncidents.length} />
+          <Metric label="Tổng sự cố" value={incidents.length} />
+          <Metric label="Trạng thái API" value={isError ? "Lỗi" : isLoading ? "Đang tải" : "OK"} />
         </div>
 
         <div className="space-y-3">
@@ -33,7 +33,7 @@ export function SecuritySettings() {
               <div className="flex gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-500" />
                 <div>
-                  <p className="font-medium">Incident #{incident.id}</p>
+                  <p className="font-medium">Sự cố #{incident.id}</p>
                   <p className="text-sm text-muted-foreground">{incident.reason}</p>
                   <div className="mt-2 flex gap-2">
                     <Badge variant="outline">{incident.severity}</Badge>
@@ -48,13 +48,13 @@ export function SecuritySettings() {
                 onClick={() => resolveIncident.mutate({ id: incident.id })}
               >
                 <ShieldCheck className="h-4 w-4" />
-                Resolve
+                Đã xử lý
               </Button>
             </div>
           ))}
           {!openIncidents.length && (
             <p className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
-              Khong co security incident dang mo.
+              Không có sự cố bảo mật đang mở.
             </p>
           )}
         </div>

@@ -49,24 +49,24 @@ export default function AdminLoginPage() {
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="hidden lg:flex flex-col justify-between bg-gradient-to-br from-black via-gray-900 to-gray-800 p-10 text-white">
         <div>
-          <h1 className="text-3xl font-bold mb-4">Admin Panel</h1>
+          <h1 className="text-3xl font-bold mb-4">Bảng quản trị</h1>
           <p className="text-gray-400">
-            Quan ly he thong e-commerce cua ban mot cach thong minh.
+            Quản lý hệ thống e-commerce của bạn một cách thông minh.
           </p>
         </div>
 
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Shield className="text-blue-500" />
-            <span>Bao mat cao</span>
+            <span>Bảo mật cao</span>
           </div>
           <div className="flex items-center gap-2">
             <Shield className="text-blue-500" />
-            <span>Quan ly don hang va san pham</span>
+            <span>Quản lý đơn hàng và sản phẩm</span>
           </div>
         </div>
 
-        <p className="text-sm text-gray-500">© 2026 Admin System</p>
+        <p className="text-sm text-gray-500">© 2026 Hệ thống quản trị</p>
       </div>
 
       <div className="flex items-center justify-center bg-gray-50 px-4">
@@ -78,8 +78,8 @@ export default function AdminLoginPage() {
                   <Shield className="text-white" size={20} />
                 </div>
               </div>
-              <h2 className="text-2xl font-bold">Admin Login</h2>
-              <p className="text-gray-500 text-sm">Dang nhap de tiep tuc</p>
+              <h2 className="text-2xl font-bold">Đăng nhập quản trị</h2>
+              <p className="text-gray-500 text-sm">Đăng nhập để tiếp tục</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -95,7 +95,7 @@ export default function AdminLoginPage() {
               </div>
 
               <div>
-                <Label>Password</Label>
+                <Label>Mật khẩu</Label>
                 <div className="relative">
                   <Input
                     type={showPassword ? "text" : "password"}
@@ -120,11 +120,11 @@ export default function AdminLoginPage() {
                     checked={remember}
                     onCheckedChange={(value) => setRemember(value === true)}
                   />
-                  <span>Remember me</span>
+                  <span>Ghi nhớ đăng nhập</span>
                 </div>
 
                 <button type="button" className="text-blue-600 hover:underline">
-                  Quen mat khau?
+                  Quên mật khẩu?
                 </button>
               </div>
 
@@ -132,7 +132,7 @@ export default function AdminLoginPage() {
                 <p className="text-red-500 text-sm">
                   {loginError?.response?.data?.detail ||
                     loginError?.message ||
-                    "Sai tai khoan hoac khong phai admin"}
+                    "Sai tài khoản hoặc không phải admin"}
                 </p>
               )}
 
@@ -144,7 +144,7 @@ export default function AdminLoginPage() {
                 {loginMutation.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Dang nhap
+                Đăng nhập
               </Button>
             </form>
           </CardContent>

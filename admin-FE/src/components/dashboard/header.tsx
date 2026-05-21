@@ -55,7 +55,7 @@ export function DashboardHeader() {
         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
           <Sun className="size-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute size-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span className="sr-only">Toggle theme</span>
+          <span className="sr-only">Đổi giao diện sáng tối</span>
         </Button>
         
         <DropdownMenu>

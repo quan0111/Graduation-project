@@ -19,28 +19,28 @@ export function ProductFilter({
   return (
     <div className="mb-6 space-y-4">
       <div className="flex-1">
-        <Input placeholder="Tim kiem san pham..." value={search} onChange={(event) => setSearch(event.target.value)} />
+        <Input placeholder="Tìm kiếm sản phẩm..." value={search} onChange={(event) => setSearch(event.target.value)} />
       </div>
 
       <div className="flex flex-wrap gap-2">
         <Button variant={status === "all" ? "default" : "outline"} onClick={() => setStatus("all")}>
-          Tat ca ({data.length})
+          Tất cả ({data.length})
         </Button>
 
         <Button variant={status === "pending" ? "default" : "outline"} onClick={() => setStatus("pending")}>
-          Cho duyet ({count("pending")})
+          Chờ duyệt ({count("pending")})
         </Button>
 
         <Button variant={status === "approved" ? "default" : "outline"} onClick={() => setStatus("approved")}>
-          Da duyet ({count("approved")})
+          Đã duyệt ({count("approved")})
         </Button>
 
         <Button variant={status === "rejected" ? "default" : "outline"} onClick={() => setStatus("rejected")}>
-          Tu choi ({count("rejected")})
+          Từ chối ({count("rejected")})
         </Button>
 
         <Button variant={status === "banned" ? "default" : "outline"} onClick={() => setStatus("banned")}>
-          Cam ban ({count("banned")})
+          Cấm bán ({count("banned")})
         </Button>
       </div>
     </div>

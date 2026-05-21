@@ -97,7 +97,7 @@ export default function NotificationsPage() {
     <main className="flex-1 space-y-6 overflow-auto p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Notifications</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-primary">Thông báo</p>
           <h1 className="mt-2 text-2xl font-bold">Thông báo admin</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Danh sách lấy từ API `/notifications` và tự refresh qua WebSocket khi có thông báo mới.

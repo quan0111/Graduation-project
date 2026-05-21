@@ -129,10 +129,10 @@ export default function AddProductPage() {
         })),
       });
 
-      toast.success("San pham da gui len admin o trang thai draft");
+      toast.success("Sản phẩm đã gửi lên admin ở trạng thái draft");
       navigate("/seller/dashboard");
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || "Khong tao duoc san pham");
+      toast.error(error?.response?.data?.detail || "Không tạo được sản phẩm");
     }
   }, [
     mediaState,
@@ -146,7 +146,7 @@ export default function AddProductPage() {
   if (isUserLoading || (user?.role === "SELLER" && isShopLoading)) {
     return (
       <SellerDashboardLayout>
-        <div className="rounded-3xl border bg-white p-8">Dang tai...</div>
+        <div className="rounded-3xl border bg-white p-8">Đang tải...</div>
       </SellerDashboardLayout>
     );
   }
@@ -158,7 +158,7 @@ export default function AddProductPage() {
           icon={<ShieldAlert className="size-6" />}
           title="Không có quyền truy cập"
           description="Bạn cần đăng nhập trước khi mở shop."
-          primaryLabel="Dang nhap"
+          primaryLabel="Đăng nhập"
           primaryHref="/login"
         />
       </SellerDashboardLayout>
@@ -270,25 +270,25 @@ export default function AddProductPage() {
             <div className="flex flex-col gap-3 rounded-[28px] border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm text-slate-500">
                 {stepState.currentStep === "shipping"
-                  ? "Khi bam Gui duyet, san pham se len admin voi trang thai draft."
-                  : "Chi khi validate dat yeu cau thi moi sang duoc buoc tiep theo."}
+                  ? "Khi bấm Gửi duyệt, sản phẩm sẽ lên admin với trạng thái draft."
+                  : "Chỉ khi validate đạt yêu cầu thì mới sang được bước tiếp theo."}
               </div>
 
               <div className="flex flex-wrap gap-3">
                 <Button variant="outline" disabled={stepState.currentStepIndex === 0} onClick={stepState.goPrev}>
                   <ChevronLeft className="size-4" />
-                  Quay lai
+                  Quay lại
                 </Button>
 
                 {stepState.currentStep !== "shipping" ? (
                   <Button onClick={stepState.goNext}>
-                    Tiep theo
+                    Tiếp theo
                     <ChevronRight className="size-4" />
                   </Button>
                 ) : (
                   <Button disabled={isSubmitting || isUploading} onClick={handleSubmit}>
                     <Truck className="size-4" />
-                    {isSubmitting ? "Dang gui duyet..." : "Gui admin duyet"}
+                    {isSubmitting ? "Đang gửi duyệt..." : "Gửi admin duyệt"}
                   </Button>
                 )}
               </div>

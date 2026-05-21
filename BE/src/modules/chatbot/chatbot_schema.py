@@ -25,11 +25,21 @@ class ChatbotProductOut(BaseModel):
     relationType: Optional[str] = None
 
 
+class ChatbotSourceOut(BaseModel):
+    sourceId: str
+    title: str
+    type: str
+    score: float
+    productId: Optional[int] = None
+    route: Optional[str] = None
+
+
 class ChatbotMessageOut(BaseModel):
     answer: str
     intent: str
     suggestions: List[str] = Field(default_factory=list)
     products: List[ChatbotProductOut] = Field(default_factory=list)
+    sources: List[ChatbotSourceOut] = Field(default_factory=list)
 
 
 class ChatRequest(ChatbotMessageIn):

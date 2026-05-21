@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Heart, Menu, Search, ShoppingCart, User, X } from "lucide-react";
+import { Heart, Menu, MessageCircle, Search, ShoppingCart, User, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLogout } from "@/modules/auth/api/logout";
 import { useMe } from "@/modules/auth/api/get-auth-me";
+import { NotificationBell } from "@/modules/notification/components/notification-bell";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -44,18 +45,18 @@ export default function Header() {
           <div>Miễn phí vận chuyển cho đơn hàng trên 500k đ</div>
 
           <div className="flex gap-6">
-            <Link to="#" className="hover:opacity-80">
+            <Link to="/messages" className="hover:opacity-80">
               Hỗ trợ khách hàng
             </Link>
 
             {user ? (
               user.role === "SELLER" ? (
                 <Link to="/seller/dashboard" className="hover:opacity-80">
-                  Seller Center
+                  Kênh người bán
                 </Link>
               ) : (
                 <Link to="/seller" className="hover:opacity-80">
-                  Become Seller
+                  Trở thành người bán
                 </Link>
               )
             ) : null}
@@ -104,9 +105,15 @@ export default function Header() {
           </div>
 
           <div className="ml-auto flex items-center gap-2 md:gap-4">
-            <Link to="/wishlist" className="rounded p-2 hover:bg-muted" aria-label="Wishlist">
+            <Link to="/wishlist" className="rounded p-2 hover:bg-muted" aria-label="Yêu thích">
               <Heart size={20} />
             </Link>
+
+            <Link to="/messages" className="rounded p-2 hover:bg-muted" aria-label="Tin nhắn">
+              <MessageCircle size={20} />
+            </Link>
+
+            {user ? <NotificationBell /> : null}
 
             <Link to="/cart" className="relative rounded p-2 hover:bg-muted" aria-label="Giỏ hàng">
               <ShoppingCart size={20} />
@@ -146,12 +153,12 @@ export default function Header() {
                       Đổi trả
                     </Link>
                     <Link to="/wishlist" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 hover:bg-muted">
-                      Wishlist
+                      Yêu thích
                     </Link>
 
                     {user.role === "SELLER" ? (
                       <Link to="/seller/dashboard" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 hover:bg-muted">
-                        Seller Center
+                        Kênh người bán
                       </Link>
                     ) : (
                       <Link to="/seller" onClick={() => setIsDropdownOpen(false)} className="block px-4 py-2 hover:bg-muted">
@@ -230,7 +237,10 @@ export default function Header() {
                 Khuyến mãi
               </Link>
               <Link to="/wishlist" onClick={() => setIsMenuOpen(false)} className="rounded-lg border px-3 py-2">
-                Wishlist
+                Yêu thích
+              </Link>
+              <Link to="/messages" onClick={() => setIsMenuOpen(false)} className="rounded-lg border px-3 py-2">
+                Tin nhắn
               </Link>
               <Link to={user?.role === "SELLER" ? "/seller/dashboard" : "/seller"} onClick={() => setIsMenuOpen(false)} className="rounded-lg border px-3 py-2">
                 Kênh người bán

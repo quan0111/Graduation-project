@@ -20,9 +20,9 @@ export function CategoryStats({ data }: { data: Array<{ name: string; value: num
   return (
     <Card className="bg-card border-border">
       <CardHeader>
-        <CardTitle className="text-foreground">Phan bo danh muc</CardTitle>
+        <CardTitle className="text-foreground">Phân bổ danh mục</CardTitle>
         <CardDescription className="text-muted-foreground">
-          Ty le san pham theo danh muc
+          Tỷ lệ sản phẩm theo danh mục
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -50,7 +50,7 @@ export function CategoryStats({ data }: { data: Array<{ name: string; value: num
                     borderRadius: "8px",
                     color: "oklch(0.98 0 0)",
                   }}
-                  formatter={(value) => [`${value}`, "San pham"]}
+                  formatter={(value) => [`${value}`, "Sản phẩm"]}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -74,7 +74,7 @@ export function CategoryStats({ data }: { data: Array<{ name: string; value: num
               </div>
             ))}
             {!chartData.length && (
-              <p className="text-sm text-muted-foreground">Chua co du lieu danh muc.</p>
+              <p className="text-sm text-muted-foreground">Chưa có dữ liệu danh mục.</p>
             )}
           </div>
         </div>

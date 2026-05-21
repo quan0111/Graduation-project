@@ -36,7 +36,7 @@ export const ShopGroup: React.FC<ShopGroupProps> = ({
           <Store className="size-4" />
         </div>
         <div>
-          <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Shop</p>
+          <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Cửa hàng</p>
           <p className="font-semibold text-slate-950">{shopName}</p>
         </div>
       </div>

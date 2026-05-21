@@ -9,7 +9,7 @@ export const ProductToolbar = ({ count, activeCategory }: ProductToolbarProps) =
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-100 bg-white p-4 shadow-sm">
       <div>
-        <p className="text-xs uppercase tracking-[0.18em] text-orange-500">Catalog</p>
+        <p className="text-xs uppercase tracking-[0.18em] text-orange-500">Danh mục sản phẩm</p>
         <p className="text-sm text-slate-600">
           Tìm thấy <span className="font-semibold text-slate-900">{count}</span> sản phẩm
         </p>

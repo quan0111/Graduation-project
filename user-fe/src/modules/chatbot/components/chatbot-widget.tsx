@@ -5,7 +5,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useSendChatbotMessage } from "@/modules/chatbot/api/send-message";
-import type { ChatbotHistoryMessage, ChatbotProduct } from "@/modules/chatbot/types";
+import type { ChatbotHistoryMessage, ChatbotProduct, ChatbotSource } from "@/modules/chatbot/types";
 import { useTrackProductBehavior } from "@/modules/recommendation/hooks/useTrackProductBehavior";
 
 interface ChatMessage {
@@ -15,13 +15,14 @@ interface ChatMessage {
   intent?: string;
   suggestions?: string[];
   products?: ChatbotProduct[];
+  sources?: ChatbotSource[];
 }
 
 const initialMessages: ChatMessage[] = [
   {
     id: "welcome",
     role: "assistant",
-    content: "Chào bạn, mình là trợ lý MarketHub. Mình có thể gợi ý sản phẩm theo thói quen mua sắm, tìm sản phẩm liên quan hoặc hỗ trợ giỏ hàng và đơn hàng.",
+    content: "Chào bạn, mình là trợ lý MarketHub. Mình có thể gợi ý sản phẩm theo thói quen mua sắm, tìm sản phẩm theo ngân sách, giải thích chính sách thanh toán/vận chuyển hoặc hỗ trợ giỏ hàng và đơn hàng. Bạn cứ mô tả nhu cầu, mình sẽ trả lời cụ thể hơn từng bước.",
     suggestions: ["Gợi ý sản phẩm cho tôi", "Sản phẩm hợp thói quen của tôi", "Kiểm tra giỏ hàng", "Chính sách đổi trả"],
   },
 ];
@@ -31,59 +32,59 @@ const priceFormatter = new Intl.NumberFormat("vi-VN");
 // Local knowledge base for common questions
 const localKnowledgeBase: Record<string, { answer: string; suggestions?: string[] }> = {
   "chính sách đổi trả": {
-    answer: "MarketHub hỗ trợ đổi trả trong vòng 7 ngày làm việc khi sản phẩm bị lỗi hoặc không đúng mô tả. Bạn cần tạo yêu cầu trả hàng từ trang chi tiết đơn hàng.",
+    answer: "MarketHub hỗ trợ đổi trả trong vòng 7 ngày làm việc khi sản phẩm bị lỗi, không đúng mô tả hoặc có vấn đề cần shop/admin kiểm tra. Bạn vào trang chi tiết đơn hàng, chọn sản phẩm cần trả, nhập lý do và gửi bằng chứng như ảnh hoặc video. Sau khi yêu cầu được xem xét, hệ thống sẽ cập nhật trạng thái trả hàng và hoàn tiền tương ứng.",
     suggestions: ["Làm sao để trả hàng?", "Chính sách hoàn tiền"],
   },
   "đổi trả": {
-    answer: "Bạn có thể trả hàng trong vòng 7 ngày làm việc. Vào trang Đơn hàng > chọn đơn hàng > nhấn Yêu cầu trả hàng.",
+    answer: "Bạn có thể tạo yêu cầu trả hàng trong vòng 7 ngày làm việc nếu sản phẩm bị lỗi hoặc không đúng mô tả. Cách làm là vào Đơn hàng, mở chi tiết đơn, chọn sản phẩm cần trả rồi bấm Yêu cầu trả hàng. Bạn nên ghi rõ lý do và đính kèm bằng chứng để shop/admin xử lý nhanh hơn.",
     suggestions: ["Kiểm tra đơn hàng", "Chính sách hoàn tiền"],
   },
   "hoàn tiền": {
-    answer: "Sau khi admin duyệt yêu cầu trả hàng, seller sẽ hoàn tiền cho bạn. Thời gian hoàn tiền thường từ 3-5 ngày làm việc.",
+    answer: "Hoàn tiền sẽ được xử lý sau khi yêu cầu trả hàng được duyệt theo quy trình của hệ thống. Seller/admin sẽ kiểm tra lý do, bằng chứng và trạng thái đơn trước khi xác nhận hoàn tiền. Thời gian nhận tiền có thể phụ thuộc phương thức thanh toán, nhưng bạn có thể theo dõi tiến độ ngay trong chi tiết yêu cầu trả hàng.",
     suggestions: ["Chính sách đổi trả"],
   },
   "vận chuyển": {
-    answer: "MarketHub hiển thị phí vận chuyển ở bước checkout theo địa chỉ và đơn hàng. Hệ thống đang có thông điệp miễn phí vận chuyển cho đơn từ 500.000đ.",
+    answer: "MarketHub hiển thị phí vận chuyển ở bước checkout dựa trên địa chỉ nhận hàng, sản phẩm trong đơn và cấu hình vận chuyển của shop. Hiện hệ thống có thông điệp miễn phí vận chuyển cho đơn từ 500.000đ, nhưng điều kiện cụ thể vẫn nên kiểm tra trực tiếp ở trang thanh toán. Sau khi tạo đơn, bạn có thể theo dõi tiến độ giao hàng trong phần chi tiết đơn.",
     suggestions: ["Phí vận chuyển", "Theo dõi đơn hàng"],
   },
   "phí vận chuyển": {
-    answer: "Phí vận chuyển được tính tại checkout theo địa chỉ nhận hàng và sản phẩm trong đơn. Bạn kiểm tra lại ở bước thanh toán để thấy số tiền chính xác.",
+    answer: "Phí vận chuyển được tính tại checkout theo địa chỉ nhận hàng, tổng sản phẩm và phương thức giao hàng khả dụng. Nếu phí chưa hiện đúng, bạn nên kiểm tra lại địa chỉ, số điện thoại và các sản phẩm trong giỏ. Khi đơn đủ điều kiện ưu đãi, hệ thống sẽ tự áp dụng hoặc hiển thị thông tin giảm phí ở bước thanh toán.",
     suggestions: ["Vận chuyển"],
   },
   "thanh toán": {
-    answer: "MarketHub hỗ trợ thanh toán bằng thẻ ngân hàng, ví MoMo, VNPay và thanh toán khi nhận hàng (COD).",
+    answer: "MarketHub hỗ trợ nhiều phương thức thanh toán như thẻ ngân hàng, ví MoMo, VNPay và thanh toán khi nhận hàng (COD). Với MoMo/VNPay, đơn chỉ được ghi nhận thanh toán thành công khi cổng thanh toán trả kết quả về hệ thống. Nếu thanh toán lỗi hoặc hết hạn, bạn có thể quay lại đơn hàng để thử lại hoặc chọn phương thức khác.",
     suggestions: ["Các phương thức thanh toán"],
   },
   "phương thức thanh toán": {
-    answer: "Bạn có thể thanh toán bằng: Thẻ ATM/VISA/MasterCard, Ví MoMo, VNPay QR, hoặc COD (thanh toán khi nhận hàng).",
+    answer: "Bạn có thể thanh toán bằng thẻ ATM/VISA/MasterCard, ví MoMo, VNPay QR hoặc COD. Nếu muốn xử lý nhanh, thanh toán online sẽ giúp đơn được ghi nhận trạng thái thanh toán rõ ràng hơn. Nếu muốn kiểm tra hàng trước khi trả tiền, COD là lựa chọn phù hợp nhưng vẫn phụ thuộc cấu hình của shop và đơn hàng.",
     suggestions: ["Thanh toán"],
   },
   "tài khoản": {
-    answer: "Bạn cần đăng nhập để đặt hàng, xem đơn hàng, và sử dụng các tính năng cá nhân hóa. Nhấn Đăng nhập ở góc trên bên phải.",
+    answer: "Bạn cần đăng nhập để đặt hàng, xem đơn hàng, lưu sản phẩm yêu thích và nhận gợi ý cá nhân hóa chính xác hơn. Hãy nhấn Đăng nhập ở góc trên bên phải, sau đó nhập email và mật khẩu. Nếu bạn muốn bán hàng, hãy đăng nhập trước rồi gửi hồ sơ mở Kênh người bán.",
     suggestions: ["Đăng ký tài khoản"],
   },
   "đăng ký": {
-    answer: "Nhấn Đăng ký ở trang đăng nhập, điền email, mật khẩu và thông tin cá nhân để tạo tài khoản mới.",
+    answer: "Bạn có thể tạo tài khoản bằng cách vào trang đăng nhập rồi chọn Đăng ký. Hãy điền email, mật khẩu, họ tên và số điện thoại để hệ thống tạo hồ sơ người dùng. Sau khi đăng nhập, bạn có thể đặt hàng, theo dõi đơn, dùng wishlist và gửi hồ sơ người bán nếu cần.",
     suggestions: ["Đăng nhập"],
   },
   "khuyến mãi": {
-    answer: "MarketHub thường xuyên có các chương trình khuyến mãi. Bạn có thể nhập mã voucher tại trang thanh toán để được giảm giá.",
+    answer: "MarketHub có các chương trình khuyến mãi như voucher, flash sale, banner ưu đãi và miễn phí vận chuyển khi đủ điều kiện. Bạn có thể nhập mã voucher tại trang thanh toán để hệ thống kiểm tra điều kiện áp dụng. Nếu mã không dùng được, thường là do đơn chưa đạt giá trị tối thiểu, sai danh mục hoặc voucher đã hết hạn.",
     suggestions: ["Kiểm tra khuyến mãi"],
   },
   "voucher": {
-    answer: "Nhập mã voucher tại trang thanh toán để được giảm giá. Mỗi voucher có điều kiện áp dụng riêng biệt.",
+    answer: "Bạn nhập mã voucher ở bước thanh toán để được giảm giá nếu đơn hàng đủ điều kiện. Mỗi voucher có thể giới hạn theo thời gian, danh mục, shop, giá trị đơn tối thiểu hoặc số lượt sử dụng. Nếu voucher không áp dụng, hãy thử kiểm tra lại điều kiện hoặc chọn mã khác phù hợp hơn.",
     suggestions: ["Khuyến mãi"],
   },
   "liên hệ": {
-    answer: "Bạn có thể liên hệ hỗ trợ qua email support@markethub.com hoặc hotline 1900-1234. Đội ngũ CSKH hoạt động 24/7.",
+    answer: "Bạn có thể liên hệ hỗ trợ qua email support@markethub.com hoặc hotline 1900-1234. Khi liên hệ, bạn nên chuẩn bị mã đơn hàng, email tài khoản và mô tả ngắn vấn đề để đội CSKH xử lý nhanh hơn. Nếu vấn đề liên quan sản phẩm hoặc đổi trả, hãy gửi thêm ảnh/video bằng chứng nếu có.",
     suggestions: ["Chính sách"],
   },
   "hỗ trợ": {
-    answer: "Đội ngũ CSKH của MarketHub sẵn sàng hỗ trợ bạn 24/7. Vui lòng liên hệ qua hotline 1900-1234 hoặc email support@markethub.com.",
+    answer: "Đội ngũ CSKH của MarketHub sẵn sàng hỗ trợ các vấn đề về sản phẩm, thanh toán, vận chuyển, đổi trả và tài khoản. Bạn có thể liên hệ qua hotline 1900-1234 hoặc email support@markethub.com. Để được hỗ trợ nhanh, hãy gửi kèm mã đơn hàng hoặc mô tả rõ thao tác bạn đang gặp lỗi.",
     suggestions: ["Liên hệ"],
   },
   "sản phẩm": {
-    answer: "MarketHub có hàng nghìn sản phẩm từ các danh mục: Điện tử, Thời trang, Gia dụng, Mỹ phẩm, và nhiều hơn nữa. Bạn có thể tìm kiếm theo danh mục hoặc từ khóa.",
+    answer: "MarketHub có nhiều sản phẩm thuộc các danh mục như điện tử, thời trang, gia dụng, mỹ phẩm, sách, đồ chơi và thực phẩm. Bạn có thể tìm bằng từ khóa, lọc theo danh mục hoặc nói rõ ngân sách để mình gợi ý sát hơn. Nếu đang ở trang chi tiết sản phẩm, mình cũng có thể đề xuất các sản phẩm tương tự để bạn so sánh.",
     suggestions: ["Gợi ý sản phẩm", "Sản phẩm bán chạy"],
   },
   "danh mục": {
@@ -136,10 +137,9 @@ const currentProductTerms = ["cai nay", "san pham nay", "mau nay", "mon nay", "c
 
 const shouldUseBackend = (query: string, productId?: number) => {
   const normalized = normalizeChatText(query);
-  if (backendProductTerms.some((term) => normalized.includes(term))) {
-    return true;
-  }
-  return Boolean(productId) && currentProductTerms.some((term) => normalized.includes(term));
+  const hasProductIntent = backendProductTerms.some((term) => normalized.includes(term));
+  const referencesCurrentProduct = Boolean(productId) && currentProductTerms.some((term) => normalized.includes(term));
+  return hasProductIntent || referencesCurrentProduct || true;
 };
 
 const makeId = () => {
@@ -217,6 +217,7 @@ export function ChatbotWidget() {
               intent: response.intent,
               suggestions: response.suggestions,
               products: response.products,
+              sources: response.sources,
             },
           ]);
         },
@@ -280,7 +281,21 @@ export function ChatbotWidget() {
                     {message.role === "assistant" ? <Bot className="size-3.5" /> : null}
                     {message.role === "assistant" ? "Trợ lý" : "Bạn"}
                   </div>
-                  <p className="leading-5">{message.content}</p>
+                  <p className="whitespace-pre-wrap leading-5">{message.content}</p>
+
+                  {message.sources && message.sources.length > 0 && message.role === "assistant" && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {message.sources.slice(0, 4).map((source) => (
+                        <span
+                          key={source.sourceId}
+                          className="rounded-full border border-orange-200 bg-white px-2 py-0.5 text-[11px] text-orange-700"
+                          title={source.title}
+                        >
+                          [{source.sourceId}] {source.title}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   {message.products && message.products.length > 0 && (
                     <div className="mt-3 space-y-2">

@@ -9,6 +9,15 @@ export interface ChatbotProduct {
   relationType?: string | null;
 }
 
+export interface ChatbotSource {
+  sourceId: string;
+  title: string;
+  type: string;
+  score: number;
+  productId?: number | null;
+  route?: string | null;
+}
+
 export interface ChatbotHistoryMessage {
   role: "user" | "assistant";
   content: string;
@@ -25,4 +34,5 @@ export interface ChatbotMessageResponse {
   intent: string;
   suggestions: string[];
   products: ChatbotProduct[];
+  sources: ChatbotSource[];
 }

@@ -45,6 +45,7 @@ const menuGroups = [
     label: "Tăng trưởng",
     items: [
       { label: "Marketing", href: "/seller/marketing", icon: Megaphone, match: "/seller/marketing" },
+      { label: "Khách hàng", href: "/seller/customers", icon: UserRound, match: "/seller/customers" },
       { label: "Coupon shop", href: "/seller/coupons", icon: TicketPercent, match: "/seller/coupons" },
       { label: "Phân tích", href: "/seller/analytics", icon: BarChart3, match: "/seller/analytics" },
       { label: "Tài chính", href: "/seller/finance", icon: BadgeDollarSign, match: "/seller/finance" },
@@ -75,7 +76,7 @@ export function SellerDashboardLayout({ children }: SellerDashboardLayoutProps) 
           </div>
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-[#ee4d2d]">
-              Seller Center
+              Kênh người bán
             </p>
             <p className="text-xs text-slate-500">Kênh người bán</p>
           </div>
@@ -128,7 +129,7 @@ export function SellerDashboardLayout({ children }: SellerDashboardLayoutProps) 
               <div className="flex size-9 items-center justify-center rounded-xl bg-[#ee4d2d] text-white">
                 <Store className="size-4" />
               </div>
-              <span className="text-sm font-semibold text-[#ee4d2d]">Seller Center</span>
+                <span className="text-sm font-semibold text-[#ee4d2d]">Kênh người bán</span>
             </div>
 
             <div className="hidden w-full max-w-xl items-center gap-2 rounded-full border border-orange-100 bg-orange-50/60 px-4 py-2 md:flex">
@@ -141,9 +142,9 @@ export function SellerDashboardLayout({ children }: SellerDashboardLayoutProps) 
             </div>
 
             <div className="ml-auto flex items-center gap-2">
-              <Button variant="ghost" size="icon" aria-label="Tin nhắn">
+              <Link to="/seller/support" className="inline-flex size-9 items-center justify-center rounded-4xl transition hover:bg-slate-100" aria-label="Tin nhắn">
                 <MessageCircle className="size-5 text-slate-600" />
-              </Button>
+              </Link>
               <NotificationBell />
               <Button variant="outline" className="hidden gap-2 rounded-full md:inline-flex">
                 <Home className="size-4" />

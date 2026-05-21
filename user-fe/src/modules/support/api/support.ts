@@ -14,6 +14,11 @@ export interface SupportMessage {
 
 export interface SupportTicket {
   id: number;
+  userId: number;
+  shopId?: number | null;
+  orderId?: number | null;
+  returnRequestId?: number | null;
+  assignedAdminId?: number | null;
   subject: string;
   status: string;
   priority: string;
@@ -23,6 +28,16 @@ export interface SupportTicket {
   user?: { id: number; email: string; fullName?: string | null };
   shop?: { id: number; name: string } | null;
   messages: SupportMessage[];
+}
+
+export interface CreateSupportTicketPayload {
+  subject: string;
+  message: string;
+  shopId?: number;
+  orderId?: number;
+  returnRequestId?: number;
+  category?: string;
+  priority?: string;
 }
 
 export const useSellerSupportTickets = () =>
@@ -43,10 +58,20 @@ export const useMySupportTickets = () =>
     },
   });
 
+export const useSupportTicket = (ticketId: number | null) =>
+  useQuery({
+    queryKey: ["support", "detail", ticketId],
+    queryFn: async (): Promise<SupportTicket> => {
+      const response = await apiClient.get(`${API_URL_SUPPORT}/tickets/${ticketId}`);
+      return response.data;
+    },
+    enabled: Boolean(ticketId),
+  });
+
 export const useCreateSupportTicket = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { subject: string; message: string; shopId?: number; orderId?: number; returnRequestId?: number; category?: string }) => {
+    mutationFn: async (payload: CreateSupportTicketPayload): Promise<SupportTicket> => {
       const response = await apiClient.post(`${API_URL_SUPPORT}/tickets`, payload);
       return response.data;
     },
@@ -63,9 +88,10 @@ export const useAddSupportMessage = () => {
       const response = await apiClient.post(`${API_URL_SUPPORT}/tickets/${ticketId}/messages`, { message });
       return response.data;
     },
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
       await queryClient.invalidateQueries({ queryKey: ["support", "seller"] });
       await queryClient.invalidateQueries({ queryKey: ["support", "me"] });
+      await queryClient.invalidateQueries({ queryKey: ["support", "detail", variables.ticketId] });
     },
   });
 };

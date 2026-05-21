@@ -84,7 +84,7 @@ export default function PromotionsPage() {
   const handleCreate = async () => {
     const code = window.prompt('Nhap ma khuyen mai');
     if (!code?.trim()) return;
-    const value = Number(window.prompt('Gia tri giam gia (%)', '10'));
+    const value = Number(window.prompt('Giá trị giảm giá (%)', '10'));
     if (!Number.isFinite(value) || value <= 0) return;
     await createCoupon.mutateAsync({
       code: code.trim().toUpperCase(),
@@ -96,7 +96,7 @@ export default function PromotionsPage() {
   };
 
   const handleEdit = async (coupon: Coupon) => {
-    const description = window.prompt('Mo ta khuyen mai', coupon.description || '');
+    const description = window.prompt('Mô tả khuyến mãi', coupon.description || '');
     if (description === null) return;
     await updateCoupon.mutateAsync({ id: coupon.id, payload: { description } });
   };

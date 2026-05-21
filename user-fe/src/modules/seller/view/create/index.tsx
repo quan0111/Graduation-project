@@ -317,7 +317,7 @@ export function SellerRegistrationView() {
             </div>
             <div>
               <h1 className="text-xl font-extrabold tracking-tight text-slate-900">Đăng ký người bán</h1>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Merchant Hub</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Trung tâm người bán</p>
             </div>
           </div>
           <Link 

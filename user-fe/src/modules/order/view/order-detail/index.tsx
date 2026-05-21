@@ -6,6 +6,7 @@ import { ChevronLeft, RotateCcw } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ReturnRequestForm } from "@/modules/return-request/components/returnRequestForm";
 import { ShipmentTracking } from "@/modules/shipment/components/shipmentTracking";
+import { ChatWithShopButton } from "@/modules/support/components/chat-with-shop-button";
 import { useShipmentByOrder, useShipmentEventsByOrder } from "@/modules/shipment/api/get-shipment";
 
 import { useGetOrderById } from "../../api/get-order";
@@ -14,6 +15,7 @@ import { CancelOrderModal } from "../../components/CancelOrderModal";
 import { OrderActions } from "../../components/orderAction";
 import { OrderHeader } from "../../components/orderHeader";
 import { OrderItems } from "../../components/orderItems";
+import { PaymentRetryPanel } from "../../components/paymentRetryPanel";
 import { OrderShipping } from "../../components/shipping";
 import { OrderSummary } from "../../components/summary";
 import { OrderTimeline } from "../../components/orderTimeLine";
@@ -40,6 +42,17 @@ export default function OrderDetailPage() {
   }
 
   const normalizedStatus = String(order.status).toLowerCase();
+  const orderShops = Array.from(
+    new Map(
+      order.items.map((item) => [
+        item.shop_id,
+        {
+          id: item.shop_id,
+          name: item.shop?.name || `Shop #${item.shop_id}`,
+        },
+      ]),
+    ).values(),
+  );
 
   const handleCompleteOrder = async () => {
     if (!window.confirm("Xác nhận bạn đã nhận được hàng?")) return;
@@ -84,10 +97,28 @@ export default function OrderDetailPage() {
 
           <aside className="space-y-6">
             <OrderSummary order={order} />
+            <PaymentRetryPanel orderId={order.id} payment={order.payment} />
 
             <div className="rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
               <p className="mb-4 text-base font-semibold text-slate-950">Tác vụ</p>
               <OrderActions order={order} />
+              {orderShops.length > 0 ? (
+                <div className="mt-4 space-y-2 rounded-3xl border border-orange-100 bg-orange-50/60 p-3">
+                  <p className="text-sm font-medium text-slate-800">Liên hệ shop trong đơn</p>
+                  {orderShops.map((shop) => (
+                    <ChatWithShopButton
+                      key={shop.id}
+                      shopId={shop.id}
+                      shopName={shop.name}
+                      orderId={order.id}
+                      subject={`Hỏi về đơn hàng #${order.id}`}
+                      className="w-full justify-start border-orange-200 bg-white text-[#ee4d2d] hover:bg-orange-50"
+                    >
+                      <span className="min-w-0 truncate">{shop.name}</span>
+                    </ChatWithShopButton>
+                  ))}
+                </div>
+              ) : null}
               {normalizedStatus === "delivered" ? (
                 <Button
                   className="mt-4 w-full bg-[#ee4d2d] hover:bg-[#d93f21]"

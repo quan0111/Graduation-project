@@ -38,20 +38,20 @@ export function ShippingConfig() {
           <TabsTrigger value="shipping-methods" className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:bg-transparent text-sm">Vận Chuyển</TabsTrigger>
           <TabsTrigger value="payment" className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:bg-transparent text-sm hidden sm:block">Thanh Toán</TabsTrigger>
           <TabsTrigger value="products" className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:bg-transparent text-sm hidden sm:block">Sản Phẩm</TabsTrigger>
-          <TabsTrigger value="chat" className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:bg-transparent text-sm hidden md:block">Chat</TabsTrigger>
+          <TabsTrigger value="chat" className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:bg-transparent text-sm hidden md:block">Trò chuyện</TabsTrigger>
           <TabsTrigger value="notification" className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:bg-transparent text-sm hidden md:block">Thông Báo</TabsTrigger>
           <TabsTrigger value="other" className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:bg-transparent text-sm hidden lg:block">Tạm Nghỉ</TabsTrigger>
         </TabsList>
 
         <TabsContent value="shipping-methods" className="space-y-6">
-          {/* Hóa Tốc Section */}
+          {/* Hỏa tốc */}
           <div className="border border-border rounded-lg p-6">
-            <h3 className="text-lg font-bold text-foreground mb-4">Hóa Tốc</h3>
+            <h3 className="text-lg font-bold text-foreground mb-4">Hỏa tốc</h3>
             <p className="text-sm text-muted-foreground mb-4">Phương thức vận chuyển giao đến Người mua trong thời gian sớm nhất</p>
             
             <div className="space-y-4">
               <ShippingServiceToggle
-                name="Hóa Tốc"
+                name="Hỏa tốc"
                 description="[COD đã được kích hoạt]"
                 enabled={true}
                 required={true}
@@ -59,10 +59,10 @@ export function ShippingConfig() {
             </div>
           </div>
 
-          {/* Trong Ngày Section */}
+          {/* Trong ngày */}
           <div className="border border-border rounded-lg p-6">
             <h3 className="text-lg font-bold text-foreground mb-4">Trong Ngày</h3>
-            <p className="text-sm text-muted-foreground mb-4">Bắt tùy chọn để cung cấp dịch vụ giao hàng trong cùng ngày cho Người mua</p>
+            <p className="text-sm text-muted-foreground mb-4">Bật tùy chọn để cung cấp dịch vụ giao hàng trong cùng ngày cho người mua</p>
             
             <div className="space-y-4">
               <ShippingServiceToggle
@@ -73,7 +73,7 @@ export function ShippingConfig() {
             </div>
           </div>
 
-          {/* Nhanh Section */}
+          {/* Giao nhanh */}
           <div className="border border-border rounded-lg p-6">
             <h3 className="text-lg font-bold text-foreground mb-4">Nhanh</h3>
             <p className="text-sm text-muted-foreground mb-4">Phương thức vận chuyển chuyên nghiệp, nhanh chóng và đáng tin cậy</p>
@@ -87,27 +87,27 @@ export function ShippingConfig() {
             </div>
           </div>
 
-          {/* Từ Nhận Hàng Section */}
+          {/* Tự nhận hàng */}
           <div className="border border-border rounded-lg p-6">
-            <h3 className="text-lg font-bold text-foreground mb-4">Từ Nhận Hàng</h3>
-            <p className="text-sm text-muted-foreground mb-4">Cho phép Người mua mua từ nhân đơn hàng tại địa điểm và thời gian thuận tiện</p>
+            <h3 className="text-lg font-bold text-foreground mb-4">Tự nhận hàng</h3>
+            <p className="text-sm text-muted-foreground mb-4">Cho phép người mua tự nhận đơn hàng tại địa điểm và thời gian thuận tiện</p>
             
             <div className="space-y-4">
               <ShippingServiceToggle
-                name="Từ Nhận Hàng"
+                name="Tự nhận hàng"
                 description="[COD đã được kích hoạt]"
                 enabled={true}
               />
             </div>
           </div>
 
-          {/* Diễm nhân hàng Section */}
+          {/* Điểm nhận hàng */}
           <div className="border border-border rounded-lg p-6">
-            <h3 className="text-lg font-bold text-foreground mb-4">Diễm nhân hàng</h3>
+            <h3 className="text-lg font-bold text-foreground mb-4">Điểm nhận hàng</h3>
             
             <div className="space-y-4">
               <ShippingServiceToggle
-                name="Diễm nhân hàng"
+                name="Điểm nhận hàng"
                 description="[COD đã được kích hoạt]"
                 enabled={true}
               />

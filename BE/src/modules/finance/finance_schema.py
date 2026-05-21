@@ -11,7 +11,15 @@ class PayoutCreate(BaseModel):
 class PayoutUpdate(BaseModel):
     status: str   # PENDING | PAID | FAILED
 
+
 class ShopShort(BaseModel):
+    id: int
+    name: str
+
+    model_config = {"from_attributes": True}
+
+
+class CategoryShort(BaseModel):
     id: int
     name: str
 
@@ -40,5 +48,45 @@ class PayoutOut(BaseModel):
     createdAt: datetime
 
     shop: Optional[ShopShort] = None
+
+    model_config = {"from_attributes": True}
+
+
+class ShopCommissionConfigUpsert(BaseModel):
+    shopId: int
+    commissionRate: float
+    isActive: bool = True
+    startAt: Optional[datetime] = None
+    endAt: Optional[datetime] = None
+
+
+class CategoryCommissionConfigUpsert(BaseModel):
+    categoryId: int
+    commissionRate: float
+    isActive: bool = True
+
+
+class ShopCommissionConfigOut(BaseModel):
+    id: int
+    shopId: int
+    commissionRate: float
+    isActive: bool
+    startAt: Optional[datetime] = None
+    endAt: Optional[datetime] = None
+    createdAt: datetime
+    updatedAt: datetime
+    shop: Optional[ShopShort] = None
+
+    model_config = {"from_attributes": True}
+
+
+class CategoryCommissionConfigOut(BaseModel):
+    id: int
+    categoryId: int
+    commissionRate: float
+    isActive: bool
+    createdAt: datetime
+    updatedAt: datetime
+    category: Optional[CategoryShort] = None
 
     model_config = {"from_attributes": True}

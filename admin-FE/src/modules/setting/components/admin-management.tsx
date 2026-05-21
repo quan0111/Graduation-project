@@ -14,7 +14,7 @@ export function AdminManagement() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Users className="size-5" />
-          Quan ly Admin
+          Quản lý Admin
         </CardTitle>
       </CardHeader>
 

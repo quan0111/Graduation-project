@@ -44,6 +44,30 @@ async def commission(order_id: int, user=Depends(require_seller_or_admin)):
     return await FinanceService.calculate_commission(order_id)
 
 
+@router.get("/commission-configs/shops", response_model=List[ShopCommissionConfigOut])
+async def get_shop_commission_configs(user=Depends(require_admin)):
+    _ = user
+    return await FinanceService.get_shop_commission_configs()
+
+
+@router.put("/commission-configs/shops", response_model=ShopCommissionConfigOut)
+async def upsert_shop_commission_config(data: ShopCommissionConfigUpsert, user=Depends(require_admin)):
+    _ = user
+    return await FinanceService.upsert_shop_commission_config(data)
+
+
+@router.get("/commission-configs/categories", response_model=List[CategoryCommissionConfigOut])
+async def get_category_commission_configs(user=Depends(require_admin)):
+    _ = user
+    return await FinanceService.get_category_commission_configs()
+
+
+@router.put("/commission-configs/categories", response_model=CategoryCommissionConfigOut)
+async def upsert_category_commission_config(data: CategoryCommissionConfigUpsert, user=Depends(require_admin)):
+    _ = user
+    return await FinanceService.upsert_category_commission_config(data)
+
+
 @router.post("/payout", response_model=PayoutOut)
 async def create_payout(data: PayoutCreate, user=Depends(require_seller_or_admin)):
     await assert_shop_finance_access(data.shopId, user)

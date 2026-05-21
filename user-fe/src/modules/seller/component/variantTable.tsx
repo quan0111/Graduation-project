@@ -14,11 +14,11 @@ export function VariantTable({
     <table className="w-full mt-4">
       <thead>
         <tr>
-          <th>Variant</th>
+          <th>Biến thể</th>
           <th>Giá</th>
-          <th>Stock</th>
-          {enableShipping && <th>Weight</th>}
-          {enableShipping && <th>Size</th>}
+          <th>Tồn kho</th>
+          {enableShipping && <th>Cân nặng</th>}
+          {enableShipping && <th>Kích thước</th>}
         </tr>
       </thead>
 

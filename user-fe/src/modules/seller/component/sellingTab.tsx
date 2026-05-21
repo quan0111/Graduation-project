@@ -37,7 +37,7 @@ export function ProductSellingTab({
   return (
     <div>
       <Button onClick={generateVariants}>
-        Generate Variants
+        Tạo biến thể
       </Button>
 
       <VariantTable

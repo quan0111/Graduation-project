@@ -13,6 +13,7 @@ export interface TrackBehaviorPayload {
 export interface RecommendationQuery {
   topK?: number;
   productId?: number;
+  query?: string;
 }
 
 export interface RecommendationResult {

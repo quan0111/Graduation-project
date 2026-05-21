@@ -26,24 +26,24 @@ export function TopShops({ shops = [] }: { shops?: any[] }) {
     <Card className="bg-card border-border">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle className="text-foreground">Top shop doanh thu cao</CardTitle>
+          <CardTitle className="text-foreground">Shop có doanh thu cao</CardTitle>
           <CardDescription className="text-muted-foreground">
-            Cac shop co doanh thu tot nhat theo don hoan tat
+            Các shop có doanh thu tốt nhất theo đơn hoàn tất
           </CardDescription>
         </div>
         <Link to="/analytics" className="rounded-md border px-3 py-1.5 text-sm text-foreground">
-          Xem tat ca
+          Xem tất cả
         </Link>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
-              <TableHead className="text-muted-foreground">Shop</TableHead>
+              <TableHead className="text-muted-foreground">Cửa hàng</TableHead>
               <TableHead className="text-muted-foreground">Doanh thu</TableHead>
-              <TableHead className="text-muted-foreground text-center">Don hang</TableHead>
-              <TableHead className="text-muted-foreground text-center">San pham</TableHead>
-              <TableHead className="text-muted-foreground text-right">Hanh dong</TableHead>
+              <TableHead className="text-muted-foreground text-center">Đơn hàng</TableHead>
+              <TableHead className="text-muted-foreground text-center">Sản phẩm</TableHead>
+              <TableHead className="text-muted-foreground text-right">Hành động</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -82,7 +82,7 @@ export function TopShops({ shops = [] }: { shops?: any[] }) {
             {!shops.length && (
               <TableRow>
                 <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
-                  Chua co doanh thu shop hoan tat.
+                  Chưa có doanh thu shop hoàn tất.
                 </TableCell>
               </TableRow>
             )}

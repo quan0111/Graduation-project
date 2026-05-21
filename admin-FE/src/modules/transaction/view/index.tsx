@@ -156,7 +156,7 @@ export default function TransactionsPage() {
                     <TableHead className="text-foreground">Đơn hàng</TableHead>
                     <TableHead className="text-right text-foreground">Số tiền</TableHead>
                     <TableHead className="text-center text-foreground">Phương thức</TableHead>
-                    <TableHead className="text-center text-foreground">Provider</TableHead>
+                    <TableHead className="text-center text-foreground">Nhà cung cấp</TableHead>
                     <TableHead className="text-center text-foreground">Trạng thái</TableHead>
                     <TableHead className="text-center text-foreground">Ngày</TableHead>
                     <TableHead className="text-center text-foreground">Thao tác</TableHead>

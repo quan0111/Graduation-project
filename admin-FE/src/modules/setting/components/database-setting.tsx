@@ -8,13 +8,13 @@ export function DatabaseSettings() {
       <CardHeader>
         <CardTitle className="flex gap-2">
           <Database className="w-5 h-5" />
-          Database
+          Cơ sở dữ liệu
         </CardTitle>
       </CardHeader>
 
       <CardContent className="grid grid-cols-2 gap-4">
-        <Button variant="outline">Backup</Button>
-        <Button variant="outline">Optimize</Button>
+        <Button variant="outline">Sao lưu</Button>
+        <Button variant="outline">Tối ưu</Button>
     
       </CardContent>
     </Card>

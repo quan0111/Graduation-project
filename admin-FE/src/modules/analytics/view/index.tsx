@@ -12,6 +12,7 @@ import { useDashboard } from '@/modules/home/api/dashboard';
 import { useGetAllOrders } from '@/modules/orders/api/get-all-orders';
 import { useProducts } from '@/modules/products/api/get-all-product';
 import { useGetAllShop } from '@/modules/shop/api/shop/get-all-shop';
+import { RecommendationOpsCard } from '@/modules/analytics/components/recommendation-ops-card';
 
 const COLORS = ['#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
 
@@ -200,6 +201,8 @@ export default function AnalyticsPage() {
             </Select>
           </div>
 
+          <RecommendationOpsCard />
+
           <div className="mb-8 grid grid-cols-4 gap-4">
             <Card>
               <CardHeader className="pb-2">
@@ -216,7 +219,7 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold text-foreground">{totalOrders.toLocaleString('vi-VN')}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Theo dashboard API</p>
+                <p className="mt-1 text-xs text-muted-foreground">Theo API dashboard</p>
               </CardContent>
             </Card>
             <Card>
@@ -234,7 +237,7 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold text-foreground">{completionRate}%</p>
-                <p className="mt-1 text-xs text-muted-foreground">Đơn delivered/completed</p>
+                <p className="mt-1 text-xs text-muted-foreground">Đơn đã giao / hoàn tất</p>
               </CardContent>
             </Card>
           </div>
@@ -269,7 +272,7 @@ export default function AnalyticsPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Top Shop</CardTitle>
+                <CardTitle>Shop dẫn đầu</CardTitle>
                 <CardDescription>Doanh thu lấy từ finance API</CardDescription>
               </CardHeader>
               <CardContent>

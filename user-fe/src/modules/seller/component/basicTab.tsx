@@ -37,7 +37,7 @@ export function ProductBasicTab({
       </div>
 
       <div>
-        <label>Category</label>
+        <label>Danh mục</label>
         <Input onChange={e => setCategoryId(Number(e.target.value))} />
       </div>
 
@@ -48,7 +48,7 @@ export function ProductBasicTab({
         {attributes.map((attr: any, i: number) => (
           <div key={i} className="border p-3 mt-2 rounded">
             <Input
-              placeholder="Tên (Color, Size)"
+              placeholder="Tên thuộc tính (màu sắc, kích thước)"
               value={attr.name}
               onChange={e => updateAttr(i, "name", e.target.value)}
             />
@@ -68,7 +68,7 @@ export function ProductBasicTab({
             </div>
 
             <Button size="sm" onClick={() => addValue(i)}>
-              + Value
+              + Giá trị
             </Button>
           </div>
         ))}

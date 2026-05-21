@@ -90,6 +90,90 @@ class FinanceService:
             "commission": commission,
             "net": net
         }
+
+    @staticmethod
+    def _assert_valid_commission_rate(rate: float):
+        if rate < 0 or rate > 1:
+            raise HTTPException(400, "Commission rate must be between 0 and 1")
+
+    @staticmethod
+    async def get_shop_commission_configs():
+        return await prisma.shopcommissionconfig.find_many(
+            include={"shop": True},
+            order={"updatedAt": "desc"},
+        )
+
+    @staticmethod
+    async def upsert_shop_commission_config(data):
+        FinanceService._assert_valid_commission_rate(float(data.commissionRate))
+
+        shop = await prisma.shop.find_unique(where={"id": data.shopId})
+        if not shop:
+            raise HTTPException(404, "Shop not found")
+
+        existing = await prisma.shopcommissionconfig.find_unique(
+            where={"shopId": data.shopId}
+        )
+        payload = {
+            "commissionRate": float(data.commissionRate),
+            "isActive": bool(data.isActive),
+            "startAt": data.startAt,
+            "endAt": data.endAt,
+        }
+
+        if existing:
+            return await prisma.shopcommissionconfig.update(
+                where={"shopId": data.shopId},
+                data=payload,
+                include={"shop": True},
+            )
+
+        return await prisma.shopcommissionconfig.create(
+            data={
+                **payload,
+                "shop": {"connect": {"id": data.shopId}},
+            },
+            include={"shop": True},
+        )
+
+    @staticmethod
+    async def get_category_commission_configs():
+        return await prisma.categorycommissionconfig.find_many(
+            include={"category": True},
+            order={"updatedAt": "desc"},
+        )
+
+    @staticmethod
+    async def upsert_category_commission_config(data):
+        FinanceService._assert_valid_commission_rate(float(data.commissionRate))
+
+        category = await prisma.category.find_unique(where={"id": data.categoryId})
+        if not category:
+            raise HTTPException(404, "Category not found")
+
+        existing = await prisma.categorycommissionconfig.find_unique(
+            where={"categoryId": data.categoryId}
+        )
+        payload = {
+            "commissionRate": float(data.commissionRate),
+            "isActive": bool(data.isActive),
+        }
+
+        if existing:
+            return await prisma.categorycommissionconfig.update(
+                where={"categoryId": data.categoryId},
+                data=payload,
+                include={"category": True},
+            )
+
+        return await prisma.categorycommissionconfig.create(
+            data={
+                **payload,
+                "category": {"connect": {"id": data.categoryId}},
+            },
+            include={"category": True},
+        )
+
     @staticmethod
     async def create_payout(data):
 

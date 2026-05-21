@@ -68,18 +68,18 @@ const INITIAL_FORM: BannerFormState = {
   redirectUrl: "",
   buttonText: "",
   position: "HOME_TOP",
-  status: "DRAFT",
+  status: "ACTIVE",
   priority: "0",
   startAt: "",
   endAt: "",
 };
 
 const POSITION_OPTIONS: Array<{ value: BannerPosition; label: string }> = [
-  { value: "HOME_TOP", label: "Home top" },
-  { value: "HOME_MIDDLE", label: "Home middle" },
-  { value: "HOME_BOTTOM", label: "Home bottom" },
-  { value: "CATEGORY_TOP", label: "Category top" },
-  { value: "PRODUCT_DETAIL", label: "Product detail" },
+  { value: "HOME_TOP", label: "Đầu trang chủ" },
+  { value: "HOME_MIDDLE", label: "Giữa trang chủ" },
+  { value: "HOME_BOTTOM", label: "Cuối trang chủ" },
+  { value: "CATEGORY_TOP", label: "Đầu trang danh mục" },
+  { value: "PRODUCT_DETAIL", label: "Chi tiết sản phẩm" },
 ];
 
 const STATUS_OPTIONS: Array<{ value: BannerStatus; label: string }> = [

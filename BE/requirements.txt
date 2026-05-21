@@ -6,6 +6,8 @@ cloudinary
 python-multipart
 numpy
 joblib
+lightgbm
+xgboost
 apscheduler
 redis
 hiredis

@@ -18,13 +18,13 @@ export function PendingProducts({ products = [] }: { products?: any[] }) {
     <Card className="bg-card border-border">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle className="text-foreground">San pham cho duyet</CardTitle>
+          <CardTitle className="text-foreground">Sản phẩm chờ duyệt</CardTitle>
           <CardDescription className="text-muted-foreground">
-            {products.length} san pham dang cho phe duyet
+            {products.length} sản phẩm đang chờ phê duyệt
           </CardDescription>
         </div>
         <Link to="/products" className="rounded-md border px-3 py-1.5 text-sm text-foreground">
-          Xem tat ca
+          Xem tất cả
         </Link>
       </CardHeader>
       <CardContent>
@@ -68,7 +68,7 @@ export function PendingProducts({ products = [] }: { products?: any[] }) {
               </div>
             </div>
           ))}
-          {!products.length && <p className="text-sm text-muted-foreground">Khong co san pham cho duyet.</p>}
+          {!products.length && <p className="text-sm text-muted-foreground">Không có sản phẩm chờ duyệt.</p>}
         </div>
       </CardContent>
     </Card>

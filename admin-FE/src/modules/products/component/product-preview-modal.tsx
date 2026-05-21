@@ -17,14 +17,14 @@ export function ProductPreviewModal({ open, onClose, product }: any) {
 
         <div className="space-y-4">
           <div>
-            <p><b>Shop:</b> {product.shop?.name}</p>
-            <p><b>Danh muc:</b> {product.category?.name}</p>
-            <p><b>Gia:</b> {product.price?.toLocaleString()} d</p>
-            <p><b>Trang thai:</b> {mapStatus(product.status)}</p>
+            <p><b>Cửa hàng:</b> {product.shop?.name}</p>
+            <p><b>Danh mục:</b> {product.category?.name}</p>
+            <p><b>Giá:</b> {product.price?.toLocaleString()} đ</p>
+            <p><b>Trạng thái:</b> {mapStatus(product.status)}</p>
           </div>
 
           <div>
-            <h3 className="mb-2 font-semibold">Anh san pham</h3>
+            <h3 className="mb-2 font-semibold">Ảnh sản phẩm</h3>
             <div className="flex flex-wrap gap-2">
               {product.images?.length ? (
                 product.images.map((image: any) => (
@@ -36,21 +36,21 @@ export function ProductPreviewModal({ open, onClose, product }: any) {
                   />
                 ))
               ) : (
-                <p className="text-sm text-gray-400">Khong co anh</p>
+                <p className="text-sm text-gray-400">Không có ảnh</p>
               )}
             </div>
           </div>
 
           <div>
-            <h3 className="mb-2 font-semibold">Variants</h3>
+            <h3 className="mb-2 font-semibold">Biến thể</h3>
             {product.variants?.length ? (
               <div className="space-y-3">
                 {product.variants.map((variant: any) => (
                   <div key={variant.id} className="rounded border p-3">
                     <p><b>{variant.name}</b></p>
                     <p>SKU: {variant.sku}</p>
-                    <p>Gia: {variant.price?.toLocaleString()} d</p>
-                    <p>Stock: {variant.stock}</p>
+                    <p>Giá: {variant.price?.toLocaleString()} đ</p>
+                    <p>Tồn kho: {variant.stock}</p>
                     <div className="mt-2 flex gap-2">
                       {variant.images?.length ? (
                         variant.images.map((image: any, index: number) => (
@@ -62,19 +62,19 @@ export function ProductPreviewModal({ open, onClose, product }: any) {
                           />
                         ))
                       ) : (
-                        <span className="text-sm text-gray-400">No image</span>
+                        <span className="text-sm text-gray-400">Không có ảnh</span>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-400">Khong co variant</p>
+              <p className="text-sm text-gray-400">Không có variant</p>
             )}
           </div>
 
           <div>
-            <h3 className="mb-2 font-semibold">Thuoc tinh</h3>
+            <h3 className="mb-2 font-semibold">Thuộc tính</h3>
             {product.attributes?.length ? (
               <ul className="list-disc pl-5">
                 {product.attributes.map((attribute: any) => (
@@ -84,12 +84,12 @@ export function ProductPreviewModal({ open, onClose, product }: any) {
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-gray-400">Khong co thuoc tinh</p>
+              <p className="text-sm text-gray-400">Không có thuộc tính</p>
             )}
           </div>
 
           <div>
-            <h3 className="mb-2 font-semibold">Tags</h3>
+            <h3 className="mb-2 font-semibold">Thẻ</h3>
             <div className="flex flex-wrap gap-2">
               {product.tags?.length ? (
                 product.tags.map((tag: any) => (
@@ -98,7 +98,7 @@ export function ProductPreviewModal({ open, onClose, product }: any) {
                   </span>
                 ))
               ) : (
-                <p className="text-sm text-gray-400">Khong co tag</p>
+                <p className="text-sm text-gray-400">Không có tag</p>
               )}
             </div>
           </div>
@@ -111,11 +111,11 @@ export function ProductPreviewModal({ open, onClose, product }: any) {
 function mapStatus(status: string) {
   switch (status) {
     case "DRAFT":
-      return "Cho duyet";
+      return "Cho duyệt";
     case "ACTIVE":
-      return "Da duyet";
+      return "Đã duyệt";
     case "REJECT":
-      return "Tu choi";
+      return "Từ chối";
     default:
       return status;
   }

@@ -23,8 +23,8 @@ async def update_banner(id: int, data: BannerUpdate, user=Depends(require_admin)
 
 
 @router.get("/banners", response_model=List[BannerOut])
-async def get_banners():
-    return await MarketingService.get_active_banners()
+async def get_banners(position: str | None = None):
+    return await MarketingService.get_active_banners(position=position)
 
 
 

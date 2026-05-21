@@ -31,7 +31,7 @@ export const RecommendationSection = ({
   return (
     <section className="rounded-3xl border border-orange-100 bg-white/90 p-5 shadow-sm md:p-6">
       <div className="mb-5 flex flex-col gap-1">
-        <p className="text-xs uppercase tracking-[0.2em] text-orange-500">Recommendation</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-orange-500">Gợi ý</p>
         <h2 className="text-2xl font-semibold text-slate-900">{title}</h2>
         <p className="text-sm text-slate-500">{subtitle}</p>
       </div>

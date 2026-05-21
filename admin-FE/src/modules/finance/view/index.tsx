@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { API_URL_FINANCE } from "@/constant/config";
 import { apiClient } from "@/lib/api";
+import { CommissionConfigCard } from "@/modules/finance/components/commission-config-card";
 
 type Payout = {
   id: number;
@@ -46,34 +47,36 @@ export default function AdminFinancePage() {
   return (
     <main className="flex-1 overflow-auto p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Duyet payout seller</h1>
-        <p className="text-muted-foreground">Duyet hoac tu choi cac yeu cau rut tien cua seller.</p>
+        <h1 className="text-2xl font-bold">Duyệt payout seller</h1>
+        <p className="text-muted-foreground">Duyệt hoặc từ chối các yêu cầu rút tiền của seller.</p>
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <Metric label="Cho duyet" value={pending.length} />
-        <Metric label="Da thanh toan" value={paid.length} />
-        <Metric label="Tong so" value={payouts.length} />
+        <Metric label="Cho duyệt" value={pending.length} />
+        <Metric label="Đã thanh toán" value={paid.length} />
+        <Metric label="Tổng số" value={payouts.length} />
       </div>
+
+      <CommissionConfigCard />
 
       <Card>
         <CardHeader>
-          <CardTitle>Danh sach payout</CardTitle>
-          <CardDescription>{isLoading ? "Dang tai..." : `${payouts.length} yeu cau`}</CardDescription>
+          <CardTitle>Danh sách payout</CardTitle>
+          <CardDescription>{isLoading ? "Đang tải..." : `${payouts.length} yêu cầu`}</CardDescription>
         </CardHeader>
         <CardContent>
           {isError ? (
-            <p className="text-sm text-destructive">Khong tai duoc payout.</p>
+            <p className="text-sm text-destructive">Không tải được payout.</p>
           ) : (
             <div className="overflow-hidden rounded-lg border">
               <table className="w-full text-sm">
                 <thead className="bg-muted">
                   <tr>
-                    <th className="px-4 py-3 text-left">Ma</th>
-                    <th className="px-4 py-3 text-left">Shop</th>
-                    <th className="px-4 py-3 text-right">So tien</th>
-                    <th className="px-4 py-3 text-center">Trang thai</th>
-                    <th className="px-4 py-3 text-right">Thao tac</th>
+                    <th className="px-4 py-3 text-left">Mã</th>
+                    <th className="px-4 py-3 text-left">Cửa hàng</th>
+                    <th className="px-4 py-3 text-right">Số tiền</th>
+                    <th className="px-4 py-3 text-center">Trạng thái</th>
+                    <th className="px-4 py-3 text-right">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -93,7 +96,7 @@ export default function AdminFinancePage() {
                             onClick={() => updatePayout.mutate({ id: payout.id, status: "PAID" })}
                           >
                             <CheckCircle className="h-4 w-4" />
-                            Approve
+                            Duyệt
                           </Button>
                           <Button
                             size="sm"
@@ -102,7 +105,7 @@ export default function AdminFinancePage() {
                             onClick={() => updatePayout.mutate({ id: payout.id, status: "FAILED" })}
                           >
                             <XCircle className="h-4 w-4" />
-                            Reject
+                            Từ chối
                           </Button>
                         </div>
                       </td>
@@ -111,7 +114,7 @@ export default function AdminFinancePage() {
                   {!payouts.length && (
                     <tr>
                       <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                        Chua co yeu cau payout.
+                        Chưa có yêu cầu payout.
                       </td>
                     </tr>
                   )}

@@ -1,10 +1,10 @@
 import type { WizardStep } from "../types/addproduct";
 
 export const STEPS: Array<{ id: WizardStep; label: string; description: string }> = [
-  { id: "media", label: "1. Hinh anh va ten", description: "Anh, ten san pham, nganh hang" },
-  { id: "detail", label: "2. Thong tin chi tiet", description: "Thuoc tinh va mo ta" },
-  { id: "selling", label: "3. Thong tin ban hang", description: "Phan loai, gia, kho" },
-  { id: "shipping", label: "4. Van chuyen", description: "Thong tin tam thoi" },
+  { id: "media", label: "1. Hình ảnh và tên", description: "Ảnh, tên sản phẩm, ngành hàng" },
+  { id: "detail", label: "2. Thông tin chi tiết", description: "Thuộc tính và mô tả" },
+  { id: "selling", label: "3. Thông tin bán hàng", description: "Phân loại, giá, kho" },
+  { id: "shipping", label: "4. Vận chuyển", description: "Thông tin tạm thời" },
 ];
 
 export function slugify(value: string) {

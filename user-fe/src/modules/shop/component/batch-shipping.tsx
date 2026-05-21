@@ -12,7 +12,7 @@ export function BatchShipping() {
 
       <Tabs defaultValue="batch">
         <TabsList className="w-full border-b border-border grid grid-cols-2 gap-0 bg-transparent">
-          <TabsTrigger value="batch" className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:bg-transparent">Chộ giao hàng</TabsTrigger>
+          <TabsTrigger value="batch" className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:bg-transparent">Chờ giao hàng</TabsTrigger>
           <TabsTrigger value="tao-phieu" className="rounded-none border-b-2 border-transparent data-[state=active]:border-b-primary data-[state=active]:bg-transparent">Tạo Phiếu</TabsTrigger>
         </TabsList>
 
@@ -20,11 +20,11 @@ export function BatchShipping() {
           {/* Shipping Status Card */}
           <Card className="p-6 border border-border">
             <h3 className="font-bold text-foreground mb-4">Chuẩn bị đơn hàng loạt</h3>
-            <p className="text-sm text-muted-foreground mb-4">0 parcels selected</p>
+            <p className="text-sm text-muted-foreground mb-4">0 kiện hàng được chọn</p>
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-foreground">Pickup</label>
+                <label className="text-sm font-medium text-foreground">Lấy hàng</label>
                 <p className="text-muted-foreground mt-2">Địa chỉ lấy hàng</p>
                 <p className="text-sm mb-2">Đào Anh Quân | 84988439303</p>
                 <p className="text-sm text-muted-foreground">Số Nhà 85, Đường Phạm Ngũ Lão, Từ Mỹ, Phương Phùng Chi Kiến, Thị Xã Mỹ Hào, Hưng Yên, Việt Nam</p>
@@ -34,13 +34,13 @@ export function BatchShipping() {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-foreground">Ngài lấy hàng</label>
+                <label className="text-sm font-medium text-foreground">Ngày lấy hàng</label>
                 <Select>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select" />
+                    <SelectValue placeholder="Chọn" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="option1">Option 1</SelectItem>
+                    <SelectItem value="option1">Tùy chọn 1</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

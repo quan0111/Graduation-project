@@ -19,7 +19,7 @@ export default function WishlistPage() {
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-orange-100">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-600">Wishlist</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-600">Yêu thích</p>
               <h1 className="mt-2 text-3xl font-bold text-slate-950">Sản phẩm yêu thích</h1>
               <p className="mt-2 text-sm text-slate-500">
                 Lưu các sản phẩm cần theo dõi để quay lại mua nhanh hơn.

@@ -1,26 +1,20 @@
-from fastapi import HTTPException
+from datetime import datetime
 from typing import Optional
+
+from fastapi import HTTPException
+
 from src.core.database import prisma
 
 
 class MarketingService:
-
     @staticmethod
     async def create_banner(user_id: int, data):
-        """
-        Tạo banner mới.
-        Prisma Banner schema có: title, subtitle, imageUrl, mobileImageUrl,
-        redirectUrl, buttonText, position, status, priority, startAt, endAt
-        KHÔNG có: link, isActive, shop, category relation
-        """
         payload = {
             "title": data.title,
             "imageUrl": data.imageUrl,
             "status": data.status if hasattr(data, "status") else "ACTIVE",
             "position": data.position if hasattr(data, "position") else "HOME_TOP",
-            "createdBy": {
-                "connect": {"id": user_id}
-            },
+            "createdBy": {"connect": {"id": user_id}},
         }
 
         if hasattr(data, "subtitle") and data.subtitle:
@@ -42,59 +36,64 @@ class MarketingService:
 
     @staticmethod
     async def update_banner(banner_id: int, data):
-        banner = await prisma.banner.find_unique(
-            where={"id": banner_id}
-        )
+        banner = await prisma.banner.find_unique(where={"id": banner_id})
         if not banner:
             raise HTTPException(404, "Banner not found")
 
-        # Chỉ update các field hợp lệ trong Prisma schema
         allowed_fields = {
-            "title", "subtitle", "imageUrl", "mobileImageUrl",
-            "redirectUrl", "buttonText", "position", "status",
-            "priority", "startAt", "endAt",
+            "title",
+            "subtitle",
+            "imageUrl",
+            "mobileImageUrl",
+            "redirectUrl",
+            "buttonText",
+            "position",
+            "status",
+            "priority",
+            "startAt",
+            "endAt",
         }
         update_data = {
-            k: v for k, v in data.dict(exclude_unset=True).items()
-            if k in allowed_fields
+            key: value
+            for key, value in data.model_dump(exclude_unset=True).items()
+            if key in allowed_fields
         }
 
-        return await prisma.banner.update(
-            where={"id": banner_id},
-            data=update_data
-        )
+        return await prisma.banner.update(where={"id": banner_id}, data=update_data)
 
     @staticmethod
-    async def get_active_banners():
-        """Lấy tất cả banner đang ACTIVE và chưa hết hạn"""
-        from datetime import datetime
+    async def get_active_banners(position: str | None = None):
         now = datetime.utcnow()
+        where = {
+            "status": "ACTIVE",
+            "deletedAt": None,
+            "AND": [
+                {"OR": [{"startAt": None}, {"startAt": {"lte": now}}]},
+                {"OR": [{"endAt": None}, {"endAt": {"gte": now}}]},
+            ],
+        }
+        if position:
+            where["position"] = position
 
         return await prisma.banner.find_many(
-            where={
-                "status": "ACTIVE",
-                "deletedAt": None,
-                "OR": [
-                    {"endAt": None},
-                    {"endAt": {"gte": now}},
-                ],
-            },
+            where=where,
             include={"createdBy": True, "trackings": False},
             order={"priority": "desc"},
         )
 
     @staticmethod
     async def track_banner_action(user_id: Optional[int], banner_id: int, action: str = "CLICK"):
-        """Track click hoặc view trên banner"""
-        banner = await prisma.banner.find_unique(
-            where={"id": banner_id}
-        )
+        banner = await prisma.banner.find_unique(where={"id": banner_id})
         if not banner:
             raise HTTPException(404, "Banner not found")
 
+        normalized_action = action.upper()
+        if normalized_action not in {"CLICK", "VIEW"}:
+            raise HTTPException(400, "Invalid banner action")
+
         payload: dict = {
             "banner": {"connect": {"id": banner_id}},
-            "action": action,
+            "action": normalized_action,
         }
         if user_id:
             payload["user"] = {"connect": {"id": user_id}}
@@ -114,6 +113,7 @@ class MarketingService:
             "bannerId": banner_id,
             "clicks": clicks,
             "views": views,
+            "ctr": round(clicks / views, 4) if views else 0,
         }
 
     @staticmethod
@@ -126,7 +126,6 @@ class MarketingService:
 
     @staticmethod
     async def delete_banner(banner_id: int):
-        from datetime import datetime
         banner = await prisma.banner.find_unique(where={"id": banner_id})
         if not banner:
             raise HTTPException(404, "Banner not found")

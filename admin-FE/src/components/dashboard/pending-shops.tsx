@@ -12,13 +12,13 @@ export function PendingShops({ shops = [] }: { shops?: any[] }) {
     <Card className="bg-card border-border">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle className="text-foreground">Shop cho duyet</CardTitle>
+          <CardTitle className="text-foreground">Shop cho duyệt</CardTitle>
           <CardDescription className="text-muted-foreground">
-            {shops.length} shop dang cho phe duyet
+            {shops.length} shop đang chờ phê duyệt
           </CardDescription>
         </div>
         <Link to="/seller-applications" className="rounded-md border px-3 py-1.5 text-sm text-foreground">
-          Xem tat ca
+          Xem tất cả
         </Link>
       </CardHeader>
       <CardContent>
@@ -58,7 +58,7 @@ export function PendingShops({ shops = [] }: { shops?: any[] }) {
               </div>
             </div>
           ))}
-          {!shops.length && <p className="text-sm text-muted-foreground">Khong co shop cho duyet.</p>}
+          {!shops.length && <p className="text-sm text-muted-foreground">Không có shop chờ duyệt.</p>}
         </div>
       </CardContent>
     </Card>

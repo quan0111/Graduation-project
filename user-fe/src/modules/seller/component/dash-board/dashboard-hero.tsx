@@ -15,10 +15,10 @@ export function SellerDashboardHero({ shop, user }: SellerDashboardHeroProps) {
   return (
     <div className="flex flex-col gap-4 rounded-3xl bg-gradient-to-r from-[#ee4d2d] via-[#f05d31] to-[#ff8a3d] p-6 text-white shadow-sm lg:flex-row lg:items-center lg:justify-between">
       <div>
-        <Badge className="mb-4 bg-white/15 text-white hover:bg-white/20">Seller dashboard</Badge>
+        <Badge className="mb-4 bg-white/15 text-white hover:bg-white/20">Dashboard người bán</Badge>
         <h1 className="text-3xl font-bold tracking-tight md:text-4xl">{shop.name}</h1>
         <p className="mt-2 max-w-2xl text-sm text-white/85">
-          Theo doi don hang, doanh thu va ton kho cua shop trong mot man hinh van hanh tap trung.
+          Theo dõi đơn hàng, doanh thu và tồn kho của shop trong một màn hình vận hành tập trung.
         </p>
       </div>
 
@@ -29,20 +29,20 @@ export function SellerDashboardHero({ shop, user }: SellerDashboardHeroProps) {
           </div>
           <div>
             <p className="text-sm font-semibold">{user?.fullName || user?.email || "Seller"}</p>
-            <p className="text-xs text-white/80">{shop.productCount} san pham trong shop</p>
+            <p className="text-xs text-white/80">{shop.productCount} sản phẩm trong shop</p>
           </div>
         </div>
         <p className="text-sm leading-6 text-white/85">
-          {shop.description || "Cap nhat san pham, theo doi don hang va xu ly van hanh tai day."}
+          {shop.description || "Cập nhật sản phẩm, theo dõi đơn hàng và xử lý vận hành tại đây."}
         </p>
         <div className="flex flex-wrap gap-3">
           <Link to="/seller/products/new">
             <Button variant="outline" className="border-white/30 bg-white/10 text-white hover:bg-white/15">
-              Them san pham
+              Thêm sản phẩm
             </Button>
           </Link>
           <Button variant="outline" className="border-white/30 bg-white/10 text-white hover:bg-white/15">
-            Xem thong tin shop
+            Xem thông tin shop
           </Button>
         </div>
       </div>

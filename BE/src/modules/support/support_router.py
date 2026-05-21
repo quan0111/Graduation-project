@@ -1,8 +1,10 @@
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
+from src.core.database import prisma
 from src.core.dependencies import get_current_user, require_admin, require_seller
+from src.core.security import decode_token, verify_token_type
 from src.modules.support.support_schema import (
     SupportMessageCreate,
     SupportMessageOut,
@@ -10,9 +12,35 @@ from src.modules.support.support_schema import (
     SupportTicketOut,
     SupportTicketUpdate,
 )
+from src.modules.support.support_realtime import support_realtime_manager
 from src.modules.support.support_service import SupportService
 
 router = APIRouter(prefix="/support", tags=["Support"])
+
+
+@router.websocket("/ws")
+async def support_websocket(websocket: WebSocket, token: str):
+    payload = decode_token(token)
+    if not verify_token_type(payload, "access"):
+        await websocket.close(code=1008)
+        return
+
+    user_id = payload.get("sub")
+    if not user_id:
+        await websocket.close(code=1008)
+        return
+
+    user = await prisma.user.find_first(where={"id": int(user_id), "isActive": True, "deletedAt": None})
+    if not user:
+        await websocket.close(code=1008)
+        return
+
+    await support_realtime_manager.connect(user.id, websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        support_realtime_manager.disconnect(user.id, websocket)
 
 
 @router.post("/tickets", response_model=SupportTicketOut)

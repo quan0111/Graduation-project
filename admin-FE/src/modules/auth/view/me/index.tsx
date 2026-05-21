@@ -92,9 +92,9 @@ export default function AdminProfilePage() {
     try {
       const result = await uploadImage({ file, folder: "datn/admins" });
       setProfileForm((current) => ({ ...current, avatarUrl: result.url }));
-      toast.success("Da tai avatar admin len Cloudinary");
+      toast.success("Đã tải avatar admin lên Cloudinary");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Khong tai duoc avatar";
+      const message = error instanceof Error ? error.message : "Không tải được avatar";
       toast.error(message);
     }
   };
@@ -107,9 +107,9 @@ export default function AdminProfilePage() {
     try {
       const result = await uploadImage({ file, folder: "datn/admins" });
       setCreateAdminForm((current) => ({ ...current, avatarUrl: result.url }));
-      toast.success("Da tai avatar admin moi");
+      toast.success("Đã tải avatar admin mới");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Khong tai duoc avatar";
+      const message = error instanceof Error ? error.message : "Không tải được avatar";
       toast.error(message);
     }
   };
@@ -117,21 +117,21 @@ export default function AdminProfilePage() {
   const handleSaveProfile = async () => {
     try {
       await updateProfile(profileForm);
-      toast.success("Cap nhat profile admin thanh cong");
+      toast.success("Cập nhật profile admin thành công");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Khong cap nhat duoc profile";
+      const message = error instanceof Error ? error.message : "Không cập nhật được profile";
       toast.error(message);
     }
   };
 
   const handleChangePassword = async () => {
     if (!passwordForm.currentPassword || !passwordForm.newPassword) {
-      toast.error("Nhap day du mat khau hien tai va mat khau moi");
+      toast.error("Nhập đầy đủ mật khẩu hiện tại và mật khẩu mới");
       return;
     }
 
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast.error("Mat khau xac nhan khong khop");
+      toast.error("Mật khẩu xác nhận không khớp");
       return;
     }
 
@@ -145,16 +145,16 @@ export default function AdminProfilePage() {
         newPassword: "",
         confirmPassword: "",
       });
-      toast.success("Doi mat khau admin thanh cong");
+      toast.success("Đổi mật khẩu admin thành công");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Khong doi duoc mat khau";
+      const message = error instanceof Error ? error.message : "Không đổi được mật khẩu";
       toast.error(message);
     }
   };
 
   const handleCreateAdmin = async () => {
     if (!createAdminForm.email || !createAdminForm.password) {
-      toast.error("Email va mat khau la bat buoc");
+      toast.error("Email và mật khẩu là bắt buộc");
       return;
     }
 
@@ -167,9 +167,9 @@ export default function AdminProfilePage() {
         password: "",
         avatarUrl: "",
       });
-      toast.success("Da tao tai khoan admin moi");
+      toast.success("Đã tạo tài khoản admin mới");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Khong tao duoc admin moi";
+      const message = error instanceof Error ? error.message : "Không tạo được admin mới";
       toast.error(message);
     }
   };
@@ -196,21 +196,21 @@ export default function AdminProfilePage() {
             <div className="space-y-2">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white/80">
                 <Sparkles className="size-3.5" />
-                control room
+                trung tâm quản trị
               </div>
               <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                {profileForm.fullName || "Admin profile"}
+                {profileForm.fullName || "Hồ sơ admin"}
               </h1>
               <p className="max-w-2xl text-sm leading-6 text-white/80">
-                Quan ly thong tin admin, bao mat dang nhap va tao them tai khoan admin moi ngay trong bang dieu khien.
+                Quản lý thông tin admin, bảo mật đăng nhập và tạo thêm tài khoản admin mới ngay trong bảng điều khiển.
               </p>
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <HeroMetric label="Role" value={user?.role || "ADMIN"} />
-            <HeroMetric label="Status" value={user?.isActive ? "ACTIVE" : "LOCKED"} />
-            <HeroMetric label="Admins" value={`${adminAccounts.length} accounts`} />
+            <HeroMetric label="Vai trò" value={user?.role || "ADMIN"} />
+            <HeroMetric label="Trạng thái" value={user?.isActive ? "ACTIVE" : "LOCKED"} />
+            <HeroMetric label="Admin" value={`${adminAccounts.length} tài khoản`} />
           </div>
         </div>
       </section>
@@ -220,12 +220,12 @@ export default function AdminProfilePage() {
           <Card className="rounded-[28px] border-0 bg-card shadow-sm ring-1 ring-border/70">
             <CardHeader>
               <div>
-                <CardTitle>Thong tin admin</CardTitle>
-                <CardDescription>Cap nhat ten, email, so dien thoai va avatar cua tai khoan quan tri.</CardDescription>
+                <CardTitle>Thông tin admin</CardTitle>
+                <CardDescription>Cập nhật tên, email, số điện thoại và avatar của tài khoản quản trị.</CardDescription>
               </div>
               <CardAction>
                 <FilePicker
-                  label={isUploadingImage ? "Dang tai..." : "Sua avatar"}
+                  label={isUploadingImage ? "Đang tải..." : "Sửa avatar"}
                   disabled={isUploadingImage}
                   onPick={handleProfileAvatar}
                 />
@@ -236,16 +236,16 @@ export default function AdminProfilePage() {
                 <div className="space-y-4">
                   <AdminAvatar imageUrl={profileForm.avatarUrl} label={profileForm.fullName || profileForm.email || "Admin"} />
                   <p className="text-center text-xs leading-5 text-muted-foreground">
-                    Nen dung avatar ro rang de de phan biet khi xu ly bao cao va duyet seller.
+                    Nên dùng avatar rõ ràng để dễ phân biệt khi xử lý báo cáo và duyệt seller.
                   </p>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Ho ten">
+                  <Field label="Họ tên">
                     <Input
                       value={profileForm.fullName}
                       onChange={(event) => setProfileForm((current) => ({ ...current, fullName: event.target.value }))}
-                      placeholder="Admin name"
+                      placeholder="Tên admin"
                     />
                   </Field>
                   <Field label="Email">
@@ -255,7 +255,7 @@ export default function AdminProfilePage() {
                       placeholder="admin@example.com"
                     />
                   </Field>
-                  <Field label="So dien thoai">
+                  <Field label="Số điện thoại">
                     <Input
                       value={profileForm.phone}
                       onChange={(event) => setProfileForm((current) => ({ ...current, phone: event.target.value }))}
@@ -275,46 +275,46 @@ export default function AdminProfilePage() {
             <div className="px-4 pb-4">
               <Button disabled={isSavingProfile || isUploadingImage} onClick={handleSaveProfile}>
                 <Save className="size-4" />
-                Luu profile
+                Lưu hồ sơ
               </Button>
             </div>
           </Card>
 
           <Card className="rounded-[28px] border-0 bg-card shadow-sm ring-1 ring-border/70">
             <CardHeader>
-              <CardTitle>Mat khau va bao mat</CardTitle>
-              <CardDescription>Doi mat khau cho admin hien tai.</CardDescription>
+              <CardTitle>Mật khẩu và bảo mật</CardTitle>
+              <CardDescription>Đổi mật khẩu cho admin hiện tại.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-3">
-              <Field label="Mat khau hien tai">
+              <Field label="Mật khẩu hiện tại">
                 <Input
                   type="password"
                   value={passwordForm.currentPassword}
                   onChange={(event) => setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))}
-                  placeholder="Current password"
+                  placeholder="Mật khẩu hiện tại"
                 />
               </Field>
-              <Field label="Mat khau moi">
+              <Field label="Mật khẩu mới">
                 <Input
                   type="password"
                   value={passwordForm.newPassword}
                   onChange={(event) => setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))}
-                  placeholder="At least 6 characters"
+                  placeholder="Tối thiểu 6 ký tự"
                 />
               </Field>
-              <Field label="Xac nhan mat khau">
+              <Field label="Xác nhận mật khẩu">
                 <Input
                   type="password"
                   value={passwordForm.confirmPassword}
                   onChange={(event) => setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))}
-                  placeholder="Repeat new password"
+                  placeholder="Nhập lại mật khẩu mới"
                 />
               </Field>
             </CardContent>
             <div className="px-4 pb-4">
               <Button disabled={isChangingPassword} onClick={handleChangePassword}>
                 <Shield className="size-4" />
-                Doi mat khau
+                Đổi mật khẩu
               </Button>
             </div>
           </Card>
@@ -324,12 +324,12 @@ export default function AdminProfilePage() {
           <Card className="rounded-[28px] border-0 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] shadow-sm ring-1 ring-sky-100">
             <CardHeader>
               <div>
-                <CardTitle>Tao admin moi</CardTitle>
-                <CardDescription>Admin hien tai co the tao them tai khoan admin tu backend.</CardDescription>
+                <CardTitle>Tạo admin mới</CardTitle>
+                <CardDescription>Admin hiện tại có thể tạo thêm tài khoản admin từ backend.</CardDescription>
               </div>
               <CardAction>
                 <FilePicker
-                  label={isUploadingImage ? "Dang tai..." : "Avatar"}
+                  label={isUploadingImage ? "Đang tải..." : "Avatar"}
                   disabled={isUploadingImage}
                   onPick={handleNewAdminAvatar}
                 />
@@ -339,16 +339,16 @@ export default function AdminProfilePage() {
               <div className="flex items-center gap-4 rounded-3xl bg-sky-50 p-4">
                 <AdminAvatar imageUrl={createAdminForm.avatarUrl} label={createAdminForm.fullName || createAdminForm.email || "New"} />
                 <div>
-                  <p className="font-medium text-slate-900">{createAdminForm.fullName || "Admin moi"}</p>
-                  <p className="text-sm text-slate-500">{createAdminForm.email || "Chua co email"}</p>
+                  <p className="font-medium text-slate-900">{createAdminForm.fullName || "Admin mới"}</p>
+                  <p className="text-sm text-slate-500">{createAdminForm.email || "Chưa có email"}</p>
                 </div>
               </div>
 
-              <Field label="Ho ten">
+              <Field label="Họ tên">
                 <Input
                   value={createAdminForm.fullName}
                   onChange={(event) => setCreateAdminForm((current) => ({ ...current, fullName: event.target.value }))}
-                  placeholder="Tran Van B"
+                  placeholder="Trần Văn B"
                 />
               </Field>
               <Field label="Email">
@@ -358,19 +358,19 @@ export default function AdminProfilePage() {
                   placeholder="new-admin@example.com"
                 />
               </Field>
-              <Field label="So dien thoai">
+              <Field label="Số điện thoại">
                 <Input
                   value={createAdminForm.phone}
                   onChange={(event) => setCreateAdminForm((current) => ({ ...current, phone: event.target.value }))}
                   placeholder="09xxxxxxxx"
                 />
               </Field>
-              <Field label="Mat khau">
+              <Field label="Mật khẩu">
                 <Input
                   type="password"
                   value={createAdminForm.password}
                   onChange={(event) => setCreateAdminForm((current) => ({ ...current, password: event.target.value }))}
-                  placeholder="Nhap mat khau kho"
+                  placeholder="Nhập mật khẩu mạnh"
                 />
               </Field>
               <Field label="Avatar URL">
@@ -384,15 +384,15 @@ export default function AdminProfilePage() {
             <div className="px-4 pb-4">
               <Button disabled={isCreatingAdmin || isUploadingImage} onClick={handleCreateAdmin}>
                 <UserPlus className="size-4" />
-                Tao tai khoan admin
+                Tạo tài khoản admin
               </Button>
             </div>
           </Card>
 
           <Card className="rounded-[28px] border-0 bg-card shadow-sm ring-1 ring-border/70">
             <CardHeader>
-              <CardTitle>Danh sach admin</CardTitle>
-              <CardDescription>Theo doi nhung tai khoan admin dang hoat dong trong he thong.</CardDescription>
+              <CardTitle>Danh sách admin</CardTitle>
+              <CardDescription>Theo dõi những tài khoản admin đang hoạt động trong hệ thống.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {adminAccounts.map((account) => (
@@ -422,13 +422,13 @@ export default function AdminProfilePage() {
                   <Crown className="size-5" />
                 </div>
                 <div>
-                  <p className="font-semibold">Phien quan tri hien tai</p>
-                  <p className="text-sm text-white/60">Dang nhap bang token admin + refresh cookie rieng.</p>
+                  <p className="font-semibold">Phiên quản trị hiện tại</p>
+                  <p className="text-sm text-white/60">Đăng nhập bằng token admin + refresh cookie riêng.</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 rounded-2xl bg-white/6 p-4 text-sm text-white/75">
                 <Users className="size-4" />
-                {adminAccounts.length} admin dang ton tai trong he thong
+                {adminAccounts.length} admin đang tồn tại trong hệ thống
               </div>
               <Button
                 variant="outline"
@@ -437,7 +437,7 @@ export default function AdminProfilePage() {
                 onClick={() => logout(undefined)}
               >
                 <LogOut className="size-4" />
-                Dang xuat admin
+                Đăng xuất admin
               </Button>
             </CardContent>
           </Card>

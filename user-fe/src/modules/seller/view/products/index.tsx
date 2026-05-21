@@ -347,7 +347,7 @@ function ProductDetailModal({
 
             {product.tags?.length ? (
               <section>
-                <p className="mb-2 text-sm font-semibold text-slate-900">Tag</p>
+                <p className="mb-2 text-sm font-semibold text-slate-900">Thẻ</p>
                 <div className="flex flex-wrap gap-2">
                   {product.tags.map((tag) => (
                     <Badge key={tag.id} variant="secondary">

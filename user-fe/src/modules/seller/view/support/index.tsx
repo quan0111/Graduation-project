@@ -6,13 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SellerDashboardLayout } from "@/modules/seller/component/shop-layout";
-import { type SupportTicket, useAddSupportMessage, useSellerSupportTickets } from "@/modules/support/api/support";
+import { useAddSupportMessage, useSellerSupportTickets } from "@/modules/support/api/support";
+import { useSupportRealtime } from "@/modules/support/hooks/use-support-realtime";
 
 export default function SellerSupportPage() {
-  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [reply, setReply] = useState("");
   const { data: tickets = [], isLoading } = useSellerSupportTickets();
   const addMessage = useAddSupportMessage();
+  const selectedTicket = tickets.find((ticket) => ticket.id === selectedTicketId) ?? null;
+  useSupportRealtime();
 
   const sendReply = async () => {
     if (!selectedTicket || !reply.trim()) return;
@@ -25,7 +28,7 @@ export default function SellerSupportPage() {
     <SellerDashboardLayout>
       <section className="space-y-6">
         <div className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
-          <p className="text-sm uppercase tracking-[0.24em] text-[#ee4d2d]">Support Inbox</p>
+          <p className="text-sm uppercase tracking-[0.24em] text-[#ee4d2d]">Hộp thư hỗ trợ</p>
           <h1 className="mt-3 text-2xl font-bold text-slate-950">Tin nhắn hỗ trợ từ khách hàng</h1>
           <p className="mt-2 text-sm text-slate-500">Trao đổi theo ticket thật, gắn với đơn hàng/shop khi có dữ liệu.</p>
         </div>
@@ -39,7 +42,7 @@ export default function SellerSupportPage() {
               <button
                 key={ticket.id}
                 type="button"
-                onClick={() => setSelectedTicket(ticket)}
+                onClick={() => setSelectedTicketId(ticket.id)}
                 className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-100 p-4 text-left transition hover:border-orange-200 hover:bg-orange-50/50"
               >
                 <div>
@@ -60,7 +63,7 @@ export default function SellerSupportPage() {
                   <MessageSquare className="size-5 text-[#ee4d2d]" />
                   <h2 className="text-lg font-semibold text-slate-950">TK-{selectedTicket.id}: {selectedTicket.subject}</h2>
                 </div>
-                <button onClick={() => setSelectedTicket(null)} className="text-slate-400 hover:text-slate-700">
+                <button onClick={() => setSelectedTicketId(null)} className="text-slate-400 hover:text-slate-700">
                   <X className="size-5" />
                 </button>
               </div>

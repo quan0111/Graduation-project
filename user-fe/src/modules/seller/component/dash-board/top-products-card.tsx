@@ -38,20 +38,20 @@ export function SellerDashboardTopProductsCard({ products }: SellerDashboardTopP
         id: product.id,
         data: { status: nextStatus },
       });
-      toast.success(nextStatus === "ACTIVE" ? "Da mo ban san pham" : "Da tam an san pham");
+      toast.success(nextStatus === "ACTIVE" ? "Đã mở bán sản phẩm" : "Đã tạm ẩn sản phẩm");
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || "Khong the cap nhat trang thai san pham");
+      toast.error(error?.response?.data?.detail || "Không thể cập nhật trạng thái sản phẩm");
     }
   };
 
   const handleIncreaseStock = async (product: SellerDashboardTopProduct, quantity: number) => {
     if (!product.variantId) {
-      toast.error("San pham nay chua co bien the de cap nhat kho");
+      toast.error("Sản phẩm này chưa có biến thể để cập nhật kho");
       return;
     }
 
     if (!Number.isInteger(quantity) || quantity <= 0) {
-      toast.error("So luong tang kho khong hop le");
+      toast.error("Số lượng tăng kho không hợp lệ");
       return;
     }
 
@@ -61,10 +61,10 @@ export function SellerDashboardTopProductsCard({ products }: SellerDashboardTopP
         quantity,
         reason: `Seller tăng kho từ dashboard: ${product.name}`,
       });
-      toast.success(`Da tang kho +${quantity} cho ${product.name}`);
+      toast.success(`Đã tăng kho +${quantity} cho ${product.name}`);
       setStockTarget(null);
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || "Khong the cap nhat ton kho");
+      toast.error(error?.response?.data?.detail || "Không thể cập nhật tồn kho");
     }
   };
 
@@ -95,11 +95,11 @@ export function SellerDashboardTopProductsCard({ products }: SellerDashboardTopP
     <Card id="products" className="border-0 bg-white shadow-sm ring-1 ring-slate-200/70">
       <CardHeader className="flex-row items-center justify-between">
         <div>
-          <CardTitle className="text-xl font-bold text-slate-950">San pham ban chay</CardTitle>
-          <p className="text-sm text-slate-500">Xep hang theo doanh thu tu du lieu don hang</p>
+          <CardTitle className="text-xl font-bold text-slate-950">Sản phẩm bán chạy</CardTitle>
+          <p className="text-sm text-slate-500">Xếp hạng theo doanh thu từ dữ liệu đơn hàng</p>
         </div>
         <Button variant="ghost" size="sm" className="text-[#ee4d2d]">
-          Xem tat ca
+          Xem tất cả
         </Button>
       </CardHeader>
 
@@ -108,12 +108,12 @@ export function SellerDashboardTopProductsCard({ products }: SellerDashboardTopP
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-4 py-3 font-semibold">San pham</th>
-                <th className="px-4 py-3 font-semibold">Da ban</th>
-                <th className="px-4 py-3 font-semibold">Ton kho</th>
+                <th className="px-4 py-3 font-semibold">Sản phẩm</th>
+                <th className="px-4 py-3 font-semibold">Đã bán</th>
+                <th className="px-4 py-3 font-semibold">Tồn kho</th>
                 <th className="px-4 py-3 font-semibold">Doanh thu</th>
-                <th className="px-4 py-3 font-semibold">Trang thai</th>
-                <th className="px-4 py-3 font-semibold">Thao tac</th>
+                <th className="px-4 py-3 font-semibold">Trạng thái</th>
+                <th className="px-4 py-3 font-semibold">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -148,7 +148,7 @@ export function SellerDashboardTopProductsCard({ products }: SellerDashboardTopP
                           setStockQuantity("10");
                         }}
                       >
-                        Tang kho
+                        Tăng kho
                       </Button>
                       <Button
                         size="sm"
@@ -158,10 +158,10 @@ export function SellerDashboardTopProductsCard({ products }: SellerDashboardTopP
                           setNextPrice(String(product.price || ""));
                         }}
                       >
-                        Sua gia
+                        Sửa giá
                       </Button>
                       <Button size="sm" onClick={() => handleToggleStatus(product)}>
-                        {product.status === "ACTIVE" ? "Tam an" : "Mo ban"}
+                        {product.status === "ACTIVE" ? "Tạm ẩn" : "Mở bán"}
                       </Button>
                     </div>
                   </td>
@@ -174,12 +174,12 @@ export function SellerDashboardTopProductsCard({ products }: SellerDashboardTopP
 
       {stockTarget && (
         <NumberInputModal
-          title="Tang ton kho"
-          description={`Nhap so luong muon cong them cho ${stockTarget.name}.`}
-          label="So luong tang them"
+          title="Tăng tồn kho"
+          description={`Nhập số lượng muốn cộng thêm cho ${stockTarget.name}.`}
+          label="Số lượng tăng thêm"
           value={stockQuantity}
           onChange={setStockQuantity}
-          confirmLabel="Cap nhat kho"
+          confirmLabel="Cập nhật kho"
           isPending={updateStockMutation.isPending}
           onCancel={() => setStockTarget(null)}
           onConfirm={() => handleIncreaseStock(stockTarget, Number(stockQuantity))}
@@ -188,7 +188,7 @@ export function SellerDashboardTopProductsCard({ products }: SellerDashboardTopP
 
       {priceTarget && (
         <NumberInputModal
-          title="Sua gia san pham"
+          title="Sửa giá sản phẩm"
           description={`Nhập giá mới cho variant ${priceTarget.name}.`}
           label="Giá mới (VND)"
           value={nextPrice}
@@ -210,12 +210,12 @@ export function SellerDashboardInventoryCard({ inventory }: SellerDashboardInven
 
   const handleIncreaseStock = async (item: SellerDashboardInventoryItem, quantity: number) => {
     if (!item.variantId) {
-      toast.error("San pham nay chua co bien the de cap nhat kho");
+      toast.error("Sản phẩm này chưa có biến thể để cập nhật kho");
       return;
     }
 
     if (!Number.isInteger(quantity) || quantity <= 0) {
-      toast.error("So luong tang kho khong hop le");
+      toast.error("Số lượng tăng kho không hợp lệ");
       return;
     }
 
@@ -225,18 +225,18 @@ export function SellerDashboardInventoryCard({ inventory }: SellerDashboardInven
         quantity,
         reason: `Seller tăng kho từ dashboard: ${item.name}`,
       });
-      toast.success(`Da tang kho +${quantity} cho ${item.name}`);
+      toast.success(`Đã tăng kho +${quantity} cho ${item.name}`);
       setStockTarget(null);
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || "Khong the cap nhat ton kho");
+      toast.error(error?.response?.data?.detail || "Không thể cập nhật tồn kho");
     }
   };
 
   return (
     <Card id="shipping" className="border-0 bg-white shadow-sm ring-1 ring-slate-200/70">
       <CardHeader>
-        <CardTitle className="text-xl font-bold text-slate-950">Ton kho can chu y</CardTitle>
-        <p className="text-sm text-slate-500">Sap xep theo so luong ton thap nhat</p>
+        <CardTitle className="text-xl font-bold text-slate-950">Tồn kho cần chú ý</CardTitle>
+        <p className="text-sm text-slate-500">Sắp xếp theo số lượng tồn thấp nhất</p>
       </CardHeader>
       <CardContent className="space-y-4">
         {inventory.map((item) => (
@@ -244,14 +244,14 @@ export function SellerDashboardInventoryCard({ inventory }: SellerDashboardInven
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-semibold text-slate-900">{item.name}</p>
-                <p className="mt-1 text-xs text-slate-500">Cap nhat {formatShortDateTime(item.updatedAt)}</p>
+                <p className="mt-1 text-xs text-slate-500">Cập nhật {formatShortDateTime(item.updatedAt)}</p>
               </div>
               <Badge className={cn("bg-transparent", getProductStatusTone(item.status, item.stock))}>
                 {getProductStatusLabel(item.status, item.stock)}
               </Badge>
             </div>
             <div className="mt-4 flex items-center justify-between gap-3 text-sm">
-              <span className="text-slate-500">Ton kho: {item.stock}</span>
+              <span className="text-slate-500">Tồn kho: {item.stock}</span>
               <span className="font-semibold text-slate-900">{formatCurrency(item.price)}</span>
             </div>
             <Button
@@ -263,7 +263,7 @@ export function SellerDashboardInventoryCard({ inventory }: SellerDashboardInven
                 setStockQuantity("10");
               }}
             >
-              Tang kho
+              Tăng kho
             </Button>
           </div>
         ))}
@@ -271,12 +271,12 @@ export function SellerDashboardInventoryCard({ inventory }: SellerDashboardInven
 
       {stockTarget && (
         <NumberInputModal
-          title="Tang ton kho"
-          description={`Nhap so luong muon cong them cho ${stockTarget.name}.`}
-          label="So luong tang them"
+          title="Tăng tồn kho"
+          description={`Nhập số lượng muốn cộng thêm cho ${stockTarget.name}.`}
+          label="Số lượng tăng thêm"
           value={stockQuantity}
           onChange={setStockQuantity}
-          confirmLabel="Cap nhat kho"
+          confirmLabel="Cập nhật kho"
           isPending={updateStockMutation.isPending}
           onCancel={() => setStockTarget(null)}
           onConfirm={() => handleIncreaseStock(stockTarget, Number(stockQuantity))}
@@ -326,15 +326,15 @@ function NumberInputModal({
           min="1"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          placeholder="Nhap so"
+          placeholder="Nhập số"
         />
 
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="outline" onClick={onCancel} disabled={isPending}>
-            Huy
+            Hủy
           </Button>
           <Button onClick={onConfirm} disabled={isPending} className="bg-[#ee4d2d] hover:bg-[#d93f21]">
-            {isPending ? "Dang luu..." : confirmLabel}
+            {isPending ? "Đang lưu..." : confirmLabel}
           </Button>
         </div>
       </div>

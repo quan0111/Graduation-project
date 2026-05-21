@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, CheckCheck } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -33,6 +33,7 @@ const getWsUrl = () => {
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
+  const socketRef = useRef<WebSocket | null>(null);
   const queryClient = useQueryClient();
   const { data: notifications = [] } = useGetNotifications();
   const markAsRead = useMarkAsRead();
@@ -47,14 +48,59 @@ export function NotificationBell() {
     const token = getStorefrontAccessToken();
     if (!token) return;
 
-    const ws = new WebSocket(`${getWsUrl()}?token=${encodeURIComponent(token)}`);
-    ws.onmessage = () => {
+    let reconnectTimer: ReturnType<typeof window.setTimeout> | null = null;
+    let reconnectAttempts = 0;
+    let closedByClient = false;
+
+    const handleMessage = (event: MessageEvent) => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
       queryClient.invalidateQueries({ queryKey: ["seller", "dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["returns", "seller"] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
+
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload?.type === "SUPPORT_TICKET") {
+          queryClient.invalidateQueries({ queryKey: ["support", "me"] });
+          queryClient.invalidateQueries({ queryKey: ["support", "seller"] });
+          if (payload?.metadata?.ticketId) {
+            queryClient.invalidateQueries({ queryKey: ["support", "detail", payload.metadata.ticketId] });
+          }
+        }
+      } catch {
+        // Notification refresh above is enough for legacy payloads.
+      }
     };
-    return () => ws.close();
+
+    const scheduleReconnect = () => {
+      if (closedByClient) return;
+      const delay = Math.min(1000 * 2 ** reconnectAttempts, 10000);
+      reconnectAttempts += 1;
+      reconnectTimer = window.setTimeout(connect, delay);
+    };
+
+    const connect = () => {
+      const ws = new WebSocket(`${getWsUrl()}?token=${encodeURIComponent(token)}`);
+      socketRef.current = ws;
+
+      ws.onopen = () => {
+        reconnectAttempts = 0;
+      };
+      ws.onmessage = handleMessage;
+      ws.onerror = () => ws.close();
+      ws.onclose = () => scheduleReconnect();
+    };
+
+    connect();
+
+    return () => {
+      closedByClient = true;
+      if (reconnectTimer) {
+        window.clearTimeout(reconnectTimer);
+      }
+      socketRef.current?.close();
+      socketRef.current = null;
+    };
   }, [queryClient]);
 
   const handleOpenNotification = async (notification: Notification) => {

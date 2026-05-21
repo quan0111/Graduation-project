@@ -14,11 +14,11 @@ export default function DashboardPage() {
   const { data, isLoading, isError } = useDashboard();
 
   if (isLoading) {
-    return <div className="p-6">Loading dashboard...</div>;
+    return <div className="p-6">Đang tải dashboard...</div>;
   }
 
   if (isError || !data) {
-    return <div className="p-6 text-red-500">Error loading dashboard</div>;
+    return <div className="p-6 text-red-500">Không thể tải dashboard</div>;
   }
 
   return (
@@ -30,7 +30,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* 🔥 truyền data vào */}
+      {/* Truyền data vào */}
       <StatsCards stats={data} />
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">

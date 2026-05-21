@@ -2,38 +2,57 @@ from src.core.database import prisma
 from src.modules.notification.notification_schema import NotificationCreate
 from src.modules.notification.notification_manager import notification_manager
 from fastapi import HTTPException
+from prisma import Json
 
 
 class NotificationService:
+    @staticmethod
+    def _type_value(value):
+        return value.value if hasattr(value, "value") else value
+
+    @staticmethod
+    def _create_payload(data: NotificationCreate, user_id: int | None = None):
+        payload = {
+            "userId": user_id if user_id is not None else data.userId,
+            "title": data.title,
+            "content": data.content,
+            "type": NotificationService._type_value(data.type),
+            "isRead": False,
+        }
+        if data.metadata is not None:
+            payload["metadata"] = Json(data.metadata)
+        return payload
+
+    @staticmethod
+    def _event_payload(notification=None, data: NotificationCreate | None = None):
+        if notification is not None:
+            return {
+                "id": notification.id,
+                "title": notification.title,
+                "content": notification.content,
+                "type": NotificationService._type_value(notification.type),
+                "metadata": notification.metadata,
+                "createdAt": notification.createdAt.isoformat() if notification.createdAt else None,
+            }
+        if data is None:
+            return {}
+        return {
+            "title": data.title,
+            "content": data.content,
+            "type": NotificationService._type_value(data.type),
+            "metadata": data.metadata,
+        }
 
     @staticmethod
     async def create(data: NotificationCreate):
 
         notification = await prisma.notification.create(
-            data={
-                "title": data.title,
-                "content": data.content,
-                "type": data.type,
-                "metadata": data.metadata,
-                "isRead": False,
-
-                # 🔥 RELATION CHUẨN
-                "user": {
-                    "connect": {"id": data.userId}
-                }
-            }
+            data=NotificationService._create_payload(data)
         )
 
         await notification_manager.send_notification(
             data.userId,
-            {
-                "id": notification.id,
-                "title": notification.title,
-                "content": notification.content,
-                "type": notification.type,
-                "metadata": notification.metadata,
-                "createdAt": notification.createdAt.isoformat() if notification.createdAt else None,
-            }
+            NotificationService._event_payload(notification=notification),
         )
 
         return notification
@@ -43,14 +62,7 @@ class NotificationService:
         # 🔥 create nhiều record 1 lần
         await prisma.notification.create_many(
             data=[
-                {
-                    "title": data.title,
-                    "content": data.content,
-                    "type": data.type,
-                    "metadata": data.metadata,
-                    "isRead": False,
-                    "userId": user_id   # ⚠️ create_many KHÔNG dùng connect
-                }
+                NotificationService._create_payload(data, user_id=user_id)
                 for user_id in user_ids
             ]
         )
@@ -58,12 +70,7 @@ class NotificationService:
         for user_id in user_ids:
             await notification_manager.send_notification(
                 user_id,
-                {
-                    "title": data.title,
-                    "content": data.content,
-                    "type": data.type,
-                    "metadata": data.metadata,
-                }
+                NotificationService._event_payload(data=data),
             )
 
         return {"message": "Sent to multiple users"}

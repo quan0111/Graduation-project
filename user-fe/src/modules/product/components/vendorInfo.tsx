@@ -1,6 +1,7 @@
 // components/vendorInfo.tsx
 
 import { Button } from "@/components/ui/button";
+import { ChatWithShopButton } from "@/modules/support/components/chat-with-shop-button";
 import { Link } from "react-router-dom";
 
 export const VendorInfo = ({ product }: any) => {
@@ -35,12 +36,16 @@ export const VendorInfo = ({ product }: any) => {
 
             <div className="flex gap-3 mt-4">
 
-              <Button
+              <ChatWithShopButton
+                shopId={shop?.id}
+                shopName={shop?.name}
+                productName={product.name}
+                subject={`Hỏi về sản phẩm ${product.name}`}
                 variant="outline"
                 className="border-[#ee4d2d] text-[#ee4d2d]"
               >
                 Chat Ngay
-              </Button>
+              </ChatWithShopButton>
 
               <Link to={`/shop/${shop?.id}`}>
                 <Button variant="outline">

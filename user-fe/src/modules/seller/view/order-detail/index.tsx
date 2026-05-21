@@ -186,7 +186,7 @@ export default function SellerOrderDetailPage() {
         <div className="rounded-4xl bg-white p-6 shadow-sm ring-1 ring-slate-200/80">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.24em] text-slate-400">Shop Invoice</p>
+              <p className="text-sm uppercase tracking-[0.24em] text-slate-400">Hóa đơn shop</p>
               <h1 className="mt-3 text-3xl font-semibold text-slate-950">Đơn #{order.id}</h1>
               <p className="mt-2 text-sm text-slate-500">
                 Tạo lúc {formatDateTime(order.created_at)}. Chỉ hiển thị các sản phẩm thuộc shop của bạn.
