@@ -16,11 +16,11 @@ import { useRecommendations } from "@/modules/recommendation/api/get-recommendat
 import { useTrackProductBehavior } from "@/modules/recommendation/hooks/useTrackProductBehavior";
 
 const TEXT = {
-  under500: "D\u01b0\u1edbi 500k",
-  over3m: "Tr\u00ean 3M",
-  loading: "\u0110ang t\u1ea3i s\u1ea3n ph\u1ea9m...",
-  recommendationTitle: "B\u1ea1n c\u00f3 th\u1ec3 th\u00edch",
-  recommendationSubtitle: "Danh s\u00e1ch g\u1ee3i \u00fd \u0111\u01b0\u1ee3c c\u1eadp nh\u1eadt theo h\u00e0nh vi xem v\u00e0 th\u00eam gi\u1ecf h\u00e0ng g\u1ea7n \u0111\u00e2y.",
+  under500: "Dưới 500k",
+  over3m: "Trên 3M",
+  loading: "Đang tải sản phẩm...",
+  recommendationTitle: "Bạn có thể thích",
+  recommendationSubtitle: "Danh sách gợi ý được cập nhật theo hành vi xem và thêm giỏ hàng gần đây.",
 };
 
 export default function ProductPage() {

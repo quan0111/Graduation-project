@@ -2,7 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import {
-  useAddFlashSaleItem,
+  useAddFlashSaleItemsBulk,
   useAdminBanners,
   useCreateBanner,
   useCreateFlashSale,
@@ -17,23 +17,25 @@ import { FlashSaleListCard } from "../components/flash-sale-list-card";
 import type {
   BannerCreatePayload,
   FlashSale,
+  FlashSaleBulkItemCreatePayload,
   FlashSaleCreatePayload,
-  FlashSaleItemCreatePayload,
   FlashSaleStatus,
 } from "../types";
 import { getApiErrorMessage } from "../utils/error";
 
 const COPY = {
   title: "Marketing",
-  description: "Qu\u1ea3n l\u00fd banner v\u00e0 flash sale h\u1ec7 th\u1ed1ng.",
-  bannerCreated: "T\u1ea1o banner th\u00e0nh c\u00f4ng.",
-  bannerCreateFailed: "T\u1ea1o banner th\u1ea5t b\u1ea1i.",
-  flashSaleCreated: "T\u1ea1o flash sale th\u00e0nh c\u00f4ng.",
-  flashSaleCreateFailed: "T\u1ea1o flash sale th\u1ea5t b\u1ea1i.",
-  flashSaleUpdated: "C\u1eadp nh\u1eadt flash sale th\u00e0nh c\u00f4ng.",
-  flashSaleUpdateFailed: "C\u1eadp nh\u1eadt flash sale th\u1ea5t b\u1ea1i.",
-  flashSaleItemAdded: "Th\u00eam s\u1ea3n ph\u1ea9m flash sale th\u00e0nh c\u00f4ng.",
-  flashSaleItemAddFailed: "Th\u00eam s\u1ea3n ph\u1ea9m flash sale th\u1ea5t b\u1ea1i.",
+  description: "Quản lý banner và flash sale hệ thống.",
+  bannerCreated: "Tạo banner thành công.",
+  bannerCreateFailed: "Tạo banner thất bại.",
+  flashSaleCreated: "Tạo flash sale thành công.",
+  flashSaleCreateFailed: "Tạo flash sale thất bại.",
+  flashSaleUpdated: "Cập nhật flash sale thành công.",
+  flashSaleUpdateFailed: "Cập nhật flash sale thất bại.",
+  flashSaleItemAdded: "Thêm sản phẩm flash sale thành công.",
+  flashSaleItemAddedWithSkipped:
+    "Thêm flash sale thành công, một số sản phẩm bị bỏ qua.",
+  flashSaleItemAddFailed: "Thêm sản phẩm flash sale thất bại.",
 };
 
 export default function MarketingPage() {
@@ -46,7 +48,7 @@ export default function MarketingPage() {
   const createBannerMutation = useCreateBanner();
   const createFlashSaleMutation = useCreateFlashSale();
   const updateFlashSaleMutation = useUpdateFlashSale();
-  const addFlashSaleItemMutation = useAddFlashSaleItem();
+  const addFlashSaleItemsBulkMutation = useAddFlashSaleItemsBulk();
 
   const banners = bannersQuery.data ?? [];
   const flashSales = flashSalesQuery.data ?? [];
@@ -87,17 +89,21 @@ export default function MarketingPage() {
     }
   };
 
-  const handleAddFlashSaleItem = async (payload: FlashSaleItemCreatePayload) => {
+  const handleAddFlashSaleItems = async (payload: FlashSaleBulkItemCreatePayload) => {
     if (!selectedFlashSale) {
       return;
     }
 
     try {
-      await addFlashSaleItemMutation.mutateAsync({
+      const result = await addFlashSaleItemsBulkMutation.mutateAsync({
         saleId: selectedFlashSale.id,
         payload,
       });
-      toast.success(COPY.flashSaleItemAdded);
+      const message =
+        result.skipped > 0
+          ? `${COPY.flashSaleItemAddedWithSkipped} (${result.created} thêm, ${result.updated} cập nhật, ${result.skipped} bỏ qua)`
+          : `${COPY.flashSaleItemAdded} (${result.created} thêm, ${result.updated} cập nhật)`;
+      toast.success(message);
       setSelectedFlashSale(null);
     } catch (error) {
       toast.error(getApiErrorMessage(error, COPY.flashSaleItemAddFailed));
@@ -123,7 +129,7 @@ export default function MarketingPage() {
 
         <FlashSaleListCard
           flashSales={flashSales}
-          addingItem={addFlashSaleItemMutation.isPending}
+          addingItem={addFlashSaleItemsBulkMutation.isPending}
           isError={flashSalesQuery.isError}
           isLoading={flashSalesQuery.isLoading}
           pending={createFlashSaleMutation.isPending}
@@ -148,13 +154,13 @@ export default function MarketingPage() {
       />
       <FlashSaleItemDialog
         sale={selectedFlashSale}
-        pending={addFlashSaleItemMutation.isPending}
+        pending={addFlashSaleItemsBulkMutation.isPending}
         onOpenChange={(open) => {
           if (!open) {
             setSelectedFlashSale(null);
           }
         }}
-        onSubmit={handleAddFlashSaleItem}
+        onSubmit={handleAddFlashSaleItems}
       />
     </main>
   );

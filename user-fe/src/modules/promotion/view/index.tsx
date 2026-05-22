@@ -4,52 +4,14 @@ import { Link, useSearchParams } from "react-router-dom";
 import { EmptyState } from "@/modules/order/components/emptyState";
 import { useActiveBanners, useTrackBannerClick } from "@/modules/marketing/api/marketing";
 import { ProductCard } from "@/modules/product/components/productcard";
-import type { IActiveFlashSale, IProduct } from "@/modules/product/types";
-import { normalizeProduct } from "@/modules/product/utils/normalize-product";
-import { useActiveFlashSales, type ActiveFlashSale, type ActiveFlashSaleItem } from "@/modules/promotion/api/flash-sale";
+import { useActiveFlashSales } from "@/modules/promotion/api/flash-sale";
+import { getFlashSaleProducts } from "@/modules/promotion/utils/flash-sale";
 import { useWishlistActions } from "@/modules/wishlist/hooks/useWishlistActions";
 
 import { CTASection } from "../components/CTA";
 import { CategoryFilter } from "../components/categoryFilter";
 import { PromotionGrid } from "../components/grid";
 import { ALL_PROMOTIONS, usePromotionCoupons, usePromotions } from "../hooks/usePromotion";
-
-const buildFlashSalePayload = (sale: ActiveFlashSale, item: ActiveFlashSaleItem): IActiveFlashSale => ({
-  id: Number(item.id),
-  flashSaleId: Number(sale.id),
-  variantId: item.variantId ?? null,
-  salePrice: Number(item.salePrice),
-  stockLimit: item.stockLimit ?? null,
-  soldCount: Number(item.soldCount || 0),
-  purchaseLimit: item.purchaseLimit ?? null,
-  startsAt: sale.startsAt,
-  endsAt: sale.endsAt,
-});
-
-const getFlashSaleProducts = (flashSales: ActiveFlashSale[]): IProduct[] => {
-  const productMap = new Map<number, IProduct>();
-
-  flashSales.forEach((sale) => {
-    sale.items.forEach((item) => {
-      if (!item.product) {
-        return;
-      }
-
-      const product = normalizeProduct({
-        ...item.product,
-        activeFlashSale: buildFlashSalePayload(sale, item),
-      });
-      const existing = productMap.get(product.id);
-      const existingSalePrice = existing?.activeFlashSale?.salePrice ?? Number.POSITIVE_INFINITY;
-
-      if (!existing || Number(item.salePrice) < existingSalePrice) {
-        productMap.set(product.id, product);
-      }
-    });
-  });
-
-  return Array.from(productMap.values()).slice(0, 12);
-};
 
 export default function PromotionPage() {
   const [searchParams] = useSearchParams();
@@ -70,7 +32,7 @@ export default function PromotionPage() {
     [activeFlashSales, campaignId],
   );
   const selectedFlashSale = campaignId ? activeFlashSales.find((sale) => sale.id === campaignId) : null;
-  const flashSaleProducts = useMemo(() => getFlashSaleProducts(visibleFlashSales), [visibleFlashSales]);
+  const flashSaleProducts = useMemo(() => getFlashSaleProducts(visibleFlashSales, 12), [visibleFlashSales]);
   const flashSaleTitle = selectedFlashSale?.name || "Sản phẩm đang giảm giá";
 
   return (
@@ -136,7 +98,7 @@ export default function PromotionPage() {
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-600">Flash sale</p>
               <h2 className="mt-1 text-2xl font-bold text-slate-950">{flashSaleTitle}</h2>
             </div>
-            <Link to={campaignId ? "/flash-sale" : "/products"} className="text-sm font-semibold text-orange-600 hover:text-orange-700">
+            <Link to="/flash-sale" className="text-sm font-semibold text-orange-600 hover:text-orange-700">
               {campaignId ? "Xem mọi flash sale" : "Xem tất cả"}
             </Link>
           </div>

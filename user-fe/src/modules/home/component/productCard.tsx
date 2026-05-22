@@ -10,7 +10,6 @@ interface ProductCardProps {
 
 const TEXT = {
   new: "M\u1edbi",
-  currency: "\u0111",
   marketplace: "Marketplace",
 };
 
@@ -25,6 +24,8 @@ const getRating = (product: IProduct) => {
   const ratingTotal = product.reviews.reduce((sum, review) => sum + (review.rating ?? 0), 0);
   return ratingTotal / product.reviews.length;
 };
+
+const formatVnd = (value: number) => `${value.toLocaleString("vi-VN")}đ`;
 
 export const ProductCard = ({ product, onClick }: ProductCardProps) => {
   const rating = getRating(product);
@@ -58,9 +59,9 @@ export const ProductCard = ({ product, onClick }: ProductCardProps) => {
             <span>{rating > 0 ? rating.toFixed(1) : TEXT.new}</span>
           </div>
           <div className="text-right">
-            <span className="text-base font-bold text-orange-600">{displayPrice.toLocaleString("vi-VN")}{TEXT.currency}</span>
+            <span className="text-base font-bold text-orange-600">{formatVnd(displayPrice)}</span>
             {hasFlashSale ? (
-              <span className="ml-2 text-xs text-slate-400 line-through">{product.price.toLocaleString("vi-VN")}{TEXT.currency}</span>
+              <span className="ml-2 text-xs text-slate-400 line-through">{formatVnd(product.price)}</span>
             ) : null}
           </div>
         </div>

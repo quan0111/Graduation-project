@@ -5,7 +5,7 @@ interface CatalogSearchProps {
   onChange: (value: string) => void;
 }
 
-const PLACEHOLDER = "T\u00ecm theo t\u00ean s\u1ea3n ph\u1ea9m, th\u01b0\u01a1ng hi\u1ec7u...";
+const PLACEHOLDER = "Tìm theo tên sản phẩm, thương hiệu...";
 
 export const CatalogSearch = ({ value, onChange }: CatalogSearchProps) => {
   return (

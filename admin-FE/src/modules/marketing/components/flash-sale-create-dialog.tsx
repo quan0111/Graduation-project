@@ -30,25 +30,25 @@ type Props = {
 };
 
 const COPY = {
-  title: "T\u1ea1o flash sale",
-  description: "Thi\u1ebft l\u1eadp th\u1eddi gian, tr\u1ea1ng th\u00e1i v\u00e0 sau \u0111\u00f3 th\u00eam s\u1ea3n ph\u1ea9m v\u00e0o ch\u01b0\u01a1ng tr\u00ecnh.",
-  name: "T\u00ean ch\u01b0\u01a1ng tr\u00ecnh",
-  startsAt: "B\u1eaft \u0111\u1ea7u",
-  endsAt: "K\u1ebft th\u00fac",
-  status: "Tr\u1ea1ng th\u00e1i",
-  cancel: "H\u1ee7y",
-  submit: "T\u1ea1o flash sale",
-  submitting: "\u0110ang t\u1ea1o...",
-  required: "T\u00ean v\u00e0 th\u1eddi gian flash sale l\u00e0 b\u1eaft bu\u1ed9c.",
-  invalidDate: "Th\u1eddi gian k\u1ebft th\u00fac ph\u1ea3i sau th\u1eddi gian b\u1eaft \u0111\u1ea7u.",
-  failed: "T\u1ea1o flash sale th\u1ea5t b\u1ea1i.",
+  title: "Tạo flash sale",
+  description: "Thiết lập thời gian, trạng thái và sau đó thêm sản phẩm vào chương trình.",
+  name: "Tên chương trình",
+  startsAt: "Bắt đầu",
+  endsAt: "Kết thúc",
+  status: "Trạng thái",
+  cancel: "Hủy",
+  submit: "Tạo flash sale",
+  submitting: "Đang tạo...",
+  required: "Tên và thời gian flash sale là bắt buộc.",
+  invalidDate: "Thời gian kết thúc phải sau thời gian bắt đầu.",
+  failed: "Tạo flash sale thất bại.",
 };
 
 const STATUS_OPTIONS: Array<{ value: FlashSaleStatus; label: string }> = [
-  { value: "DRAFT", label: "B\u1ea3n nh\u00e1p" },
-  { value: "ACTIVE", label: "\u0110ang b\u1eadt" },
-  { value: "PAUSED", label: "T\u1ea1m d\u1eebng" },
-  { value: "ENDED", label: "\u0110\u00e3 k\u1ebft th\u00fac" },
+  { value: "DRAFT", label: "Bản nháp" },
+  { value: "ACTIVE", label: "Đang bật" },
+  { value: "PAUSED", label: "Tạm dừng" },
+  { value: "ENDED", label: "Đã kết thúc" },
 ];
 
 const selectClassName =

@@ -842,7 +842,7 @@ class ChatService:
 
     @staticmethod
     def _normalize(value: str) -> str:
-        value = value.lower().replace("\u0111", "d")
+        value = value.lower().replace("đ", "d")
         decomposed = unicodedata.normalize("NFD", value)
         return "".join(char for char in decomposed if unicodedata.category(char) != "Mn")
 

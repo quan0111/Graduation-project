@@ -7,10 +7,10 @@ import type { IProduct } from "@/modules/product/types";
 import { useAddToWishlist, useRemoveFromWishlist, useWishlist } from "@/modules/wishlist/api/wishlist";
 
 const TEXT = {
-  loginRequired: "B\u1ea1n c\u1ea7n \u0111\u0103ng nh\u1eadp \u0111\u1ec3 l\u01b0u s\u1ea3n ph\u1ea9m y\u00eau th\u00edch",
-  removed: "\u0110\u00e3 b\u1ecf kh\u1ecfi wishlist",
-  saved: "\u0110\u00e3 l\u01b0u v\u00e0o wishlist",
-  failed: "Kh\u00f4ng th\u1ec3 c\u1eadp nh\u1eadt wishlist",
+  loginRequired: "Bạn cần đăng nhập để lưu sản phẩm yêu thích",
+  removed: "Đã bỏ khỏi wishlist",
+  saved: "Đã lưu vào wishlist",
+  failed: "Không thể cập nhật wishlist",
 };
 
 export const useWishlistActions = () => {

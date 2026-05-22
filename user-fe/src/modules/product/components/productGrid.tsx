@@ -11,8 +11,8 @@ interface ProductGridProps {
 
 const PAGE_SIZE = 12;
 const TEXT = {
-  noProducts: "Kh\u00f4ng t\u00ecm th\u1ea5y s\u1ea3n ph\u1ea9m ph\u00f9 h\u1ee3p.",
-  hint: "H\u00e3y th\u1eed \u0111\u1ed5i t\u1eeb kh\u00f3a ho\u1eb7c b\u1ecf b\u1edbt b\u1ed9 l\u1ecdc.",
+  noProducts: "Không tìm thấy sản phẩm phù hợp.",
+  hint: "Hãy thử đổi từ khóa hoặc bỏ bớt bộ lọc.",
 };
 
 export const ProductGrid = memo(({ products }: ProductGridProps) => {

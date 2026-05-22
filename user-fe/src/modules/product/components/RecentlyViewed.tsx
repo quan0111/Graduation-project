@@ -5,8 +5,8 @@ import { useRecentlyViewed } from "../hooks/useRecentlyViewed";
 import { ProductCard } from "./productcard";
 
 const TEXT = {
-  title: "S\u1ea3n ph\u1ea9m \u0111\u00e3 xem g\u1ea7n \u0111\u00e2y",
-  clear: "X\u00f3a t\u1ea5t c\u1ea3",
+  title: "Sản phẩm đã xem gần đây",
+  clear: "Xóa tất cả",
 };
 
 export const RecentlyViewed = () => {

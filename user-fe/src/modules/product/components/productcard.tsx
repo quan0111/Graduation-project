@@ -19,16 +19,16 @@ interface ProductCardProps {
 const TEXT = {
   marketplace: "Marketplace",
   flashSale: "Flash sale",
-  new: "M\u1edbi",
-  addToCart: "Th\u00eam v\u00e0o gi\u1ecf",
-  adding: "\u0110ang th\u00eam...",
-  addSavedGuest: "\u0110\u00e3 l\u01b0u s\u1ea3n ph\u1ea9m, \u0111\u0103ng nh\u1eadp \u0111\u1ec3 \u0111\u1ed3ng b\u1ed9 gi\u1ecf h\u00e0ng",
-  loginForCart: "B\u1ea1n c\u1ea7n \u0111\u0103ng nh\u1eadp \u0111\u1ec3 th\u00eam v\u00e0o gi\u1ecf h\u00e0ng",
-  missingShop: "S\u1ea3n ph\u1ea9m ch\u01b0a c\u00f3 th\u00f4ng tin shop",
-  addSuccess: "\u0110\u00e3 th\u00eam v\u00e0o gi\u1ecf h\u00e0ng",
-  addFailed: "Kh\u00f4ng th\u1ec3 th\u00eam v\u00e0o gi\u1ecf h\u00e0ng",
-  wishlistAdd: "Th\u00eam v\u00e0o wishlist",
-  wishlistRemove: "B\u1ecf kh\u1ecfi wishlist",
+  new: "Mới",
+  addToCart: "Thêm vào giỏ",
+  adding: "Đang thêm...",
+  addSavedGuest: "Đã lưu sản phẩm, đăng nhập để đồng bộ giỏ hàng",
+  loginForCart: "Bạn cần đăng nhập để thêm vào giỏ hàng",
+  missingShop: "Sản phẩm chưa có thông tin shop",
+  addSuccess: "Đã thêm vào giỏ hàng",
+  addFailed: "Không thể thêm vào giỏ hàng",
+  wishlistAdd: "Thêm vào wishlist",
+  wishlistRemove: "Bỏ khỏi wishlist",
 };
 
 const getAvgRating = (reviews?: Array<{ rating?: number }>) => {
@@ -41,6 +41,8 @@ const getAvgRating = (reviews?: Array<{ rating?: number }>) => {
 
 const getImageUrl = (product: IProduct) =>
   product.images?.find((image) => image.is_primary)?.url ?? product.images?.[0]?.url ?? "/placeholder.png";
+
+const formatVnd = (value: number) => `${value.toLocaleString("vi-VN")}đ`;
 
 export const ProductCard = ({
   product,
@@ -142,9 +144,9 @@ export const ProductCard = ({
 
         <div className="mt-auto flex items-center justify-between">
           <div>
-            <span className="text-base font-bold text-orange-600">{displayPrice.toLocaleString("vi-VN")}\u0111</span>
+            <span className="text-base font-bold text-orange-600">{formatVnd(displayPrice)}</span>
             {hasFlashSale ? (
-              <span className="ml-2 text-xs text-slate-400 line-through">{product.price.toLocaleString("vi-VN")}\u0111</span>
+              <span className="ml-2 text-xs text-slate-400 line-through">{formatVnd(product.price)}</span>
             ) : null}
           </div>
           <div className="flex items-center gap-1 text-xs text-amber-500">

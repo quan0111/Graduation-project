@@ -217,6 +217,6 @@ class ProductSemanticRetriever:
 
 
 def normalize_text(value: str) -> str:
-    value = (value or "").lower().replace("\u0111", "d")
+    value = (value or "").lower().replace("đ", "d")
     decomposed = unicodedata.normalize("NFD", value)
     return "".join(char for char in decomposed if unicodedata.category(char) != "Mn")

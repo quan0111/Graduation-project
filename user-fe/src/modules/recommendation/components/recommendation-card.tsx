@@ -11,7 +11,6 @@ interface RecommendationCardProps {
 const TEXT = {
   fallbackCategory: "G\u1ee3i \u00fd cho b\u1ea1n",
   new: "M\u1edbi",
-  currency: "\u0111",
 };
 
 const getImageUrl = (product: IProduct) =>
@@ -25,6 +24,8 @@ const getRating = (product: IProduct) => {
   const total = product.reviews.reduce((sum, review) => sum + (review.rating ?? 0), 0);
   return total / product.reviews.length;
 };
+
+const formatVnd = (value: number) => `${value.toLocaleString("vi-VN")}đ`;
 
 export const RecommendationCard = ({ product, onClick }: RecommendationCardProps) => {
   const rating = getRating(product);
@@ -59,7 +60,7 @@ export const RecommendationCard = ({ product, onClick }: RecommendationCardProps
             <Star className="h-3.5 w-3.5 fill-current" />
             <span>{rating > 0 ? rating.toFixed(1) : TEXT.new}</span>
           </div>
-          <span className="text-base font-bold text-orange-600">{product.price.toLocaleString("vi-VN")}{TEXT.currency}</span>
+          <span className="text-base font-bold text-orange-600">{formatVnd(product.price)}</span>
         </div>
       </div>
     </Link>

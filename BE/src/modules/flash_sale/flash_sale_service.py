@@ -157,3 +157,201 @@ class FlashSaleService:
         )
         await FlashSaleService._invalidate_products([data.productId])
         return item
+
+    @staticmethod
+    def _validate_bulk_limits(data):
+        if data.stockLimit is not None and data.stockLimit <= 0:
+            raise HTTPException(400, "Stock limit must be greater than 0")
+        if data.purchaseLimit is not None and data.purchaseLimit <= 0:
+            raise HTTPException(400, "Purchase limit must be greater than 0")
+        if data.discountPercent is not None and (data.discountPercent <= 0 or data.discountPercent >= 100):
+            raise HTTPException(400, "Discount percent must be between 0 and 100")
+        if data.salePrice is not None and data.salePrice <= 0:
+            raise HTTPException(400, "Sale price must be greater than 0")
+
+    @staticmethod
+    def _bulk_sale_price(data, base_price: float, item_sale_price: float | None):
+        if item_sale_price is not None:
+            return float(item_sale_price)
+        if data.salePrice is not None:
+            return float(data.salePrice)
+        if data.discountPercent is not None:
+            return round(float(base_price) * (1 - float(data.discountPercent) / 100), 0)
+        return None
+
+    @staticmethod
+    async def _upsert_flash_sale_item(flash_sale_id: int, target: dict, sale_price: float, stock_limit, purchase_limit):
+        variant_id = target.get("variantId")
+        existing = await prisma.flashsaleitem.find_first(
+            where={
+                "flashSaleId": flash_sale_id,
+                "productId": target["productId"],
+                "variantId": variant_id,
+            }
+        )
+
+        if existing:
+            await prisma.flashsaleitem.update(
+                where={"id": existing.id},
+                data={
+                    "shop": {"connect": {"id": target["shopId"]}},
+                    "salePrice": sale_price,
+                    "stockLimit": stock_limit,
+                    "purchaseLimit": purchase_limit,
+                },
+            )
+            return "updated"
+
+        create_data = {
+            "flashSale": {"connect": {"id": flash_sale_id}},
+            "product": {"connect": {"id": target["productId"]}},
+            "shop": {"connect": {"id": target["shopId"]}},
+            "salePrice": sale_price,
+            "stockLimit": stock_limit,
+            "purchaseLimit": purchase_limit,
+        }
+        if variant_id:
+            create_data["variant"] = {"connect": {"id": variant_id}}
+
+        await prisma.flashsaleitem.create(data=create_data)
+        return "created"
+
+    @staticmethod
+    async def add_items_bulk(flash_sale_id: int, data):
+        flash_sale = await prisma.flashsale.find_unique(where={"id": flash_sale_id})
+        if not flash_sale:
+            raise HTTPException(404, "Flash sale not found")
+
+        FlashSaleService._validate_bulk_limits(data)
+
+        raw_product_ids = {int(product_id) for product_id in data.productIds or [] if product_id}
+        raw_category_ids = {int(category_id) for category_id in data.categoryIds or [] if category_id}
+        targets = {}
+
+        for product_id in raw_product_ids:
+            targets[(product_id, None)] = {
+                "productId": product_id,
+                "variantId": None,
+                "shopId": None,
+                "salePrice": None,
+            }
+
+        for item in data.items or []:
+            if not item.productId:
+                continue
+            targets[(int(item.productId), item.variantId)] = {
+                "productId": int(item.productId),
+                "variantId": item.variantId,
+                "shopId": item.shopId,
+                "salePrice": item.salePrice,
+            }
+
+        if raw_category_ids:
+            category_products = await prisma.product.find_many(
+                where={
+                    "categoryId": {"in": list(raw_category_ids)},
+                    "deletedAt": None,
+                    "status": "ACTIVE",
+                },
+                include={"shop": True},
+            )
+            for product in category_products:
+                targets.setdefault(
+                    (product.id, None),
+                    {
+                        "productId": product.id,
+                        "variantId": None,
+                        "shopId": None,
+                        "salePrice": None,
+                    },
+                )
+
+        if not targets:
+            raise HTTPException(400, "No products selected")
+
+        if data.discountPercent is None and data.salePrice is None:
+            missing_prices = [target for target in targets.values() if target.get("salePrice") is None]
+            if missing_prices:
+                raise HTTPException(400, "Discount percent or sale price is required")
+
+        products = await prisma.product.find_many(
+            where={
+                "id": {"in": list({target["productId"] for target in targets.values()})},
+                "deletedAt": None,
+            },
+            include={"shop": True, "variants": True},
+        )
+        product_by_id = {product.id: product for product in products}
+
+        created = 0
+        updated = 0
+        errors = []
+        results = []
+        changed_product_ids = []
+
+        for target in targets.values():
+            product = product_by_id.get(target["productId"])
+            if not product:
+                errors.append({"productId": target["productId"], "variantId": target.get("variantId"), "reason": "Product not found"})
+                continue
+            if product.status != "ACTIVE":
+                errors.append({"productId": product.id, "variantId": target.get("variantId"), "reason": "Product is not active"})
+                continue
+            if not product.shop or product.shop.deletedAt or not product.shop.isActive:
+                errors.append({"productId": product.id, "variantId": target.get("variantId"), "reason": "Shop is not active"})
+                continue
+
+            variant = None
+            if target.get("variantId"):
+                variant = next((item for item in product.variants or [] if item.id == target["variantId"]), None)
+                if not variant or variant.deletedAt:
+                    errors.append({"productId": product.id, "variantId": target.get("variantId"), "reason": "Variant not found"})
+                    continue
+
+            shop_id = target.get("shopId") or product.shopId
+            if shop_id != product.shopId:
+                errors.append({"productId": product.id, "variantId": target.get("variantId"), "reason": "Shop does not match product"})
+                continue
+
+            base_price = float(variant.price if variant else product.price)
+            if base_price <= 0:
+                errors.append({"productId": product.id, "variantId": target.get("variantId"), "reason": "Product price must be greater than 0"})
+                continue
+
+            sale_price = FlashSaleService._bulk_sale_price(data, base_price, target.get("salePrice"))
+            if sale_price is None or sale_price <= 0:
+                errors.append({"productId": product.id, "variantId": target.get("variantId"), "reason": "Sale price must be greater than 0"})
+                continue
+            if sale_price >= base_price:
+                errors.append({"productId": product.id, "variantId": target.get("variantId"), "reason": "Sale price must be lower than product price"})
+                continue
+
+            action = await FlashSaleService._upsert_flash_sale_item(
+                flash_sale_id,
+                {
+                    "productId": product.id,
+                    "variantId": target.get("variantId"),
+                    "shopId": shop_id,
+                },
+                sale_price,
+                data.stockLimit,
+                data.purchaseLimit,
+            )
+
+            if action == "created":
+                created += 1
+            else:
+                updated += 1
+            changed_product_ids.append(product.id)
+            results.append({"productId": product.id, "variantId": target.get("variantId"), "action": action})
+
+        if changed_product_ids:
+            await FlashSaleService._invalidate_products(changed_product_ids)
+
+        return {
+            "created": created,
+            "updated": updated,
+            "skipped": len(errors),
+            "results": results,
+            "errors": errors,
+        }

@@ -87,3 +87,40 @@ export type FlashSaleItemCreatePayload = {
   stockLimit?: number | null;
   purchaseLimit?: number | null;
 };
+
+export type FlashSaleBulkItemPayload = {
+  productId: number;
+  variantId?: number | null;
+  shopId?: number | null;
+  salePrice?: number | null;
+};
+
+export type FlashSaleBulkItemCreatePayload = {
+  productIds?: number[];
+  categoryIds?: number[];
+  items?: FlashSaleBulkItemPayload[];
+  discountPercent?: number | null;
+  salePrice?: number | null;
+  stockLimit?: number | null;
+  purchaseLimit?: number | null;
+};
+
+export type FlashSaleBulkItemCreateResult = {
+  productId: number;
+  variantId?: number | null;
+  action: "created" | "updated" | string;
+};
+
+export type FlashSaleBulkItemCreateError = {
+  productId?: number | null;
+  variantId?: number | null;
+  reason: string;
+};
+
+export type FlashSaleBulkItemCreateResponse = {
+  created: number;
+  updated: number;
+  skipped: number;
+  results: FlashSaleBulkItemCreateResult[];
+  errors: FlashSaleBulkItemCreateError[];
+};

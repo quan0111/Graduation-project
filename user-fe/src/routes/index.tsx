@@ -17,6 +17,7 @@ import ReturnHistoryPage from "@/modules/return-request/view/history";
 
 import AccountPage from "@/modules/auth/view/me";
 import PromotionPage from "@/modules/promotion/view";
+import FlashSalePage from "@/modules/promotion/view/flash-sale";
 import WishlistPage from "@/modules/wishlist/view";
 import CustomerMessagesPage from "@/modules/support/view/messages";
 
@@ -64,7 +65,7 @@ export const router = createBrowserRouter([
       { path: "profile", element: <RequireAuth><AccountPage /></RequireAuth> },
 
       { path: "promotions", element: <PromotionPage /> },
-      { path: "flash-sale", element: <PromotionPage /> },
+      { path: "flash-sale", element: <FlashSalePage /> },
       { path: "shop/:id", element: <ShopPage /> },
     ],
   },

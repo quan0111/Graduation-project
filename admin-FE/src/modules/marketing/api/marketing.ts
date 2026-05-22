@@ -8,6 +8,8 @@ import type {
   BannerCreatePayload,
   BannerStats,
   FlashSale,
+  FlashSaleBulkItemCreatePayload,
+  FlashSaleBulkItemCreateResponse,
   FlashSaleCreatePayload,
   FlashSaleItemCreatePayload,
   FlashSaleUpdatePayload,
@@ -63,6 +65,20 @@ export const addFlashSaleItem = async ({
   payload: FlashSaleItemCreatePayload;
 }) => {
   const response = await apiClient.post(`${API_URL_FLASH_SALE}/${saleId}/items`, payload);
+  return response.data;
+};
+
+export const addFlashSaleItemsBulk = async ({
+  saleId,
+  payload,
+}: {
+  saleId: number;
+  payload: FlashSaleBulkItemCreatePayload;
+}): Promise<FlashSaleBulkItemCreateResponse> => {
+  const response = await apiClient.post<FlashSaleBulkItemCreateResponse>(
+    `${API_URL_FLASH_SALE}/${saleId}/items/bulk`,
+    payload,
+  );
   return response.data;
 };
 
@@ -126,6 +142,17 @@ export const useAddFlashSaleItem = () => {
 
   return useMutation({
     mutationFn: addFlashSaleItem,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: marketingQueryKeys.flashSales });
+    },
+  });
+};
+
+export const useAddFlashSaleItemsBulk = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: addFlashSaleItemsBulk,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: marketingQueryKeys.flashSales });
     },

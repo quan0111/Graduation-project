@@ -21,8 +21,8 @@ type Props = {
 
 const COPY = {
   title: "Flash sale",
-  create: "T\u1ea1o flash sale",
-  addItem: "Th\u00eam s\u1ea3n ph\u1ea9m",
+  create: "Tạo flash sale",
+  addItem: "Thêm sản phẩm",
   copyAllLink: "Copy link tổng",
   copyLink: "Copy link banner",
   linkLabel: "Link dán vào banner",
@@ -30,25 +30,25 @@ const COPY = {
   live: "Đang hiển thị",
   scheduled: "Chưa tới giờ",
   expired: "Hết giờ",
-  activate: "K\u00edch ho\u1ea1t",
-  pause: "T\u1ea1m d\u1eebng",
-  loading: "\u0110ang t\u1ea3i flash sale...",
-  error: "Kh\u00f4ng th\u1ec3 t\u1ea3i flash sale.",
-  empty: "Ch\u01b0a c\u00f3 flash sale.",
-  product: "s\u1ea3n ph\u1ea9m",
-  sold: "\u0110\u00e3 b\u00e1n",
-  more: "m\u1ee5c kh\u00e1c",
+  activate: "Kích hoạt",
+  pause: "Tạm dừng",
+  loading: "Đang tải flash sale...",
+  error: "Không thể tải flash sale.",
+  empty: "Chưa có flash sale.",
+  product: "sản phẩm",
+  sold: "Đã bán",
+  more: "mục khác",
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  DRAFT: "B\u1ea3n nh\u00e1p",
-  ACTIVE: "\u0110ang b\u1eadt",
-  PAUSED: "T\u1ea1m d\u1eebng",
-  ENDED: "\u0110\u00e3 k\u1ebft th\u00fac",
+  DRAFT: "Bản nháp",
+  ACTIVE: "Đang bật",
+  PAUSED: "Tạm dừng",
+  ENDED: "Đã kết thúc",
 };
 
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 }).format(amount);
+  return `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 }).format(amount)}đ`;
 };
 
 const formatDateTime = (value: string) => {
@@ -102,7 +102,7 @@ export function FlashSaleListCard({
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <div>
           <CardTitle>{COPY.title}</CardTitle>
-          <CardDescription>{isLoading ? COPY.loading : `${flashSales.length} ch\u01b0\u01a1ng tr\u00ecnh`}</CardDescription>
+          <CardDescription>{isLoading ? COPY.loading : `${flashSales.length} chương trình`}</CardDescription>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           <Button type="button" variant="outline" onClick={() => void copyLink(FLASH_SALE_INDEX_LINK)}>
@@ -140,7 +140,7 @@ export function FlashSaleListCard({
                   {formatDateTime(sale.startsAt)} - {formatDateTime(sale.endsAt)}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {sale.items?.length || 0} {COPY.product} {"\u00b7"} {COPY.sold} {soldCount}
+                  {sale.items?.length || 0} {COPY.product} {"·"} {COPY.sold} {soldCount}
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-xs">
                   <span className="text-muted-foreground">{COPY.linkLabel}:</span>
@@ -163,11 +163,10 @@ export function FlashSaleListCard({
                       <div key={item.id} className="flex items-center justify-between gap-2 text-xs">
                         <span className="truncate">
                           Product #{item.productId}
-                          {item.variantId ? ` \u00b7 Variant #${item.variantId}` : ""} {"\u00b7"} Shop #{item.shopId}
+                          {item.variantId ? ` · Variant #${item.variantId}` : ""} {"·"} Shop #{item.shopId}
                         </span>
                         <span className="shrink-0 font-medium">
                           {formatCurrency(item.salePrice)}
-                          {"\u0111"}
                         </span>
                       </div>
                     ))}
