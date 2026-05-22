@@ -4,6 +4,7 @@ export interface ICoupon {
   code: string
 
   description?: string | null
+  scope?: "ORDER" | "SHIPPING" | "SHOP" | "CATEGORY" | "PRODUCT"
 
   discount_type: DiscountType
   discount_value: number
@@ -20,6 +21,19 @@ export interface ICoupon {
   is_active: boolean
 
   applicable_shop_id?: number | null
+  applicable_category_id?: number | null
+  applicable_product_id?: number | null
+  applicable_product_ids?: number[]
+  productTargets?: Array<{
+    couponId: number
+    productId: number
+    product?: {
+      id: number
+      name: string
+      price: number
+      status: string
+    } | null
+  }>
 
   created_at: string
   updated_at: string

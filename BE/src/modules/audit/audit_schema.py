@@ -1,7 +1,15 @@
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
+
+
+class AuditUserShort(BaseModel):
+    id: int
+    email: str
+    fullName: Optional[str] = None
+
+    model_config = {"from_attributes": True}
 
 
 class AuditLogOut(BaseModel):
@@ -16,6 +24,8 @@ class AuditLogOut(BaseModel):
     userAgent: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
     createdAt: datetime
+    actor: Optional[AuditUserShort] = None
+    targetUser: Optional[AuditUserShort] = None
 
     model_config = {"from_attributes": True}
 
@@ -28,3 +38,11 @@ class AuditLogFilter(BaseModel):
     targetUserId: Optional[int] = None
     severity: Optional[str] = None
     limit: int = 100
+
+
+class AuditLogPageOut(BaseModel):
+    data: List[AuditLogOut]
+    page: int
+    pageSize: int
+    total: int
+    totalPages: int

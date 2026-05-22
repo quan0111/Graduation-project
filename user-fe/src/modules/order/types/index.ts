@@ -135,6 +135,7 @@ export interface ICreateOrderFormInputs {
   totalAmount: number;
   shippingAddressId?: number | null;
   couponId?: number | null;
+  couponIds?: number[];
   items: {
     productId: number;
     variantId?: number | null;

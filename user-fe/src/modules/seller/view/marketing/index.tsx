@@ -235,6 +235,7 @@ export default function SellerMarketingPage() {
         <CouponForm
           isAdmin={false}
           shopId={shop?.id ?? dashboard?.shop?.id ?? 0}
+          products={products}
           onCancel={() => setShowCouponForm(false)}
           onSubmit={handleCreateCoupon}
         />

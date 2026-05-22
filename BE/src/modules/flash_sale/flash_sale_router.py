@@ -8,6 +8,11 @@ from src.modules.flash_sale.flash_sale_service import FlashSaleService
 router = APIRouter(prefix="/flash-sales", tags=["Flash Sales"])
 
 
+@router.get("/active")
+async def active_flash_sales():
+    return await FlashSaleService.list_active_public()
+
+
 @router.get("/", response_model=list[FlashSaleOut])
 async def list_flash_sales(user=Depends(require_admin)):
     _ = user

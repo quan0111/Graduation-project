@@ -28,6 +28,6 @@ export const API_URL_INVENTORY = `${API_URL}inventory`
 export const API_URL_SUPPORT = `${API_URL}support`
 export const API_URL_WISHLIST = `${API_URL}wishlist`
 export const API_URL_MARKETING = `${API_URL}marketing`
-
+export const API_URL_FLASH_SALE = `${API_URL}flash-sales`
 
 

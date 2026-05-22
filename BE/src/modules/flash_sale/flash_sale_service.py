@@ -1,9 +1,11 @@
 import logging
+from datetime import datetime
 
 from fastapi import HTTPException
 
 from src.core.cache import CacheManager
 from src.core.database import prisma
+from src.modules.product.service.product import ProductService
 
 
 FLASH_SALE_STATUSES = {"DRAFT", "ACTIVE", "PAUSED", "ENDED"}
@@ -37,6 +39,57 @@ class FlashSaleService:
             include={"items": True},
             order={"startsAt": "desc"},
         )
+
+    @staticmethod
+    async def list_active_public():
+        now = datetime.utcnow()
+        flash_sales = await prisma.flashsale.find_many(
+            where={
+                "status": "ACTIVE",
+                "startsAt": {"lte": now},
+                "endsAt": {"gte": now},
+            },
+            include={
+                "items": {
+                    "include": {
+                        "product": {"include": ProductService.PRODUCT_INCLUDE},
+                        "variant": {"include": {"images": True}},
+                        "shop": True,
+                    }
+                }
+            },
+            order={"startsAt": "asc"},
+        )
+
+        public_sales = []
+        for flash_sale in flash_sales:
+            sale_data = flash_sale.model_dump()
+            public_items = []
+
+            for item in flash_sale.items or []:
+                product = item.product
+                shop = item.shop
+                if not product or product.deletedAt or product.status != "ACTIVE":
+                    continue
+                if not shop or shop.deletedAt or not shop.isActive:
+                    continue
+
+                product_data = ProductService._serialize_product_dict(product)
+                product_data.pop("flashSaleItems", None)
+                for variant in product_data.get("variants", []) or []:
+                    variant.pop("flashSaleItems", None)
+
+                item_data = item.model_dump()
+                item_data["product"] = product_data
+                item_data["variant"] = item.variant.model_dump() if item.variant else None
+                item_data["shop"] = shop.model_dump()
+                public_items.append(item_data)
+
+            sale_data["items"] = public_items
+            if public_items:
+                public_sales.append(sale_data)
+
+        return public_sales
 
     @staticmethod
     async def create_flash_sale(data):

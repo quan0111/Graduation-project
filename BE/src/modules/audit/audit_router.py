@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from src.core.dependencies import get_optional_current_user, require_admin
+from src.modules.audit.audit_schema import AuditLogPageOut
 from src.modules.audit.audit_service import AuditService
 
 router = APIRouter(prefix="/audit", tags=["Audit"])
@@ -16,7 +17,7 @@ class ClientAuditEvent(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
-@router.get("/logs")
+@router.get("/logs", response_model=AuditLogPageOut)
 async def list_audit_logs(
     action: str | None = None,
     entity_type: str | None = None,
@@ -25,6 +26,8 @@ async def list_audit_logs(
     target_user_id: int | None = None,
     severity: str | None = None,
     limit: int = 100,
+    page: int = 1,
+    page_size: int | None = None,
     admin=Depends(require_admin),
 ):
     _ = admin
@@ -36,6 +39,8 @@ async def list_audit_logs(
         target_user_id=target_user_id,
         severity=severity,
         limit=limit,
+        page=page,
+        page_size=page_size,
     )
 
 

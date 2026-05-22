@@ -1,11 +1,12 @@
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { EmptyState } from "@/modules/order/components/emptyState";
 import { useActiveBanners, useTrackBannerClick } from "@/modules/marketing/api/marketing";
 import { ProductCard } from "@/modules/product/components/productcard";
-import { useGetProduct } from "@/modules/product/api/get-product";
+import type { IActiveFlashSale, IProduct } from "@/modules/product/types";
 import { normalizeProduct } from "@/modules/product/utils/normalize-product";
+import { useActiveFlashSales, type ActiveFlashSale, type ActiveFlashSaleItem } from "@/modules/promotion/api/flash-sale";
 import { useWishlistActions } from "@/modules/wishlist/hooks/useWishlistActions";
 
 import { CTASection } from "../components/CTA";
@@ -13,11 +14,50 @@ import { CategoryFilter } from "../components/categoryFilter";
 import { PromotionGrid } from "../components/grid";
 import { ALL_PROMOTIONS, usePromotionCoupons, usePromotions } from "../hooks/usePromotion";
 
+const buildFlashSalePayload = (sale: ActiveFlashSale, item: ActiveFlashSaleItem): IActiveFlashSale => ({
+  id: Number(item.id),
+  flashSaleId: Number(sale.id),
+  variantId: item.variantId ?? null,
+  salePrice: Number(item.salePrice),
+  stockLimit: item.stockLimit ?? null,
+  soldCount: Number(item.soldCount || 0),
+  purchaseLimit: item.purchaseLimit ?? null,
+  startsAt: sale.startsAt,
+  endsAt: sale.endsAt,
+});
+
+const getFlashSaleProducts = (flashSales: ActiveFlashSale[]): IProduct[] => {
+  const productMap = new Map<number, IProduct>();
+
+  flashSales.forEach((sale) => {
+    sale.items.forEach((item) => {
+      if (!item.product) {
+        return;
+      }
+
+      const product = normalizeProduct({
+        ...item.product,
+        activeFlashSale: buildFlashSalePayload(sale, item),
+      });
+      const existing = productMap.get(product.id);
+      const existingSalePrice = existing?.activeFlashSale?.salePrice ?? Number.POSITIVE_INFINITY;
+
+      if (!existing || Number(item.salePrice) < existingSalePrice) {
+        productMap.set(product.id, product);
+      }
+    });
+  });
+
+  return Array.from(productMap.values()).slice(0, 12);
+};
+
 export default function PromotionPage() {
+  const [searchParams] = useSearchParams();
+  const campaignId = Number(searchParams.get("campaign") || 0);
   const { data: banners = [] } = useActiveBanners();
   const { wishlistIds, pendingProductId, toggleWishlist } = useWishlistActions();
   const trackBannerClick = useTrackBannerClick();
-  const { data: rawProducts = [], isLoading: productsLoading } = useGetProduct({ page: 1, limit: 100 });
+  const { data: activeFlashSales = [], isLoading: flashSalesLoading, isError: flashSalesError } = useActiveFlashSales();
   const { data: promotions = [], isLoading, isError } = usePromotionCoupons();
   const categories = useMemo(
     () => [ALL_PROMOTIONS, ...Array.from(new Set(promotions.map((promotion) => promotion.category))).filter((item) => item !== ALL_PROMOTIONS)],
@@ -25,14 +65,13 @@ export default function PromotionPage() {
   );
   const promo = usePromotions(promotions);
 
-  const flashSaleProducts = useMemo(
-    () =>
-      rawProducts
-        .map((product) => normalizeProduct(product as Record<string, unknown>))
-        .filter((product) => Boolean(product.activeFlashSale?.salePrice))
-        .slice(0, 8),
-    [rawProducts],
+  const visibleFlashSales = useMemo(
+    () => (campaignId ? activeFlashSales.filter((sale) => sale.id === campaignId) : activeFlashSales),
+    [activeFlashSales, campaignId],
   );
+  const selectedFlashSale = campaignId ? activeFlashSales.find((sale) => sale.id === campaignId) : null;
+  const flashSaleProducts = useMemo(() => getFlashSaleProducts(visibleFlashSales), [visibleFlashSales]);
+  const flashSaleTitle = selectedFlashSale?.name || "Sản phẩm đang giảm giá";
 
   return (
     <main className="min-h-screen bg-[#fff7ed] px-4 py-6 md:px-6">
@@ -91,22 +130,30 @@ export default function PromotionPage() {
           </section>
         ) : null}
 
-        <section className="space-y-4">
+        <section className="space-y-4" id="flash-sale">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-600">Flash sale</p>
-              <h2 className="mt-1 text-2xl font-bold text-slate-950">Sản phẩm đang giảm giá</h2>
+              <h2 className="mt-1 text-2xl font-bold text-slate-950">{flashSaleTitle}</h2>
             </div>
-            <Link to="/products" className="text-sm font-semibold text-orange-600 hover:text-orange-700">
-              Xem tất cả
+            <Link to={campaignId ? "/flash-sale" : "/products"} className="text-sm font-semibold text-orange-600 hover:text-orange-700">
+              {campaignId ? "Xem mọi flash sale" : "Xem tất cả"}
             </Link>
           </div>
 
-          {productsLoading ? (
+          {flashSalesLoading ? (
             <div className="rounded-2xl bg-white p-6 text-sm text-slate-500 shadow-sm ring-1 ring-orange-100">
               Đang tải flash sale...
             </div>
-          ) : flashSaleProducts.length > 0 ? (
+          ) : null}
+
+          {flashSalesError ? (
+            <div className="rounded-2xl bg-white p-6 text-sm text-rose-500 shadow-sm ring-1 ring-orange-100">
+              Không thể tải flash sale từ API.
+            </div>
+          ) : null}
+
+          {!flashSalesLoading && !flashSalesError && flashSaleProducts.length > 0 ? (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               {flashSaleProducts.map((product) => (
                 <ProductCard
@@ -118,11 +165,15 @@ export default function PromotionPage() {
                 />
               ))}
             </div>
-          ) : (
+          ) : null}
+
+          {!flashSalesLoading && !flashSalesError && flashSaleProducts.length === 0 ? (
             <div className="rounded-2xl bg-white p-6 text-sm text-slate-500 shadow-sm ring-1 ring-orange-100">
-              Chưa có sản phẩm flash sale đang hoạt động.
+              {campaignId
+                ? "Chiến dịch flash sale này chưa có sản phẩm đang hoạt động hoặc đã hết thời gian chạy."
+                : "Chưa có sản phẩm flash sale đang hoạt động."}
             </div>
-          )}
+          ) : null}
         </section>
 
         <section className="rounded-4xl bg-white p-5 shadow-sm ring-1 ring-orange-100 md:p-6">
@@ -131,13 +182,9 @@ export default function PromotionPage() {
             <h2 className="mt-1 text-2xl font-bold text-slate-950">Mã giảm giá khả dụng</h2>
           </div>
 
-          {isLoading ? (
-            <div className="p-6 text-sm text-slate-500">Đang tải khuyến mãi...</div>
-          ) : null}
+          {isLoading ? <div className="p-6 text-sm text-slate-500">Đang tải khuyến mãi...</div> : null}
 
-          {isError ? (
-            <div className="p-6 text-sm text-rose-500">Không thể tải khuyến mãi từ API.</div>
-          ) : null}
+          {isError ? <div className="p-6 text-sm text-rose-500">Không thể tải khuyến mãi từ API.</div> : null}
 
           {!isLoading && !isError ? (
             <>

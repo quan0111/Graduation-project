@@ -170,6 +170,7 @@ model Product {
   reviews    Review[]
   wishlistedBy Wishlist[]
   flashSaleItems FlashSaleItem[]
+  couponTargets CouponProductTarget[]
   orderItems OrderItem[]
   behaviors  UserBehavior[]
   cartItems  CartItem[]
@@ -461,6 +462,7 @@ model Coupon {
   id               Int          @id @default(autoincrement())
   code             String       @unique
   description      String?
+  scope            String       @default("ORDER")
   discountType     DiscountType
   discountValue    Float
   minOrderAmount   Float?
@@ -471,12 +473,30 @@ model Coupon {
   validUntil       DateTime?
   isActive         Boolean      @default(true)
   applicableShopId Int?
+  applicableCategoryId Int?
+  applicableProductId Int?
   applicableShop   Shop?        @relation(fields: [applicableShopId], references: [id], onDelete: SetNull)
+  productTargets   CouponProductTarget[]
   orders           Order[]
   redemptions      CouponRedemption[]
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
   usageLimitPerUser Int?
+
+  @@index([scope])
+  @@index([applicableShopId])
+  @@index([applicableCategoryId])
+  @@index([applicableProductId])
+}
+
+model CouponProductTarget {
+  couponId  Int
+  productId Int
+  coupon    Coupon  @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([couponId, productId])
+  @@index([productId])
 }
 
 enum DiscountType {

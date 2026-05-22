@@ -45,6 +45,8 @@ class AuditService:
         target_user_id: Optional[int] = None,
         severity: Optional[str] = None,
         limit: int = 100,
+        page: int = 1,
+        page_size: Optional[int] = None,
     ):
         where: Dict[str, Any] = {}
         if action:
@@ -60,9 +62,20 @@ class AuditService:
         if severity:
             where["severity"] = severity
 
-        return await prisma.auditlog.find_many(
+        size = max(1, min(page_size or limit, 300))
+        current_page = max(1, page)
+        total = await prisma.auditlog.count(where=where)
+        logs = await prisma.auditlog.find_many(
             where=where,
             include={"actor": True, "targetUser": True},
             order={"createdAt": "desc"},
-            take=max(1, min(limit, 300)),
+            skip=(current_page - 1) * size,
+            take=size,
         )
+        return {
+            "data": logs,
+            "page": current_page,
+            "pageSize": size,
+            "total": total,
+            "totalPages": max(1, (total + size - 1) // size),
+        }

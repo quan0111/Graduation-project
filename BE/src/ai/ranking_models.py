@@ -92,11 +92,12 @@ class GradientBoostingLTRModel:
         self.feature_names = sorted({name for _, _, _, features in rows for name in features})
         x = np.array([[features.get(name, 0.0) for name in self.feature_names] for _, _, _, features in rows], dtype=float)
         y = np.array([label for _, _, label, _ in rows], dtype=float)
+        rank_y = self._rank_labels(y)
         groups = self._groups(rows)
 
-        if self._try_fit_lightgbm(x, y, groups):
+        if self._try_fit_lightgbm(x, rank_y, groups):
             return
-        if self._try_fit_xgboost(x, y, groups):
+        if self._try_fit_xgboost(x, rank_y, groups):
             return
 
         self.model = LinearLearningToRankModel()
@@ -130,17 +131,21 @@ class GradientBoostingLTRModel:
         except Exception:
             return False
 
-        self.model = lgb.LGBMRanker(
-            objective="lambdarank",
-            metric="ndcg",
-            n_estimators=120,
-            learning_rate=0.05,
-            num_leaves=31,
-            random_state=42,
-        )
-        self.model.fit(x, y, group=groups)
-        self.backend = "lightgbm"
-        return True
+        try:
+            self.model = lgb.LGBMRanker(
+                objective="lambdarank",
+                metric="ndcg",
+                n_estimators=120,
+                learning_rate=0.05,
+                num_leaves=31,
+                random_state=42,
+                label_gain=[0, 1, 3, 7, 15, 31],
+            )
+            self.model.fit(x, y, group=groups)
+            self.backend = "lightgbm"
+            return True
+        except Exception:
+            return False
 
     def _try_fit_xgboost(self, x: np.ndarray, y: np.ndarray, groups: List[int]) -> bool:
         try:
@@ -148,18 +153,21 @@ class GradientBoostingLTRModel:
         except Exception:
             return False
 
-        ranker = xgb.XGBRanker(
-            objective="rank:ndcg",
-            eval_metric="ndcg@10",
-            n_estimators=120,
-            learning_rate=0.05,
-            max_depth=5,
-            random_state=42,
-        )
-        ranker.fit(x, y, group=groups)
-        self.model = ranker
-        self.backend = "xgboost"
-        return True
+        try:
+            ranker = xgb.XGBRanker(
+                objective="rank:ndcg",
+                eval_metric="ndcg@10",
+                n_estimators=120,
+                learning_rate=0.05,
+                max_depth=5,
+                random_state=42,
+            )
+            ranker.fit(x, y, group=groups)
+            self.model = ranker
+            self.backend = "xgboost"
+            return True
+        except Exception:
+            return False
 
     @staticmethod
     def _groups(rows: Sequence[TrainingRow]) -> List[int]:
@@ -167,6 +175,11 @@ class GradientBoostingLTRModel:
         for user_id, _, _, _ in rows:
             counts[user_id] += 1
         return [count for _, count in sorted(counts.items())]
+
+    @staticmethod
+    def _rank_labels(y: np.ndarray) -> np.ndarray:
+        """LightGBM/XGBoost ranking expects discrete relevance grades."""
+        return np.clip(np.rint(y), 0, 5).astype(np.int32)
 
 
 class TwoTowerEmbeddingModel:

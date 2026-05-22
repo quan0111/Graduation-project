@@ -35,6 +35,7 @@ class SupportService:
 
     @staticmethod
     async def create_ticket(user_id: int, data):
+        shop = None
         if data.shopId:
             shop = await prisma.shop.find_first(where={"id": data.shopId, "deletedAt": None})
             if not shop:
@@ -55,6 +56,7 @@ class SupportService:
                 raise HTTPException(404, "Return request not found")
 
         async with prisma.tx() as tx:
+            initial_status = "WAITING_SELLER" if data.shopId else "OPEN"
             ticket = await tx.supportticket.create(
                 data={
                     "userId": user_id,
@@ -64,7 +66,7 @@ class SupportService:
                     "subject": data.subject,
                     "category": data.category or "GENERAL",
                     "priority": data.priority,
-                    "status": "OPEN",
+                    "status": initial_status,
                     "messages": {
                         "create": [
                             {
@@ -114,7 +116,7 @@ class SupportService:
 
     @staticmethod
     async def list_for_admin(status: str | None = None, limit: int = 100):
-        where = {}
+        where = {"shopId": None}
         if status:
             where["status"] = status
         return await prisma.supportticket.find_many(
@@ -141,7 +143,13 @@ class SupportService:
 
         role = get_role_value(user)
         sender_role = "ADMIN" if role == "ADMIN" else "SELLER" if role == "SELLER" else "CUSTOMER"
-        next_status = "WAITING_CUSTOMER" if sender_role in {"ADMIN", "SELLER"} else "WAITING_SELLER"
+        next_status = (
+            "WAITING_CUSTOMER"
+            if sender_role in {"ADMIN", "SELLER"}
+            else "WAITING_SELLER"
+            if ticket.shopId
+            else "OPEN"
+        )
 
         async with prisma.tx() as tx:
             message = await tx.supportmessage.create(

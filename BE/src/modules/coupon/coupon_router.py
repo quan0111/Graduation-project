@@ -2,8 +2,16 @@ from typing import List
 
 from fastapi import APIRouter, Depends
 
+from src.core.database import prisma
 from src.core.dependencies import get_current_user, require_admin, require_seller_or_admin
-from src.modules.coupon.coupon_schema import CouponCreate, CouponDiscountRequest, CouponOut, CouponUpdate, CouponValidateRequest
+from src.modules.coupon.coupon_schema import (
+    CouponCreate,
+    CouponDiscountRequest,
+    CouponOut,
+    CouponStackPreviewRequest,
+    CouponUpdate,
+    CouponValidateRequest,
+)
 from src.modules.coupon.coupon_service import CouponService
 
 router = APIRouter(prefix="/coupons", tags=["Coupons"])
@@ -43,12 +51,24 @@ async def validate_coupon_with_context(data: CouponValidateRequest, user=Depends
 async def calculate_discount_with_context(data: CouponDiscountRequest, user=Depends(get_current_user)):
     coupon = await CouponService.get_coupon(data.couponId)
     await CouponService.validate_coupon(
-        coupon.code,
+        coupon["code"],
         data.orderAmount,
         user.id,
         shop_ids=data.shopIds,
     )
     return {"discountAmount": CouponService.calculate_discount(coupon, data.orderAmount)}
+
+@router.post("/stack/preview")
+async def preview_coupon_stack(data: CouponStackPreviewRequest, user=Depends(get_current_user)):
+    return await CouponService.calculate_coupon_stack(
+        prisma,
+        coupon_ids=data.couponIds,
+        coupon_codes=data.couponCodes,
+        subtotal=data.orderAmount,
+        shipping_fee=data.shippingFee,
+        items=data.items,
+        user_id=user.id,
+    )
 
 @router.patch("/use/{coupon_id}")
 async def use_coupon(coupon_id: int, order_id: int, user=Depends(require_admin)):

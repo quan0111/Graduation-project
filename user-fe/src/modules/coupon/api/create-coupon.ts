@@ -6,6 +6,7 @@ import { apiClient } from "@/lib/api";
 export interface CouponCreatePayload {
   code: string;
   description?: string;
+  scope?: "ORDER" | "SHIPPING" | "SHOP" | "CATEGORY" | "PRODUCT";
   discountType: "PERCENTAGE" | "FIXED";
   discountValue: number;
   minOrderAmount?: number;
@@ -16,6 +17,7 @@ export interface CouponCreatePayload {
   applicableShopId?: number;
   applicableCategoryId?: number;
   applicableProductId?: number;
+  applicableProductIds?: number[];
 }
 
 const createCoupon = async (payload: CouponCreatePayload) => {

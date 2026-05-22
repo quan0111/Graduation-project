@@ -6,6 +6,7 @@ from prisma import Json
 from src.core.database import prisma
 from src.core.dependencies import get_role_value
 from src.modules.audit.audit_service import AuditService
+from src.modules.coupon.coupon_service import CouponService
 from src.modules.inventory.inventory_service import InventoryService
 from src.modules.notification.notification_schema import NotificationCreate
 from src.modules.notification.notification_service import NotificationService
@@ -294,20 +295,19 @@ class OrderService:
             "productId": item.productId,
             "shopId": item.shopId,
         }
-        if item.variantId:
-            variant_sale = await client.flashsaleitem.find_first(
-                where={**base_where, "variantId": item.variantId},
-                include={"flashSale": True},
-                order={"createdAt": "desc"},
-            )
-            if variant_sale:
-                return variant_sale
-
-        return await client.flashsaleitem.find_first(
-            where={**base_where, "variantId": None},
-            include={"flashSale": True},
-            order={"createdAt": "desc"},
+        where = (
+            {**base_where, "OR": [{"variantId": item.variantId}, {"variantId": None}]}
+            if item.variantId
+            else {**base_where, "variantId": None}
         )
+        sale_items = await client.flashsaleitem.find_many(
+            where=where,
+            include={"flashSale": True},
+        )
+        if not sale_items:
+            return None
+
+        return min(sale_items, key=lambda sale_item: float(sale_item.salePrice or 0))
 
     @staticmethod
     async def _resolve_checkout_price(client, item, product, variant, now: datetime):
@@ -342,6 +342,37 @@ class OrderService:
             )
             if updated == 0:
                 raise HTTPException(400, "Flash sale stock limit exceeded")
+
+    @staticmethod
+    def _coupon_ids_from_payload(order_data) -> list[int]:
+        coupon_ids = []
+        if getattr(order_data, "couponId", None):
+            coupon_ids.append(int(order_data.couponId))
+        for coupon_id in getattr(order_data, "couponIds", []) or []:
+            if coupon_id:
+                coupon_ids.append(int(coupon_id))
+        return list(dict.fromkeys(coupon_ids))
+
+    @staticmethod
+    async def _apply_coupon_redemptions(client, coupon_result: dict, order_id: int, user_id: int):
+        for applied_coupon in coupon_result.get("appliedCoupons", []):
+            coupon_id = int(applied_coupon["id"])
+            coupon_where = {"id": coupon_id}
+            if applied_coupon.get("usageLimit") is not None:
+                coupon_where["usedCount"] = {"lt": int(applied_coupon["usageLimit"])}
+            updated_coupon_count = await client.coupon.update_many(
+                where=coupon_where,
+                data={"usedCount": {"increment": 1}},
+            )
+            if updated_coupon_count == 0:
+                raise HTTPException(400, "Coupon limit reached")
+            await client.couponredemption.create(
+                data={
+                    "coupon": {"connect": {"id": coupon_id}},
+                    "user": {"connect": {"id": user_id}},
+                    "order": {"connect": {"id": order_id}},
+                }
+            )
 
     @staticmethod
     def _filter_order_items_for_shop(order, shop_id: int):
@@ -389,6 +420,7 @@ class OrderService:
             order_items_data = []
             inventory_logs = []
             flash_sale_logs = []
+            discount_items = []
             shop_ids: set[int] = set()
             now = datetime.utcnow()
 
@@ -438,6 +470,16 @@ class OrderService:
                 price, flash_sale_item = await OrderService._resolve_checkout_price(tx, item, product, variant, now)
                 subtotal += price * item.quantity
                 shop_ids.add(item.shopId)
+                discount_items.append(
+                    {
+                        "productId": item.productId,
+                        "variantId": item.variantId,
+                        "shopId": item.shopId,
+                        "categoryId": product.categoryId,
+                        "quantity": item.quantity,
+                        "lineTotal": price * item.quantity,
+                    }
+                )
                 if flash_sale_item:
                     flash_sale_logs.append(
                         {
@@ -526,33 +568,16 @@ class OrderService:
                     )
 
             shipping_fee = max(float(order_data.shippingFee or 0), 0)
-            discount_amount = 0.0
-            if order_data.couponId:
-                coupon = await tx.coupon.find_first(where={"id": order_data.couponId})
-                if not coupon:
-                    raise HTTPException(404, "Coupon not found")
-                if not coupon.isActive:
-                    raise HTTPException(400, "Coupon inactive")
-                if coupon.validFrom and coupon.validFrom > now:
-                    raise HTTPException(400, "Coupon not started")
-                if coupon.validUntil and coupon.validUntil < now:
-                    raise HTTPException(400, "Coupon expired")
-                if coupon.usageLimit and coupon.usedCount >= coupon.usageLimit:
-                    raise HTTPException(400, "Coupon limit reached")
-                if coupon.minOrderAmount and subtotal < coupon.minOrderAmount:
-                    raise HTTPException(400, "Order not eligible")
-                if coupon.applicableShopId and any(shop_id != coupon.applicableShopId for shop_id in shop_ids):
-                    raise HTTPException(400, "Coupon is not applicable to this shop")
-                if coupon.usageLimitPerUser:
-                    used_by_user = await tx.couponredemption.count(
-                        where={"couponId": order_data.couponId, "userId": current_user.id}
-                    )
-                    if used_by_user >= coupon.usageLimitPerUser:
-                        raise HTTPException(400, "Coupon usage limit reached for this user")
-                discount_amount = subtotal * (coupon.discountValue / 100) if coupon.discountType == "PERCENTAGE" else coupon.discountValue
-                if coupon.maxDiscount:
-                    discount_amount = min(discount_amount, coupon.maxDiscount)
-                discount_amount = min(discount_amount, subtotal + shipping_fee)
+            coupon_ids = OrderService._coupon_ids_from_payload(order_data)
+            coupon_result = await CouponService.calculate_coupon_stack(
+                tx,
+                coupon_ids=coupon_ids,
+                subtotal=subtotal,
+                shipping_fee=shipping_fee,
+                items=discount_items,
+                user_id=current_user.id,
+            )
+            discount_amount = float(coupon_result["discountAmount"])
 
             total_amount = max(subtotal + shipping_fee - discount_amount, 0)
 
@@ -586,19 +611,10 @@ class OrderService:
                 }
 
             # Optional coupon
-            if order_data.couponId:
-                coupon = await tx.coupon.find_first(
-                    where={
-                        "id": order_data.couponId,
-                    }
-                )
-
-                if not coupon:
-                    raise HTTPException(404, "Coupon not found")
-
+            if coupon_ids:
                 create_data["coupon"] = {
                     "connect": {
-                        "id": order_data.couponId,
+                        "id": coupon_ids[0],
                     }
                 }
 
@@ -614,23 +630,7 @@ class OrderService:
                 await InventoryService.record(tx, inventory_log)
 
             # Increase coupon usage
-            if order_data.couponId:
-                coupon_where = {"id": order_data.couponId}
-                if coupon.usageLimit:
-                    coupon_where["usedCount"] = {"lt": coupon.usageLimit}
-                updated_coupon_count = await tx.coupon.update_many(
-                    where=coupon_where,
-                    data={"usedCount": {"increment": 1}},
-                )
-                if updated_coupon_count == 0:
-                    raise HTTPException(400, "Coupon limit reached")
-                await tx.couponredemption.create(
-                    data={
-                        "coupon": {"connect": {"id": order_data.couponId}},
-                        "user": {"connect": {"id": current_user.id}},
-                        "order": {"connect": {"id": order.id}},
-                    }
-                )
+            await OrderService._apply_coupon_redemptions(tx, coupon_result, order.id, current_user.id)
 
             # Create payment
             if order_data.payment:
@@ -693,6 +693,7 @@ class OrderService:
             order_items_data = []
             inventory_logs = []
             flash_sale_logs = []
+            discount_items = []
             shop_ids: set[int] = set()
             now = datetime.utcnow()
 
@@ -735,6 +736,16 @@ class OrderService:
                 price, flash_sale_item = await OrderService._resolve_checkout_price(tx, item, product, variant, now)
                 subtotal += price * item.quantity
                 shop_ids.add(item.shopId)
+                discount_items.append(
+                    {
+                        "productId": item.productId,
+                        "variantId": item.variantId,
+                        "shopId": item.shopId,
+                        "categoryId": product.categoryId,
+                        "quantity": item.quantity,
+                        "lineTotal": price * item.quantity,
+                    }
+                )
                 if flash_sale_item:
                     flash_sale_logs.append(
                         {
@@ -788,33 +799,16 @@ class OrderService:
                     )
 
             shipping_fee = max(float(checkout_data.shippingFee or 0), 0)
-            discount_amount = 0.0
-            if checkout_data.couponId:
-                coupon = await tx.coupon.find_first(where={"id": checkout_data.couponId})
-                if not coupon:
-                    raise HTTPException(404, "Coupon not found")
-                if not coupon.isActive:
-                    raise HTTPException(400, "Coupon inactive")
-                if coupon.validFrom and coupon.validFrom > now:
-                    raise HTTPException(400, "Coupon not started")
-                if coupon.validUntil and coupon.validUntil < now:
-                    raise HTTPException(400, "Coupon expired")
-                if coupon.usageLimit and coupon.usedCount >= coupon.usageLimit:
-                    raise HTTPException(400, "Coupon limit reached")
-                if coupon.minOrderAmount and subtotal < coupon.minOrderAmount:
-                    raise HTTPException(400, "Order not eligible")
-                if coupon.applicableShopId and any(shop_id != coupon.applicableShopId for shop_id in shop_ids):
-                    raise HTTPException(400, "Coupon is not applicable to this shop")
-                if coupon.usageLimitPerUser:
-                    used_by_user = await tx.couponredemption.count(
-                        where={"couponId": checkout_data.couponId, "userId": current_user.id}
-                    )
-                    if used_by_user >= coupon.usageLimitPerUser:
-                        raise HTTPException(400, "Coupon usage limit reached for this user")
-                discount_amount = subtotal * (coupon.discountValue / 100) if coupon.discountType == "PERCENTAGE" else coupon.discountValue
-                if coupon.maxDiscount:
-                    discount_amount = min(discount_amount, coupon.maxDiscount)
-                discount_amount = min(discount_amount, subtotal + shipping_fee)
+            coupon_ids = OrderService._coupon_ids_from_payload(checkout_data)
+            coupon_result = await CouponService.calculate_coupon_stack(
+                tx,
+                coupon_ids=coupon_ids,
+                subtotal=subtotal,
+                shipping_fee=shipping_fee,
+                items=discount_items,
+                user_id=current_user.id,
+            )
+            discount_amount = float(coupon_result["discountAmount"])
 
             total_amount = max(subtotal + shipping_fee - discount_amount, 0)
 
@@ -833,17 +827,8 @@ class OrderService:
             if checkout_data.shippingAddressId:
                 create_data["shippingAddress"] = {"connect": {"id": checkout_data.shippingAddressId}}
 
-            if checkout_data.couponId:
-                coupon = await tx.coupon.find_first(where={"id": checkout_data.couponId})
-                if not coupon:
-                    raise HTTPException(404, "Coupon not found")
-                if coupon.usageLimitPerUser:
-                    used_by_user = await tx.couponredemption.count(
-                        where={"couponId": checkout_data.couponId, "userId": current_user.id}
-                    )
-                    if used_by_user >= coupon.usageLimitPerUser:
-                        raise HTTPException(400, "Coupon usage limit reached for this user")
-                create_data["coupon"] = {"connect": {"id": checkout_data.couponId}}
+            if coupon_ids:
+                create_data["coupon"] = {"connect": {"id": coupon_ids[0]}}
 
             order = await tx.order.create(data=create_data, include=ORDER_INCLUDE)
             await OrderService._create_shop_packages(tx, order.id, shop_ids, OrderService._to_value(order.status))
@@ -853,23 +838,7 @@ class OrderService:
                 inventory_log["orderId"] = order.id
                 await InventoryService.record(tx, inventory_log)
 
-            if checkout_data.couponId:
-                coupon_where = {"id": checkout_data.couponId}
-                if coupon.usageLimit:
-                    coupon_where["usedCount"] = {"lt": coupon.usageLimit}
-                updated_coupon_count = await tx.coupon.update_many(
-                    where=coupon_where,
-                    data={"usedCount": {"increment": 1}},
-                )
-                if updated_coupon_count == 0:
-                    raise HTTPException(400, "Coupon limit reached")
-                await tx.couponredemption.create(
-                    data={
-                        "coupon": {"connect": {"id": checkout_data.couponId}},
-                        "user": {"connect": {"id": current_user.id}},
-                        "order": {"connect": {"id": order.id}},
-                    }
-                )
+            await OrderService._apply_coupon_redemptions(tx, coupon_result, order.id, current_user.id)
 
             amount = int(round(float(order.totalAmount or 0)))
             if method in {"MOMO", "VNPAY"} and amount <= 0:

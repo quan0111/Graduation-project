@@ -1,5 +1,5 @@
 import {  API_URL_COUPON } from "@/constant/config";
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useMutation, useQuery, type UseMutationOptions, type UseQueryOptions } from "@tanstack/react-query";
 import type { ICoupon } from "../types";
 import { apiClient } from "@/lib/api";
 
@@ -36,6 +36,51 @@ const calculateDiscount = async (couponId: number, orderAmount: number, shopIds:
         shopIds,
     });
     return res.data;
+};
+
+export type CouponStackItem = {
+  productId: number;
+  variantId?: number | null;
+  shopId: number;
+  categoryId?: number | null;
+  quantity: number;
+  price?: number;
+  lineTotal?: number;
+};
+
+export type CouponStackPreviewPayload = {
+  couponIds?: number[];
+  couponCodes?: string[];
+  orderAmount: number;
+  shippingFee?: number;
+  shopIds?: number[];
+  items?: CouponStackItem[];
+};
+
+export type AppliedCouponPreview = {
+  id: number;
+  code: string;
+  scope: "ORDER" | "SHIPPING" | "SHOP" | "CATEGORY" | "PRODUCT";
+  discountAmount: number;
+  discountType: "PERCENTAGE" | "FIXED";
+  discountValue: number;
+  targetAmount: number;
+  applicableShopId?: number | null;
+  applicableCategoryId?: number | null;
+  applicableProductId?: number | null;
+  applicableProductIds?: number[];
+};
+
+export type CouponStackPreviewResponse = {
+  discountAmount: number;
+  productDiscountAmount: number;
+  shippingDiscountAmount: number;
+  appliedCoupons: AppliedCouponPreview[];
+};
+
+const previewCouponStack = async (payload: CouponStackPreviewPayload): Promise<CouponStackPreviewResponse> => {
+  const res = await apiClient.post(`${API_URL_COUPON}/stack/preview`, payload);
+  return res.data;
 };
 
 export const useGetCoupon = (
@@ -84,6 +129,15 @@ export const useCalculateDiscount = (
   return useQuery({
     queryKey: ["coupon", "discount", couponId, orderAmount, shopIds.join(",")],
     queryFn: () => calculateDiscount(couponId, orderAmount, shopIds),
+    ...config,
+  });
+};
+
+export const usePreviewCouponStack = (
+  config?: UseMutationOptions<CouponStackPreviewResponse, Error, CouponStackPreviewPayload>,
+) => {
+  return useMutation({
+    mutationFn: previewCouponStack,
     ...config,
   });
 };

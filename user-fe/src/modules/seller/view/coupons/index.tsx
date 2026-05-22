@@ -11,6 +11,7 @@ import { useCreateCoupon } from "@/modules/coupon/api/create-coupon";
 import { useActivateCoupon, useDeactivateCoupon } from "@/modules/coupon/api/update-coupon";
 import { CouponForm } from "@/modules/coupon/components/couponForm";
 import { useGetShopByOwnerId } from "@/modules/shop/api/myshop";
+import { useSellerProducts } from "@/modules/seller/api/get-seller-products";
 
 const normalizeCoupons = (value: any) => {
   if (Array.isArray(value)) return value;
@@ -19,11 +20,20 @@ const normalizeCoupons = (value: any) => {
   return [];
 };
 
+const getCouponScopeLabel = (coupon: any) => {
+  const productTargets = Array.isArray(coupon.productTargets) ? coupon.productTargets : [];
+  const productIds = Array.isArray(coupon.applicableProductIds) ? coupon.applicableProductIds : [];
+  const selectedCount = productTargets.length || productIds.length || (coupon.applicableProductId ? 1 : 0);
+
+  return selectedCount > 0 ? `${selectedCount} sản phẩm` : "Tất cả shop";
+};
+
 export default function SellerCouponsPage() {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const { data: couponsData, isLoading, refetch } = useGetCoupon();
   const { data: myShop, isLoading: isShopLoading } = useGetShopByOwnerId();
+  const { data: products = [] } = useSellerProducts();
   const createMutation = useCreateCoupon();
   const activateMutation = useActivateCoupon();
   const deactivateMutation = useDeactivateCoupon();
@@ -130,9 +140,7 @@ export default function SellerCouponsPage() {
                               : `${coupon.discountValue}₫`}
                           </td>
                           <td className="px-4 py-3 text-slate-600">
-                            {coupon.applicableProductId
-                              ? `Sản phẩm #${coupon.applicableProductId}`
-                              : "Tất cả shop"}
+                            {getCouponScopeLabel(coupon)}
                           </td>
                           <td className="px-4 py-3 text-slate-600">
                             {coupon.usedCount}/{coupon.usageLimit || "∞"}
@@ -181,6 +189,7 @@ export default function SellerCouponsPage() {
         <CouponForm
           isAdmin={false}
           shopId={shopId ?? 0}
+          products={products}
           onCancel={() => setShowForm(false)}
           onSubmit={handleCreateCoupon}
         />

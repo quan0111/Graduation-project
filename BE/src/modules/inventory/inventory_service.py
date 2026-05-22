@@ -1,3 +1,4 @@
+from prisma import Json
 from fastapi import HTTPException
 
 from src.core.cache import CacheManager
@@ -21,6 +22,24 @@ class InventoryService:
     @staticmethod
     async def record(client, data):
         payload = data.model_dump(exclude_none=True) if hasattr(data, "model_dump") else {k: v for k, v in data.items() if v is not None}
+        if "type" in payload:
+            payload["type"] = InventoryService._to_value(payload["type"])
+        if "metadata" in payload:
+            payload["metadata"] = Json(payload["metadata"])
+
+        relation_fields = {
+            "shopId": "shop",
+            "productId": "product",
+            "variantId": "variant",
+            "orderId": "order",
+            "returnRequestId": "returnRequest",
+            "actorId": "actor",
+        }
+        for id_field, relation_field in relation_fields.items():
+            relation_id = payload.pop(id_field, None)
+            if relation_id is not None:
+                payload[relation_field] = {"connect": {"id": int(relation_id)}}
+
         return await client.inventoryledger.create(data=payload)
 
     @staticmethod

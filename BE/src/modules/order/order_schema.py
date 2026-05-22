@@ -164,6 +164,7 @@ class OrderBase(BaseModel):
     totalAmount: float
     shippingAddressId: Optional[int] = None
     couponId: Optional[int] = None
+    couponIds: List[int] = []
 
 
 class OrderCreate(OrderBase):

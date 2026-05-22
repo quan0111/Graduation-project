@@ -19,6 +19,7 @@ import { ShippingMethod } from "../../components/checkout/shippingMethod";
 import { Stepper } from "../../components/checkout/stepper";
 import { useCheckout, type ShippingMethodType } from "../../hook/useCheckout";
 import { CouponInput } from "@/modules/coupon/components/couponInput";
+import type { AppliedCouponPreview, CouponStackItem } from "@/modules/coupon/api/get-coupon";
 
 type CheckoutLocationItem = {
   id?: number | string;
@@ -144,20 +145,33 @@ export default function CheckOutPage() {
   const [paymentCheckMessage, setPaymentCheckMessage] = useState("Đang chờ thanh toán.");
   const [paymentCountdown, setPaymentCountdown] = useState(PAYMENT_COUNTDOWN_SECONDS);
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
-  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [appliedCoupons, setAppliedCoupons] = useState<AppliedCouponPreview[]>([]);
   const [discountAmount, setDiscountAmount] = useState(0);
 
   const handleShippingChange = (id: string) => {
     state.setShipping(id as ShippingMethodType);
   };
 
-  const handleApplyCoupon = (coupon: any, discount: number) => {
-    setAppliedCoupon(coupon);
+  const couponItems: CouponStackItem[] = useMemo(
+    () =>
+      checkoutItems.map((item) => ({
+        productId: item.productId,
+        variantId: item.variantId,
+        shopId: item.shopId,
+        quantity: item.quantity,
+        price: item.price,
+        lineTotal: item.price * item.quantity,
+      })),
+    [checkoutItems],
+  );
+
+  const handleApplyCoupon = (coupons: AppliedCouponPreview[], discount: number) => {
+    setAppliedCoupons(coupons);
     setDiscountAmount(discount);
   };
 
   const handleRemoveCoupon = () => {
-    setAppliedCoupon(null);
+    setAppliedCoupons([]);
     setDiscountAmount(0);
   };
 
@@ -279,7 +293,8 @@ export default function CheckOutPage() {
         discountAmount,
         totalAmount: totalWithDiscount,
         shippingAddressId: state.shippingAddress.id,
-        couponId: appliedCoupon?.id ? Number(appliedCoupon.id) : undefined,
+        couponId: appliedCoupons[0]?.id ? Number(appliedCoupons[0].id) : undefined,
+        couponIds: appliedCoupons.map((coupon) => Number(coupon.id)),
         cartItemIds: checkoutItems
           .map((item) => item.cartItemId)
           .filter((cartItemId): cartItemId is number => Boolean(cartItemId)),
@@ -510,7 +525,9 @@ export default function CheckOutPage() {
             <div className="space-y-6">
               <CouponInput
                 orderAmount={state.subtotal}
+                shippingFee={state.shippingPrice}
                 shopIds={checkoutShopIds}
+                items={couponItems}
                 onApplyCoupon={handleApplyCoupon}
                 onRemoveCoupon={handleRemoveCoupon}
               />

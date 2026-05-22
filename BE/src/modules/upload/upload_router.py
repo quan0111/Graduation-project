@@ -7,7 +7,16 @@ router = APIRouter(prefix="/uploads", tags=["Uploads"])
 
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
 MAX_VIDEO_SIZE = 50 * 1024 * 1024
-ALLOWED_FOLDERS = {"datn", "reviews", "returns", "products", "avatars", "shops", "seller-identity"}
+ALLOWED_FOLDERS = {
+    "datn",
+    "datn/banners",
+    "reviews",
+    "returns",
+    "products",
+    "avatars",
+    "shops",
+    "seller-identity",
+}
 
 
 @router.post("/image")

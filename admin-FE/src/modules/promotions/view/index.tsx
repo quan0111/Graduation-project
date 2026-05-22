@@ -27,8 +27,12 @@ type Coupon = {
   id: number;
   code: string;
   description?: string | null;
+  scope?: 'ORDER' | 'SHIPPING' | 'SHOP' | 'CATEGORY' | 'PRODUCT';
   discountType: 'PERCENTAGE' | 'FIXED';
   discountValue: number;
+  applicableCategoryId?: number | null;
+  applicableShopId?: number | null;
+  applicableProductId?: number | null;
   usageLimit?: number | null;
   usedCount: number;
   validFrom?: string | null;
@@ -86,11 +90,19 @@ export default function PromotionsPage() {
     if (!code?.trim()) return;
     const value = Number(window.prompt('Giá trị giảm giá (%)', '10'));
     if (!Number.isFinite(value) || value <= 0) return;
+    const scopeInput = window.prompt('Loai voucher: ORDER, SHIPPING hoac CATEGORY', 'ORDER')?.trim().toUpperCase();
+    const scope = scopeInput === 'SHIPPING' || scopeInput === 'CATEGORY' ? scopeInput : 'ORDER';
+    const applicableCategoryId = scope === 'CATEGORY'
+      ? Number(window.prompt('Nhap ID nganh hang ap dung'))
+      : undefined;
+    if (scope === 'CATEGORY' && (!Number.isFinite(applicableCategoryId) || !applicableCategoryId)) return;
     await createCoupon.mutateAsync({
       code: code.trim().toUpperCase(),
       description: `Voucher ${code.trim().toUpperCase()}`,
+      scope,
       discountType: 'PERCENTAGE',
       discountValue: value,
+      applicableCategoryId,
       isActive: true,
     });
   };
