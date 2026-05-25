@@ -205,7 +205,7 @@ export default function CheckOutPage() {
         if (PAYMENT_SUCCESS_STATUSES.has(status)) {
           paymentCompletedRef.current = true;
           setPaymentStatus("success");
-          setPaymentCheckMessage("Thanh toán đã được xác nhận. Đang chuyển tới chi tiết đơn hàng...");
+          setPaymentCheckMessage("Thanh toán đã được xác nhận. Hóa đơn đã được tạo, đang chuyển tới chi tiết đơn hàng...");
           window.sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
           toast.success("Thanh toán thành công");
           window.setTimeout(() => navigate(`/orders/${orderId}`), 900);
@@ -229,6 +229,18 @@ export default function CheckOutPage() {
     },
     [navigate, paymentQrData?.orderId],
   );
+
+  const expirePaymentHold = useCallback(async () => {
+    const orderId = paymentQrData?.orderId;
+    if (!orderId || paymentCompletedRef.current) {
+      return;
+    }
+    try {
+      await apiClient.post(`${API_URL_ORDER}/payment/order/${orderId}/expire`);
+    } catch {
+      // The next checkout attempt will revalidate stock and coupons on the backend.
+    }
+  }, [paymentQrData?.orderId]);
 
   useEffect(() => {
     if (state.step !== 5 || !paymentQrData?.orderId || paymentStatus === "success" || paymentStatus === "failed") {
@@ -257,7 +269,8 @@ export default function CheckOutPage() {
       setPaymentCountdown((current) => {
         if (current <= 1) {
           setPaymentStatus("failed");
-          setPaymentCheckMessage("Mã QR đã quá thời gian chờ. Nếu bạn vẫn muốn thanh toán, hãy tạo lại thanh toán từ đơn hàng.");
+          setPaymentCheckMessage("Mã QR đã quá thời gian chờ. Hóa đơn chưa được tạo, bạn có thể thanh toán lại từ checkout.");
+          void expirePaymentHold();
           return 0;
         }
         return current - 1;
@@ -265,7 +278,7 @@ export default function CheckOutPage() {
     }, 1000);
 
     return () => window.clearInterval(interval);
-  }, [paymentQrData, paymentStatus, state.step]);
+  }, [expirePaymentHold, paymentQrData, paymentStatus, state.step]);
 
   const handlePlaceOrder = async () => {
     if (!state.shippingAddress) {
@@ -327,7 +340,7 @@ export default function CheckOutPage() {
         paymentCompletedRef.current = false;
         pollingInFlightRef.current = false;
         setPaymentStatus("pending");
-        setPaymentCheckMessage("Mã QR đã sẵn sàng. Hệ thống sẽ tự kiểm tra trạng thái thanh toán.");
+        setPaymentCheckMessage("Mã QR đã sẵn sàng. Hóa đơn chỉ được tạo sau khi thanh toán thành công.");
         setPaymentCountdown(PAYMENT_COUNTDOWN_SECONDS);
         state.setStep(5); // New step for QR display
         return;
@@ -416,7 +429,7 @@ export default function CheckOutPage() {
                   onClick={() => state.setStep(4)}
                   className="h-11 w-full rounded-full bg-[#ee4d2d] font-semibold text-white transition hover:bg-[#d93f21]"
                 >
-                  Xem lại hóa đơn
+                  Xem lại thanh toán
                 </button>
               </div>
             ) : null}
@@ -427,6 +440,7 @@ export default function CheckOutPage() {
                   total={totalWithDiscount}
                   onSubmit={handlePlaceOrder}
                   loading={checkoutMutation.isPending}
+                  paymentMethod={state.payment}
                 />
               </div>
             ) : null}
@@ -486,13 +500,13 @@ export default function CheckOutPage() {
                     </div>
 
                     <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
-                      Sau khi bạn thanh toán trên app, MoMo sẽ gửi IPN/callback về hệ thống. Trang này tự kiểm tra mỗi 5 giây và chuyển đơn khi trạng thái thành công.
+                      Sau khi bạn thanh toán trên app, cổng thanh toán sẽ gửi IPN/callback về hệ thống. Trang này tự kiểm tra mỗi 5 giây và chỉ tạo hóa đơn khi trạng thái thành công.
                     </div>
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row">
-                  {paymentQrData.paymentUrl && (
+                  {paymentStatus !== "failed" && paymentQrData.paymentUrl && (
                     <a
                       href={paymentQrData.paymentUrl}
                       target="_blank"
@@ -504,7 +518,7 @@ export default function CheckOutPage() {
                     </a>
                   )}
 
-                  {paymentQrData.deeplink && (
+                  {paymentStatus !== "failed" && paymentQrData.deeplink && (
                     <a
                       href={paymentQrData.deeplink}
                       className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#ee4d2d] py-3 text-center font-semibold text-[#ee4d2d] transition hover:bg-[#ee4d2d] hover:text-white"
@@ -512,6 +526,23 @@ export default function CheckOutPage() {
                       <Smartphone className="size-4" />
                       Mở app {state.payment === "MOMO" ? "MoMo" : "VNPay"}
                     </a>
+                  )}
+
+                  {paymentStatus === "failed" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPaymentQrData(null);
+                        setPaymentStatus("idle");
+                        setPaymentCountdown(PAYMENT_COUNTDOWN_SECONDS);
+                        paymentCompletedRef.current = false;
+                        pollingInFlightRef.current = false;
+                        state.setStep(4);
+                      }}
+                      className="inline-flex w-full items-center justify-center rounded-full bg-[#ee4d2d] py-3 text-center font-semibold text-white transition hover:bg-[#d93f21]"
+                    >
+                      Quay lại xác nhận thanh toán
+                    </button>
                   )}
                 </div>
 

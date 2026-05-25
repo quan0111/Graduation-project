@@ -5,6 +5,7 @@ from prisma import Json
 
 from src.core.database import prisma
 from src.core.dependencies import get_role_value
+from src.modules.inventory.inventory_service import InventoryService
 from src.modules.audit.audit_service import AuditService
 from src.modules.notification.notification_schema import NotificationCreate
 from src.modules.notification.notification_service import NotificationService
@@ -22,6 +23,7 @@ PAYMENT_SUCCESS_STATUSES = {"SUCCESS", "PAYMENT_SUCCESS"}
 PAYMENT_FAILED_STATUSES = {"FAILED", "PAYMENT_FAILED"}
 PAYMENT_PENDING_STATUSES = {"PENDING", "PENDING_PAYMENT"}
 MOMO_PENDING_RESULT_CODES = {"1000", "7000", "7002", "9000"}
+ORDER_PAYMENT_HOLD_STATUSES = {"PENDING_PAYMENT", "PAYMENT_FAILED", "PAYMENT_EXPIRED"}
 
 
 class PaymentService:
@@ -242,6 +244,46 @@ class PaymentService:
         return PaymentService._to_out(payment)
 
     @staticmethod
+    async def expire_payment_by_order(order_id: int, current_user) -> PaymentOut:
+        order = await prisma.order.find_unique(
+            where={"id": order_id},
+            include={"payment": True},
+        )
+        if not order:
+            raise HTTPException(404, "Order not found")
+        if order.userId != current_user.id and get_role_value(current_user) != "ADMIN":
+            raise HTTPException(403, "Forbidden")
+        if not order.payment:
+            raise HTTPException(404, "Payment not found")
+
+        payment_status = PaymentService._to_value(order.payment.status)
+        order_status = PaymentService._to_value(order.status)
+        if payment_status not in PAYMENT_PENDING_STATUSES or order_status != "PENDING_PAYMENT":
+            return PaymentService._to_out(order.payment)
+
+        updated_count = await prisma.payment.update_many(
+            where={"id": order.payment.id, "status": {"in": list(PAYMENT_PENDING_STATUSES)}},
+            data={
+                "status": "PAYMENT_EXPIRED",
+                "providerMessage": "Payment session expired before gateway confirmation",
+            },
+        )
+        if updated_count > 0:
+            updated = await prisma.payment.find_unique(where={"id": order.payment.id})
+            if updated:
+                await PaymentService._sync_order_payment_status(order_id, "PAYMENT_EXPIRED")
+                await PaymentService._create_event(
+                    payment=updated,
+                    event_type="STATUS_SYNCED",
+                    status="PAYMENT_EXPIRED",
+                    message="Payment session expired before gateway confirmation",
+                )
+                return PaymentService._to_out(updated)
+
+        latest = await prisma.payment.find_unique(where={"id": order.payment.id})
+        return PaymentService._to_out(latest or order.payment)
+
+    @staticmethod
     async def get_all_payments() -> list[PaymentOut]:
         payments = await prisma.payment.find_many()
         return [PaymentService._to_out(payment) for payment in payments]
@@ -281,17 +323,29 @@ class PaymentService:
         if callback_amount is not None and int(round(float(payment.amount or 0))) != callback_amount:
             raise HTTPException(400, "Payment callback amount mismatch")
 
-        updated = await prisma.payment.update(
-            where={"id": payment.id},
-            data={
-                "status": status,
-                "transactionId": transaction_id,
-                "providerMessage": provider_message,
-                "rawCallback": PaymentService._json(callback_data),
-                "providerResponse": PaymentService._json(callback_data),
-                "paidAt": datetime.utcnow() if status in PAYMENT_SUCCESS_STATUSES else None,
-            },
-        )
+        update_data = {
+            "status": status,
+            "transactionId": transaction_id,
+            "providerMessage": provider_message,
+            "rawCallback": PaymentService._json(callback_data),
+            "providerResponse": PaymentService._json(callback_data),
+            "paidAt": datetime.utcnow() if status in PAYMENT_SUCCESS_STATUSES else None,
+        }
+        async with prisma.tx() as tx:
+            updated_count = await tx.payment.update_many(
+                where={
+                    "id": payment.id,
+                    "status": {"in": list(PAYMENT_PENDING_STATUSES)},
+                },
+                data=update_data,
+            )
+            if updated_count == 0:
+                return await tx.payment.find_unique(where={"id": payment.id}) or payment
+            updated = await tx.payment.find_unique(where={"id": payment.id})
+
+        if not updated:
+            raise HTTPException(404, "Payment not found")
+
         await PaymentService._sync_order_payment_status(payment.orderId, status)
         await PaymentService._create_event(
             payment=updated,
@@ -366,22 +420,162 @@ class PaymentService:
                     where={"orderId": order_id, "status": {"in": ["PENDING", "PENDING_PAYMENT", "PAYMENT_FAILED", "PAYMENT_EXPIRED"]}},
                     data={"status": "PAID"},
                 )
+                await PaymentService._clear_paid_order_cart_items(order_id)
+                await PaymentService._notify_order_visible(order_id, "PAID")
         elif payment_status in PAYMENT_FAILED_STATUSES:
             order = await prisma.order.find_unique(where={"id": order_id})
-            if order and PaymentService._to_value(order.status) in {"PENDING", "PENDING_PAYMENT"}:
-                await prisma.order.update(where={"id": order_id}, data={"status": "PAYMENT_FAILED"})
-                await prisma.ordershoppackage.update_many(
-                    where={"orderId": order_id, "status": {"in": ["PENDING", "PENDING_PAYMENT"]}},
-                    data={"status": "PAYMENT_FAILED"},
-                )
+            if order and PaymentService._to_value(order.status) == "PENDING_PAYMENT":
+                await PaymentService._mark_payment_hold_failed(order_id, "PAYMENT_FAILED")
         elif payment_status == "PAYMENT_EXPIRED":
             order = await prisma.order.find_unique(where={"id": order_id})
             if order and PaymentService._to_value(order.status) == "PENDING_PAYMENT":
-                await prisma.order.update(where={"id": order_id}, data={"status": "PAYMENT_EXPIRED"})
-                await prisma.ordershoppackage.update_many(
-                    where={"orderId": order_id, "status": "PENDING_PAYMENT"},
-                    data={"status": "PAYMENT_EXPIRED"},
+                await PaymentService._mark_payment_hold_failed(order_id, "PAYMENT_EXPIRED")
+
+    @staticmethod
+    async def _mark_payment_hold_failed(order_id: int, next_status: str):
+        async with prisma.tx() as tx:
+            updated_count = await tx.order.update_many(
+                where={"id": order_id, "status": "PENDING_PAYMENT"},
+                data={"status": next_status},
+            )
+            if updated_count == 0:
+                return
+            await tx.ordershoppackage.update_many(
+                where={"orderId": order_id, "status": "PENDING_PAYMENT"},
+                data={"status": next_status},
+            )
+            await PaymentService._release_order_reservation(tx, order_id)
+
+    @staticmethod
+    async def _release_order_reservation(client, order_id: int):
+        order = await client.order.find_unique(
+            where={"id": order_id},
+            include={"items": True, "couponRedemptions": True},
+        )
+        if not order:
+            return
+
+        for item in order.items:
+            if item.variantId:
+                variant = await client.productvariant.find_unique(where={"id": item.variantId})
+                if variant:
+                    stock_before = variant.stock or 0
+                    stock_after = stock_before + item.quantity
+                    await client.productvariant.update(
+                        where={"id": variant.id},
+                        data={"stock": stock_after},
+                    )
+                    await InventoryService.record(
+                        client,
+                        {
+                            "shopId": item.shopId,
+                            "productId": item.productId,
+                            "variantId": item.variantId,
+                            "orderId": order_id,
+                            "actorId": order.userId,
+                            "type": "CANCEL_RESTORE",
+                            "quantityChange": item.quantity,
+                            "stockBefore": stock_before,
+                            "stockAfter": stock_after,
+                            "reason": "Release stock after gateway payment failed or expired",
+                            "metadata": {"orderItemId": item.id, "productName": item.productName},
+                        },
+                    )
+
+        await PaymentService._restore_flash_sale_sales(client, order)
+        await PaymentService._release_coupon_redemptions(client, order_id)
+
+    @staticmethod
+    async def _release_coupon_redemptions(client, order_id: int):
+        redemptions = await client.couponredemption.find_many(where={"orderId": order_id})
+        for redemption in redemptions:
+            await client.coupon.update_many(
+                where={"id": redemption.couponId, "usedCount": {"gt": 0}},
+                data={"usedCount": {"decrement": 1}},
+            )
+        if redemptions:
+            await client.couponredemption.delete_many(where={"orderId": order_id})
+
+    @staticmethod
+    async def _restore_flash_sale_sales(client, order):
+        order_created_at = getattr(order, "createdAt", None)
+        if not order_created_at:
+            return
+
+        flash_sales = await client.flashsale.find_many(
+            where={
+                "startsAt": {"lte": order_created_at},
+                "endsAt": {"gte": order_created_at},
+            }
+        )
+        flash_sale_ids = [flash_sale.id for flash_sale in flash_sales]
+        if not flash_sale_ids:
+            return
+
+        for item in getattr(order, "items", []) or []:
+            quantity = int(getattr(item, "quantity", 0) or 0)
+            if quantity <= 0:
+                continue
+            where = {
+                "flashSaleId": {"in": flash_sale_ids},
+                "productId": item.productId,
+                "shopId": item.shopId,
+                "salePrice": float(item.price or 0),
+                "soldCount": {"gte": quantity},
+            }
+            where["variantId"] = item.variantId if item.variantId else None
+            sale_item = await client.flashsaleitem.find_first(where=where)
+            if sale_item:
+                await client.flashsaleitem.update_many(
+                    where={"id": sale_item.id, "soldCount": {"gte": quantity}},
+                    data={"soldCount": {"decrement": quantity}},
                 )
+
+    @staticmethod
+    async def _clear_paid_order_cart_items(order_id: int):
+        order = await prisma.order.find_unique(where={"id": order_id}, include={"items": True})
+        order_items = getattr(order, "items", None) if order else None
+        if not order or not order_items:
+            return
+        cart = await prisma.cart.find_unique(where={"userId": order.userId})
+        if not cart:
+            return
+        item_filters = [
+            {
+                "productId": item.productId,
+                "variantId": item.variantId,
+                "shopId": item.shopId,
+            }
+            for item in order_items
+        ]
+        if item_filters:
+            await prisma.cartitem.delete_many(where={"cartId": cart.id, "OR": item_filters})
+
+    @staticmethod
+    async def _notify_order_visible(order_id: int, status: str):
+        try:
+            order = await prisma.order.find_unique(
+                where={"id": order_id},
+                include={"items": {"include": {"shop": True}}},
+            )
+            if not order:
+                return
+            recipients = {order.userId}
+            for item in order.items:
+                if item.shop and item.shop.ownerId:
+                    recipients.add(item.shop.ownerId)
+            for user_id in recipients:
+                await NotificationService.create(
+                    NotificationCreate(
+                        userId=user_id,
+                        title="Đơn hàng đã thanh toán",
+                        content=f"Đơn hàng #{order_id} đã thanh toán thành công và được tạo hóa đơn.",
+                        type="ORDER_UPDATE",
+                        metadata={"orderId": order_id, "status": status},
+                    )
+                )
+        except Exception:
+            return None
 
     @staticmethod
     async def _create_event(payment, event_type: str, status: str | None = None, payload: dict | None = None, transaction_id: str | None = None, message: str | None = None):

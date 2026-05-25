@@ -64,6 +64,7 @@ const mapPayment = (payment: any): IPayment | null =>
       paid_at: payment.paidAt ?? null,
       created_at: payment.createdAt,
       updated_at: payment.updatedAt ?? null,
+      events: Array.isArray(payment.events) ? payment.events : [],
     }
     : null;
 
@@ -130,4 +131,13 @@ export const mapOrder = (order: any): IOrder => ({
   shop_package: order.shopPackage ? mapPackage(order.shopPackage) : null,
   items: Array.isArray(order.items) ? order.items.map(mapItem) : [],
   payment: mapPayment(order.payment),
+  paymentEvents: Array.isArray(order.paymentEvents) ? order.paymentEvents : [],
+  shipmentEvents: Array.isArray(order.shipmentEvents)
+    ? order.shipmentEvents.map((event: any) => ({
+      ...event,
+      createdAt: event.createdAt ?? event.occurredAt,
+    }))
+    : [],
+  cancellation: order.cancellation ?? null,
+  returnRequests: Array.isArray(order.returnRequests) ? order.returnRequests : [],
 });

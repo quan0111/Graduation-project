@@ -163,12 +163,16 @@ class AdminService:
     async def get_dashboard_stats() -> DashboardStats:
 
         total_users = await prisma.user.count(where={"deletedAt": None})
-        total_orders = await prisma.order.count(where={"deletedAt": None})
+        visible_order_where = {
+            "deletedAt": None,
+            "status": {"notIn": ["PENDING_PAYMENT", "PAYMENT_FAILED", "PAYMENT_EXPIRED"]},
+        }
+        total_orders = await prisma.order.count(where=visible_order_where)
         total_products = await prisma.product.count(where={"deletedAt": None})
         total_shops = await prisma.shop.count(where={"deletedAt": None})
 
         orders = await prisma.order.find_many(
-            where={"deletedAt": None},
+            where=visible_order_where,
             include={"items": {"include": {"shop": True}}},
             order={"createdAt": "desc"},
         )
@@ -293,8 +297,12 @@ class AdminService:
 
         where = {}
 
+        payment_hold_statuses = ["PENDING_PAYMENT", "PAYMENT_FAILED", "PAYMENT_EXPIRED"]
+
         if filter_data.status:
             where["status"] = filter_data.status
+        else:
+            where["status"] = {"notIn": payment_hold_statuses}
 
         if filter_data.userId:
             where["userId"] = filter_data.userId

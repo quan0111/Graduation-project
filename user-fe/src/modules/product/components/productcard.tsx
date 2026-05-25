@@ -27,6 +27,7 @@ const TEXT = {
   missingShop: "Sản phẩm chưa có thông tin shop",
   addSuccess: "Đã thêm vào giỏ hàng",
   addFailed: "Không thể thêm vào giỏ hàng",
+  outOfStock: "Hết hàng",
   wishlistAdd: "Thêm vào wishlist",
   wishlistRemove: "Bỏ khỏi wishlist",
 };
@@ -44,6 +45,32 @@ const getImageUrl = (product: IProduct) =>
 
 const formatVnd = (value: number) => `${value.toLocaleString("vi-VN")}đ`;
 
+const getAvailableFlashSaleStock = (product: IProduct) => {
+  const sale = product.activeFlashSale;
+  if (!sale || sale.stockLimit === null || sale.stockLimit === undefined) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return Math.max(0, Number(sale.stockLimit || 0) - Number(sale.soldCount || 0));
+};
+
+const getPurchasableVariant = (product: IProduct) => {
+  const variants = product.variants ?? [];
+  if (!variants.length) {
+    return null;
+  }
+
+  const sale = product.activeFlashSale;
+  const flashSaleHasStock = getAvailableFlashSaleStock(product) > 0;
+  if (sale?.variantId && flashSaleHasStock) {
+    const saleVariant = variants.find((variant) => variant.id === sale.variantId && Number(variant.stock || 0) > 0);
+    if (saleVariant) {
+      return saleVariant;
+    }
+  }
+
+  return variants.find((variant) => Number(variant.stock || 0) > 0) ?? null;
+};
+
 export const ProductCard = ({
   product,
   isWishlisted = false,
@@ -57,6 +84,8 @@ export const ProductCard = ({
   const salePrice = product.activeFlashSale?.salePrice;
   const hasFlashSale = Boolean(salePrice && salePrice > 0 && salePrice < product.price);
   const displayPrice = hasFlashSale ? Number(salePrice) : product.price;
+  const purchasableVariant = getPurchasableVariant(product);
+  const isOutOfStock = !purchasableVariant || getAvailableFlashSaleStock(product) <= 0;
 
   const requireLogin = (message: string) => {
     toast.error(message);
@@ -64,13 +93,28 @@ export const ProductCard = ({
   };
 
   const handleAdd = async () => {
+    if (isOutOfStock || !purchasableVariant) {
+      toast.error(TEXT.outOfStock);
+      return;
+    }
+
+    if (!product.shop?.id) {
+      toast.error(TEXT.missingShop);
+      return;
+    }
+
     if (!storefrontUser && product.shop?.id) {
-      addGuestCartItem({
+      const saved = addGuestCartItem({
         productId: product.id,
-        variantId: product.variants?.[0]?.id ?? null,
+        variantId: purchasableVariant.id,
         shopId: product.shop.id,
         quantity: 1,
+        availableStock: purchasableVariant.stock,
       });
+      if (!saved) {
+        toast.error(TEXT.outOfStock);
+        return;
+      }
       toast.success(TEXT.addSavedGuest);
       navigate("/login", { state: { redirect: window.location.pathname } });
       return;
@@ -81,15 +125,10 @@ export const ProductCard = ({
       return;
     }
 
-    if (!product.shop?.id) {
-      toast.error(TEXT.missingShop);
-      return;
-    }
-
     try {
       await addMutation.mutateAsync({
         productId: product.id,
-        variantId: product.variants?.[0]?.id ?? null,
+        variantId: purchasableVariant.id,
         shopId: product.shop.id,
         quantity: 1,
       });
@@ -158,10 +197,10 @@ export const ProductCard = ({
         <Button
           className="mt-1 h-9 w-full rounded-xl bg-orange-600 text-white hover:bg-orange-700"
           onClick={handleAdd}
-          disabled={addMutation.isPending}
+          disabled={addMutation.isPending || isOutOfStock}
         >
           <ShoppingCart className="h-4 w-4" />
-          {addMutation.isPending ? TEXT.adding : TEXT.addToCart}
+          {isOutOfStock ? TEXT.outOfStock : addMutation.isPending ? TEXT.adding : TEXT.addToCart}
         </Button>
       </div>
     </article>

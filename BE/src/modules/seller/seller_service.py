@@ -100,7 +100,11 @@ class SellerService:
             order={"updatedAt": "desc"},
         )
         orders = await prisma.order.find_many(
-            where={"items": {"some": {"shopId": shop.id, "deletedAt": None}}, "deletedAt": None},
+            where={
+                "items": {"some": {"shopId": shop.id, "deletedAt": None}},
+                "deletedAt": None,
+                "status": {"notIn": ["PENDING_PAYMENT", "PAYMENT_FAILED", "PAYMENT_EXPIRED"]},
+            },
             include={"items": True, "payment": True},
             order={"createdAt": "desc"},
         )

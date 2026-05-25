@@ -77,6 +77,7 @@ CUSTOMER_TRANSITIONS = {
 
 CANCELLABLE_STATUSES = {"PENDING", "PENDING_PAYMENT", "PAYMENT_FAILED", "PAYMENT_EXPIRED", "PAID", "CONFIRMED"}
 TERMINAL_CANCEL_STATUSES = {"CANCELLED", "CANCELLED_BY_CUSTOMER", "CANCELLED_BY_SELLER"}
+PAYMENT_HOLD_ORDER_STATUSES = {"PENDING_PAYMENT", "PAYMENT_FAILED", "PAYMENT_EXPIRED"}
 
 ORDER_INCLUDE = {
     "items": {
@@ -903,7 +904,7 @@ class OrderService:
                     }
                 )
 
-            if checkout_data.cartItemIds:
+            if method == "COD" and checkout_data.cartItemIds:
                 cart = await tx.cart.find_unique(where={"userId": current_user.id})
                 if cart:
                     await tx.cartitem.delete_many(
@@ -990,14 +991,7 @@ class OrderService:
                         "providerMessage": failure_message,
                     },
                 )
-                await prisma.order.update(
-                    where={"id": created_order.id},
-                    data={"status": "PAYMENT_FAILED"},
-                )
-                await prisma.ordershoppackage.update_many(
-                    where={"orderId": created_order.id},
-                    data={"status": "PAYMENT_FAILED"},
-                )
+                await PaymentService._mark_payment_hold_failed(created_order.id, "PAYMENT_FAILED")
                 await PaymentService._create_event(
                     payment=failed_payment,
                     event_type="CREATED",
@@ -1006,7 +1000,8 @@ class OrderService:
                 )
                 raise
 
-        await OrderService._notify_order_update(created_order.id, "CREATED", actor_id=current_user.id)
+        if method == "COD":
+            await OrderService._notify_order_update(created_order.id, "CREATED", actor_id=current_user.id)
         return CheckoutOut(
             order=created_order,
             payment=PaymentOut(**{
@@ -1026,6 +1021,7 @@ class OrderService:
             where={
                 "userId": current_user.id,
                 "deletedAt": None,
+                "status": {"notIn": list(PAYMENT_HOLD_ORDER_STATUSES)},
             },
             include=ORDER_INCLUDE,
             order={"createdAt": "desc"},
@@ -1037,6 +1033,7 @@ class OrderService:
         orders = await prisma.order.find_many(
             where={
                 "deletedAt": None,
+                "status": {"notIn": list(PAYMENT_HOLD_ORDER_STATUSES)},
                 "items": {
                     "some": {
                         "shopId": shop.id,
@@ -1060,6 +1057,7 @@ class OrderService:
             where={
                 "id": order_id,
                 "deletedAt": None,
+                "status": {"notIn": list(PAYMENT_HOLD_ORDER_STATUSES)},
                 "items": {
                     "some": {
                         "shopId": shop.id,

@@ -57,6 +57,11 @@ async def get_payment_by_order(order_id: int, user=Depends(get_current_user)):
     return await PaymentService.get_payment_by_order(order_id)
 
 
+@router.post("/payment/order/{order_id}/expire", response_model=PaymentOut)
+async def expire_payment_by_order(order_id: int, user=Depends(get_current_user)):
+    return await PaymentService.expire_payment_by_order(order_id, user)
+
+
 @router.get("/payment/vnpay/return")
 async def vnpay_return(request: Request):
     return await PaymentService.handle_vnpay_return(dict(request.query_params))

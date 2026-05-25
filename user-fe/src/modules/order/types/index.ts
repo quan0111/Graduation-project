@@ -78,6 +78,7 @@ export interface IPayment {
   paid_at?: string | null;
   created_at: string;
   updated_at?: string | null;
+  events?: any[];
 }
 
 export interface IShipment {
@@ -125,6 +126,10 @@ export interface IOrder {
   shop_package?: IOrderShopPackage | null;
   items: IOrderItem[];
   payment?: IPayment | null;
+  paymentEvents?: any[];
+  shipmentEvents?: any[];
+  cancellation?: any | null;
+  returnRequests?: any[];
 }
 
 export interface ICreateOrderFormInputs {

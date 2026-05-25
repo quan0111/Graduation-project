@@ -49,6 +49,7 @@ export const ProductActions = ({ productId, variantId, shopId, stock, onAddedToC
         variantId,
         shopId,
         quantity,
+        availableStock: stock,
       });
       toast.success("Đã lưu sản phẩm, đăng nhập để đồng bộ giỏ hàng");
       navigate("/login", { state: { redirect: window.location.pathname } });

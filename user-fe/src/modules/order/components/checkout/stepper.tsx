@@ -8,7 +8,7 @@ const steps = [
   "Địa chỉ nhận hàng",
   "Phương thức giao",
   "Phương thức thanh toán",
-  "Xác nhận hóa đơn",
+  "Xác nhận thanh toán",
   "Thanh toán QR",
 ] as const;
 

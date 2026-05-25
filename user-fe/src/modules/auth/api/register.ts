@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { API_URL_LOGIN } from "../../../constant/config";
 import { saveStorefrontSession } from "@/lib/auth-storage";
@@ -23,7 +24,10 @@ export const useRegister = ({ config }: UseRegisterOption = {}) => {
     mutationFn: register,
     onSuccess: async (data) => {
       saveStorefrontSession(data.access_token, data.user);
-      await mergeGuestCartToAccount();
+      const mergeResult = await mergeGuestCartToAccount();
+      if (mergeResult.removedCount > 0) {
+        toast.warning(`${mergeResult.removedCount} sản phẩm trong giỏ tạm đã hết hàng hoặc không còn khả dụng.`);
+      }
       await queryClient.invalidateQueries({ queryKey: ["auth"] });
       await queryClient.invalidateQueries({ queryKey: ["cart", data.user.id] });
     },
