@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -116,6 +117,118 @@ class PaymentCallbackTest(unittest.IsolatedAsyncioTestCase):
         sync_order_mock.assert_not_awaited()
         create_event_mock.assert_not_awaited()
         notify_mock.assert_not_awaited()
+
+    async def test_release_payment_hold_restores_stock_flash_sale_and_coupon(self):
+        order_id = 10
+        item = SimpleNamespace(
+            id=51,
+            shopId=3,
+            productId=7,
+            variantId=11,
+            quantity=2,
+            price=99000,
+            productName="Sneaker",
+        )
+        order = SimpleNamespace(
+            id=order_id,
+            userId=5,
+            createdAt=datetime.utcnow(),
+            items=[item],
+        )
+        variant = SimpleNamespace(id=11, stock=4)
+        client = SimpleNamespace(
+            order=SimpleNamespace(find_unique=AsyncMock(return_value=order)),
+            productvariant=SimpleNamespace(
+                find_unique=AsyncMock(return_value=variant),
+                update=AsyncMock(),
+            ),
+            inventoryledger=SimpleNamespace(create=AsyncMock()),
+            flashsale=SimpleNamespace(find_many=AsyncMock(return_value=[SimpleNamespace(id=21)])),
+            flashsaleitem=SimpleNamespace(
+                find_first=AsyncMock(return_value=SimpleNamespace(id=31)),
+                update_many=AsyncMock(),
+            ),
+            couponredemption=SimpleNamespace(
+                find_many=AsyncMock(return_value=[SimpleNamespace(couponId=41)]),
+                delete_many=AsyncMock(),
+            ),
+            coupon=SimpleNamespace(update_many=AsyncMock()),
+        )
+
+        await PaymentService._release_order_reservation(client, order_id)
+
+        client.productvariant.update.assert_awaited_once_with(
+            where={"id": 11},
+            data={"stock": 6},
+        )
+        ledger_payload = client.inventoryledger.create.await_args.kwargs["data"]
+        self.assertEqual(ledger_payload["type"], "PAYMENT_RELEASE")
+        self.assertEqual(ledger_payload["quantityChange"], 2)
+        self.assertEqual(ledger_payload["stockBefore"], 4)
+        self.assertEqual(ledger_payload["stockAfter"], 6)
+        client.flashsaleitem.update_many.assert_awaited_once_with(
+            where={"id": 31, "soldCount": {"gte": 2}},
+            data={"soldCount": {"decrement": 2}},
+        )
+        client.coupon.update_many.assert_awaited_once_with(
+            where={"id": 41, "usedCount": {"gt": 0}},
+            data={"usedCount": {"decrement": 1}},
+        )
+        client.couponredemption.delete_many.assert_awaited_once_with(where={"orderId": order_id})
+
+    async def test_stale_payment_hold_is_expired_by_backend_cleanup(self):
+        original_prisma = payment_service.prisma
+        original_sync_order = PaymentService._sync_order_payment_status
+        original_create_event = PaymentService._create_event
+
+        created_at = datetime.utcnow() - timedelta(minutes=20)
+        order = SimpleNamespace(id=10, status="PENDING_PAYMENT", createdAt=created_at, deletedAt=None)
+        pending_payment = SimpleNamespace(
+            id=1,
+            orderId=10,
+            method="MOMO",
+            status="PENDING",
+        )
+        order.payment = pending_payment
+        expired_payment = SimpleNamespace(
+            id=1,
+            orderId=10,
+            method="MOMO",
+            status="PAYMENT_EXPIRED",
+            providerOrderId="ORDER-10",
+            requestId="REQ-1",
+            transactionId=None,
+        )
+        payment_model = SimpleNamespace(
+            find_unique=AsyncMock(return_value=expired_payment),
+            update_many=AsyncMock(return_value=1),
+        )
+        order_model = SimpleNamespace(
+            find_many=AsyncMock(return_value=[order]),
+            find_unique=AsyncMock(return_value=order),
+        )
+        payment_service.prisma = SimpleNamespace(order=order_model, payment=payment_model)
+        sync_order_mock = AsyncMock()
+        create_event_mock = AsyncMock()
+        PaymentService._sync_order_payment_status = sync_order_mock
+        PaymentService._create_event = create_event_mock
+
+        try:
+            result = await PaymentService.expire_stale_payment_holds(max_age_minutes=15)
+        finally:
+            payment_service.prisma = original_prisma
+            PaymentService._sync_order_payment_status = original_sync_order
+            PaymentService._create_event = original_create_event
+
+        self.assertEqual(result["expired"], 1)
+        order_model.find_many.assert_awaited_once()
+        order_model.find_unique.assert_awaited_once_with(
+            where={"id": 10},
+            include={"payment": True},
+        )
+        payment_model.update_many.assert_awaited_once()
+        sync_order_mock.assert_awaited_once_with(10, "PAYMENT_EXPIRED")
+        create_event_mock.assert_awaited_once()
 
 
 if __name__ == "__main__":

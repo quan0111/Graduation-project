@@ -136,6 +136,14 @@ class PaymentOut(PaymentBase):
         from_attributes = True
 
 
+class PaymentHoldOut(PaymentOut):
+    orderStatus: str
+    orderCreatedAt: datetime
+    userId: int
+    eventCount: int = 0
+    latestEventMessage: Optional[str] = None
+
+
 class PaymentGatewayOut(BaseModel):
     payment: PaymentOut
     paymentUrl: Optional[str] = None

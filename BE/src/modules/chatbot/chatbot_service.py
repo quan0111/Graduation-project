@@ -405,7 +405,11 @@ class ChatService:
             )
 
         orders = await prisma.order.find_many(
-            where={"userId": user_id, "deletedAt": None},
+            where={
+                "userId": user_id,
+                "deletedAt": None,
+                "status": {"notIn": ["PENDING_PAYMENT", "PAYMENT_FAILED", "PAYMENT_EXPIRED"]},
+            },
             order={"createdAt": "desc"},
             take=20,
         )
@@ -512,7 +516,11 @@ class ChatService:
             return ["Người dùng chưa đăng nhập nên không thể xem đơn hàng cá nhân."]
 
         orders = await prisma.order.find_many(
-            where={"userId": user_id, "deletedAt": None},
+            where={
+                "userId": user_id,
+                "deletedAt": None,
+                "status": {"notIn": ["PENDING_PAYMENT", "PAYMENT_FAILED", "PAYMENT_EXPIRED"]},
+            },
             order={"createdAt": "desc"},
             take=3,
         )

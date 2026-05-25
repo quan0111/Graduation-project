@@ -355,12 +355,15 @@ class FinanceService:
         cancelled_order_ids = set()
         returned_order_ids = set()
         completed_statuses = {"DELIVERED", "COMPLETED"}
+        payment_hold_statuses = {"PENDING_PAYMENT", "PAYMENT_FAILED", "PAYMENT_EXPIRED"}
 
         for item in items:
             if not item.order:
                 continue
-            order_ids.add(item.orderId)
             status = FinanceService._to_value(item.order.status)
+            if status in payment_hold_statuses:
+                continue
+            order_ids.add(item.orderId)
             if status == "CANCELLED":
                 cancelled_order_ids.add(item.orderId)
             if status in {"RETURN_REQUESTED", "RETURNED"}:

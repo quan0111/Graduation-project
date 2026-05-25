@@ -1,7 +1,9 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, Request, Response
+from fastapi.responses import RedirectResponse
 
+from src.core.config import settings
 from src.core.dependencies import get_current_user, require_admin, require_seller
 from src.modules.order.order_schema import (
     CheckoutCreate,
@@ -13,6 +15,7 @@ from src.modules.order.order_schema import (
     PaymentCreate,
     PaymentGatewayCreate,
     PaymentGatewayOut,
+    PaymentHoldOut,
     PaymentOut,
     PaymentUpdate,
 )
@@ -62,9 +65,22 @@ async def expire_payment_by_order(order_id: int, user=Depends(get_current_user))
     return await PaymentService.expire_payment_by_order(order_id, user)
 
 
+@router.get("/payment/holds", response_model=List[PaymentHoldOut])
+async def get_payment_holds(user=Depends(require_admin)):
+    _ = user
+    return await PaymentService.get_payment_holds()
+
+
+@router.post("/payment/holds/expire-stale")
+async def expire_stale_payment_holds(user=Depends(require_admin)):
+    _ = user
+    return await PaymentService.expire_stale_payment_holds()
+
+
 @router.get("/payment/vnpay/return")
 async def vnpay_return(request: Request):
-    return await PaymentService.handle_vnpay_return(dict(request.query_params))
+    result = await PaymentService.handle_vnpay_return(dict(request.query_params))
+    return _payment_return_redirect(result, "vnpay")
 
 
 @router.post("/payment/momo/ipn")
@@ -75,7 +91,17 @@ async def momo_ipn(payload: dict):
 
 @router.get("/payment/momo/return")
 async def momo_return(request: Request):
-    return await PaymentService.handle_momo_callback(dict(request.query_params))
+    result = await PaymentService.handle_momo_callback(dict(request.query_params))
+    return _payment_return_redirect(result, "momo")
+
+
+def _payment_return_redirect(result: dict, gateway: str) -> RedirectResponse:
+    payment = result.get("payment")
+    order_id = getattr(payment, "orderId", None)
+    status = "success" if result.get("success") else "failed"
+    frontend_url = settings.FRONTEND_URL.rstrip("/")
+    location = f"{frontend_url}/payment-success?orderId={order_id or ''}&status={status}&gateway={gateway}"
+    return RedirectResponse(location)
 
 
 @router.get("/payment/{payment_id}", response_model=PaymentOut)

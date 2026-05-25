@@ -269,7 +269,7 @@ export default function CheckOutPage() {
       setPaymentCountdown((current) => {
         if (current <= 1) {
           setPaymentStatus("failed");
-          setPaymentCheckMessage("Mã QR đã quá thời gian chờ. Hóa đơn chưa được tạo, bạn có thể thanh toán lại từ checkout.");
+          setPaymentCheckMessage("Mã QR đã quá thời gian chờ. Hóa đơn chưa được tạo, giỏ hàng vẫn được giữ để bạn thanh toán lại.");
           void expirePaymentHold();
           return 0;
         }

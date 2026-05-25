@@ -54,6 +54,7 @@ export const router = createBrowserRouter([
 
       { path: "checkout", element: <RequireAuth><CheckOutPage /></RequireAuth> },
       { path: "payment-success", element: <RequireAuth><PaymentSuccessPage /></RequireAuth> },
+      { path: "orders/payment-return", element: <RequireAuth><PaymentSuccessPage /></RequireAuth> },
 
       { path: "orders", element: <RequireAuth><OrderPage /></RequireAuth> },
       { path: "orders/:id", element: <RequireAuth><OrderDetailPage /></RequireAuth> },

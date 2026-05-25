@@ -1155,6 +1155,7 @@ enum InventoryLedgerType {
   ORDER_DEDUCT
   CANCEL_RESTORE
   RETURN_RESTORE
+  PAYMENT_RELEASE
 }
 
 model InventoryLedger {

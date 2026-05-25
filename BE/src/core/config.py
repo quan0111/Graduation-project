@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     REDIS_ENABLED: bool = True
     CACHE_ENABLED: bool = True
+    FRONTEND_URL: str = "http://localhost:5174"
     COOKIE_SECURE: Optional[bool] = None
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",

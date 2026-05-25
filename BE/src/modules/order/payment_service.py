@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import HTTPException
 from prisma import Json
@@ -10,7 +10,7 @@ from src.modules.audit.audit_service import AuditService
 from src.modules.notification.notification_schema import NotificationCreate
 from src.modules.notification.notification_service import NotificationService
 from src.modules.order.momo_service import MoMoService
-from src.modules.order.order_schema import PaymentCreate, PaymentGatewayCreate, PaymentGatewayOut, PaymentOut
+from src.modules.order.order_schema import PaymentCreate, PaymentGatewayCreate, PaymentGatewayOut, PaymentHoldOut, PaymentOut
 from src.modules.order.vnpay_service import VNPayService
 
 
@@ -24,6 +24,7 @@ PAYMENT_FAILED_STATUSES = {"FAILED", "PAYMENT_FAILED"}
 PAYMENT_PENDING_STATUSES = {"PENDING", "PENDING_PAYMENT"}
 MOMO_PENDING_RESULT_CODES = {"1000", "7000", "7002", "9000"}
 ORDER_PAYMENT_HOLD_STATUSES = {"PENDING_PAYMENT", "PAYMENT_FAILED", "PAYMENT_EXPIRED"}
+PAYMENT_HOLD_EXPIRE_MINUTES = 30
 
 
 class PaymentService:
@@ -285,8 +286,99 @@ class PaymentService:
 
     @staticmethod
     async def get_all_payments() -> list[PaymentOut]:
-        payments = await prisma.payment.find_many()
+        payments = await prisma.payment.find_many(order={"createdAt": "desc"})
         return [PaymentService._to_out(payment) for payment in payments]
+
+    @staticmethod
+    async def get_payment_holds() -> list[PaymentHoldOut]:
+        orders = await prisma.order.find_many(
+            where={
+                "status": {"in": list(ORDER_PAYMENT_HOLD_STATUSES)},
+                "deletedAt": None,
+            },
+            include={"payment": {"include": {"events": True}}},
+            order={"createdAt": "desc"},
+        )
+        holds = []
+        for order in orders:
+            payment = getattr(order, "payment", None)
+            if not payment or PaymentService._to_value(payment.method) not in PaymentService.GATEWAY_METHODS:
+                continue
+            holds.append(PaymentService._to_hold_out(payment, order=order))
+        return holds
+
+    @staticmethod
+    async def expire_stale_payment_holds(max_age_minutes: int = PAYMENT_HOLD_EXPIRE_MINUTES) -> dict:
+        max_age_minutes = max(1, int(max_age_minutes or PAYMENT_HOLD_EXPIRE_MINUTES))
+        cutoff = datetime.utcnow() - timedelta(minutes=max_age_minutes)
+        orders = await prisma.order.find_many(
+            where={
+                "status": "PENDING_PAYMENT",
+                "createdAt": {"lte": cutoff},
+                "deletedAt": None,
+            },
+            include={"payment": True},
+            take=200,
+        )
+
+        expired = 0
+        skipped = 0
+        for order in orders:
+            payment = getattr(order, "payment", None)
+            if (
+                not payment
+                or PaymentService._to_value(payment.method) not in PaymentService.GATEWAY_METHODS
+                or PaymentService._to_value(payment.status) not in PAYMENT_PENDING_STATUSES
+            ):
+                skipped += 1
+                continue
+
+            latest_order = await prisma.order.find_unique(
+                where={"id": order.id},
+                include={"payment": True},
+            )
+            latest = getattr(latest_order, "payment", None) if latest_order else None
+            if (
+                not latest_order
+                or not latest
+                or PaymentService._to_value(latest.status) not in PAYMENT_PENDING_STATUSES
+                or PaymentService._to_value(latest_order.status) != "PENDING_PAYMENT"
+            ):
+                skipped += 1
+                continue
+
+            message = f"Payment hold expired after {max_age_minutes} minutes without gateway confirmation"
+            updated_count = await prisma.payment.update_many(
+                where={"id": latest.id, "status": {"in": list(PAYMENT_PENDING_STATUSES)}},
+                data={
+                    "status": "PAYMENT_EXPIRED",
+                    "providerMessage": message,
+                },
+            )
+            if updated_count == 0:
+                skipped += 1
+                continue
+
+            updated = await prisma.payment.find_unique(where={"id": latest.id})
+            if not updated:
+                skipped += 1
+                continue
+
+            await PaymentService._sync_order_payment_status(latest.orderId, "PAYMENT_EXPIRED")
+            await PaymentService._create_event(
+                payment=updated,
+                event_type="STATUS_SYNCED",
+                status="PAYMENT_EXPIRED",
+                message=message,
+            )
+            expired += 1
+
+        return {
+            "expired": expired,
+            "skipped": skipped,
+            "cutoff": cutoff.isoformat(),
+            "maxAgeMinutes": max_age_minutes,
+        }
 
     @staticmethod
     async def get_payment_events(payment_id: int):
@@ -473,7 +565,7 @@ class PaymentService:
                             "variantId": item.variantId,
                             "orderId": order_id,
                             "actorId": order.userId,
-                            "type": "CANCEL_RESTORE",
+                            "type": "PAYMENT_RELEASE",
                             "quantityChange": item.quantity,
                             "stockBefore": stock_before,
                             "stockAfter": stock_after,
@@ -644,6 +736,23 @@ class PaymentService:
         data["method"] = PaymentService._to_value(data.get("method"))
         data["status"] = PaymentService._to_value(data.get("status"))
         return PaymentOut(**data)
+
+    @staticmethod
+    def _to_hold_out(payment, order=None) -> PaymentHoldOut:
+        payment_data = PaymentService._to_out(payment).model_dump()
+        order = order or getattr(payment, "order", None)
+        events = list(getattr(payment, "events", []) or [])
+        events.sort(key=lambda event: getattr(event, "createdAt", datetime.min), reverse=True)
+        payment_data.update(
+            {
+                "orderStatus": PaymentService._to_value(getattr(order, "status", "UNKNOWN")),
+                "orderCreatedAt": getattr(order, "createdAt", payment.createdAt),
+                "userId": int(getattr(order, "userId", 0) or 0),
+                "eventCount": len(events),
+                "latestEventMessage": getattr(events[0], "message", None) if events else None,
+            }
+        )
+        return PaymentHoldOut(**payment_data)
 
     @staticmethod
     def _to_value(value):
