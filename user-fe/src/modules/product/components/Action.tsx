@@ -1,5 +1,5 @@
 import { Minus, Plus, ShoppingCart } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -21,8 +21,23 @@ export const ProductActions = ({ productId, variantId, shopId, stock, onAddedToC
   const addMutation = useAddItem();
   const navigate = useNavigate();
   const isOutOfStock = stock <= 0;
+  const isMissingVariant = !variantId;
+  const cannotPurchase = isOutOfStock || isMissingVariant;
+
+  useEffect(() => {
+    if (stock <= 0) {
+      setQuantity(1);
+      return;
+    }
+    setQuantity((current) => Math.min(Math.max(1, current), stock));
+  }, [stock]);
 
   const handleAddToCart = async () => {
+    if (isMissingVariant) {
+      toast.error("Vui lòng chọn phân loại còn hàng");
+      return;
+    }
+
     if (isOutOfStock) {
       toast.error("Sản phẩm đã hết hàng");
       return;
@@ -93,7 +108,7 @@ export const ProductActions = ({ productId, variantId, shopId, stock, onAddedToC
           <button
             className="h-9 w-9 border-l border-orange-200 text-slate-700 transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => setQuantity(Math.min(stock, quantity + 1))}
-            disabled={isOutOfStock || quantity >= stock}
+            disabled={cannotPurchase || quantity >= stock}
             type="button"
           >
             <Plus size={16} className="mx-auto" />
@@ -108,7 +123,7 @@ export const ProductActions = ({ productId, variantId, shopId, stock, onAddedToC
           onClick={handleAddToCart}
           className="h-11 gap-2 rounded-xl border border-orange-500 bg-orange-50 px-6 text-orange-600 hover:bg-orange-100"
           variant="outline"
-          disabled={addMutation.isPending || isOutOfStock}
+          disabled={addMutation.isPending || cannotPurchase}
         >
           <ShoppingCart size={18} />
           {addMutation.isPending ? "Đang thêm..." : "Thêm vào giỏ hàng"}
@@ -117,7 +132,7 @@ export const ProductActions = ({ productId, variantId, shopId, stock, onAddedToC
         <Button
           onClick={handleBuyNow}
           className="h-11 rounded-xl bg-orange-600 px-8 text-white hover:bg-orange-700"
-          disabled={addMutation.isPending || isOutOfStock}
+          disabled={addMutation.isPending || cannotPurchase}
         >
           Mua ngay
         </Button>

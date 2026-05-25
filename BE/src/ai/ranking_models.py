@@ -1,6 +1,7 @@
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+import warnings
 
 import numpy as np
 
@@ -107,7 +108,13 @@ class GradientBoostingLTRModel:
     def predict(self, product_features: Dict[int, FeatureRow]) -> List[RankingPrediction]:
         if self.backend == "lightgbm":
             x = np.array([[features.get(name, 0.0) for name in self.feature_names] for features in product_features.values()], dtype=float)
-            scores = self.model.predict(x)
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message="X does not have valid feature names, but LGBMRanker was fitted with feature names",
+                    category=UserWarning,
+                )
+                scores = self.model.predict(x)
             return sorted(
                 [RankingPrediction(product_id=product_id, score=float(score)) for product_id, score in zip(product_features.keys(), scores)],
                 key=lambda item: item.score,

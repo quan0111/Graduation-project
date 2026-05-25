@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { NoticeDialog } from "@/components/common/app-dialog";
 import { useChangePassword } from "../api/change-password";
 import { toast } from "sonner";
 
@@ -19,6 +20,7 @@ export const PasswordTab: React.FC = () => {
     newPassword: "",
     confirmPassword: "",
   });
+  const [notice, setNotice] = useState("");
 
   const handleChange = (
     key: keyof FormState,
@@ -29,12 +31,12 @@ export const PasswordTab: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!form.oldPassword || !form.newPassword) {
-      alert("Vui lòng nhập đầy đủ");
+      setNotice("Vui lòng nhập đầy đủ");
       return;
     }
 
     if (form.newPassword !== form.confirmPassword) {
-      alert("Mật khẩu không khớp");
+      setNotice("Mật khẩu không khớp");
       return;
     }
 
@@ -51,7 +53,8 @@ export const PasswordTab: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 max-w-md">
+    <>
+      <div className="space-y-4 max-w-md">
       <Input
         type="password"
         placeholder="Mật khẩu cũ"
@@ -82,6 +85,14 @@ export const PasswordTab: React.FC = () => {
       <Button onClick={handleSubmit} disabled={changePasswordMutation.isPending}>
         {changePasswordMutation.isPending ? "Đang cập nhật..." : "Cập nhật mật khẩu"}
       </Button>
-    </div>
+      </div>
+
+      <NoticeDialog
+        open={Boolean(notice)}
+        title="Kiểm tra thông tin"
+        description={notice}
+        onOpenChange={(open) => !open && setNotice("")}
+      />
+    </>
   );
 };

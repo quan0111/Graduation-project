@@ -14,7 +14,8 @@ class PaymentCallbackTest(unittest.IsolatedAsyncioTestCase):
             find_unique=AsyncMock(return_value=fake_order),
             update=AsyncMock(),
         )
-        payment_service.prisma = SimpleNamespace(order=fake_order_model)
+        fake_package_model = SimpleNamespace(update_many=AsyncMock())
+        payment_service.prisma = SimpleNamespace(order=fake_order_model, ordershoppackage=fake_package_model)
 
         try:
             await PaymentService._sync_order_payment_status(10, "SUCCESS")
@@ -25,6 +26,7 @@ class PaymentCallbackTest(unittest.IsolatedAsyncioTestCase):
             where={"id": 10},
             data={"status": "PAID"},
         )
+        fake_package_model.update_many.assert_awaited_once()
 
     async def test_failed_callback_does_not_regress_paid_order(self):
         original_prisma = payment_service.prisma
@@ -33,7 +35,8 @@ class PaymentCallbackTest(unittest.IsolatedAsyncioTestCase):
             find_unique=AsyncMock(return_value=fake_order),
             update=AsyncMock(),
         )
-        payment_service.prisma = SimpleNamespace(order=fake_order_model)
+        fake_package_model = SimpleNamespace(update_many=AsyncMock())
+        payment_service.prisma = SimpleNamespace(order=fake_order_model, ordershoppackage=fake_package_model)
 
         try:
             await PaymentService._sync_order_payment_status(10, "FAILED")
@@ -41,6 +44,7 @@ class PaymentCallbackTest(unittest.IsolatedAsyncioTestCase):
             payment_service.prisma = original_prisma
 
         fake_order_model.update.assert_not_awaited()
+        fake_package_model.update_many.assert_not_awaited()
 
 
 if __name__ == "__main__":

@@ -6,6 +6,10 @@ from src.modules.product.service.product import ProductService
 
 class WishlistService:
     @staticmethod
+    def _to_value(value):
+        return value.value if hasattr(value, "value") else str(value)
+
+    @staticmethod
     def _serialize_wishlist_item(item):
         data = item.model_dump()
         if data.get("product"):
@@ -28,7 +32,8 @@ class WishlistService:
         )
         if not product:
             raise HTTPException(404, "Product not found")
-        if product.status in {"BANNED", "DRAFT", "REJECTED"} or product.status != "ACTIVE":
+        product_status = WishlistService._to_value(product.status)
+        if product_status in {"BANNED", "DRAFT", "REJECTED"} or product_status != "ACTIVE":
             raise HTTPException(400, "Product is not available")
 
         item = await prisma.wishlist.upsert(

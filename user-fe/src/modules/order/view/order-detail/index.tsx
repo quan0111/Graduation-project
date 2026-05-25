@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { ChevronLeft, RotateCcw } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/common/app-dialog";
 import { ReturnRequestForm } from "@/modules/return-request/components/returnRequestForm";
 import { ShipmentTracking } from "@/modules/shipment/components/shipmentTracking";
 import { ChatWithShopButton } from "@/modules/support/components/chat-with-shop-button";
@@ -32,6 +33,7 @@ export default function OrderDetailPage() {
   const completeMutation = useUpdateOrder();
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [confirmCompleteOpen, setConfirmCompleteOpen] = useState(false);
 
   if (isLoading) {
     return <div className="p-6 text-sm text-slate-500">Đang tải hóa đơn...</div>;
@@ -55,13 +57,13 @@ export default function OrderDetailPage() {
   );
 
   const handleCompleteOrder = async () => {
-    if (!window.confirm("Xác nhận bạn đã nhận được hàng?")) return;
     await completeMutation.mutateAsync({
       id: String(order.id),
       data: { status: "COMPLETED" as any },
     });
     await queryClient.invalidateQueries({ queryKey: ["orders", "detail", order.id] });
     await queryClient.invalidateQueries({ queryKey: ["orders"] });
+    setConfirmCompleteOpen(false);
   };
 
   return (
@@ -122,7 +124,7 @@ export default function OrderDetailPage() {
               {normalizedStatus === "delivered" ? (
                 <Button
                   className="mt-4 w-full bg-[#ee4d2d] hover:bg-[#d93f21]"
-                  onClick={handleCompleteOrder}
+                  onClick={() => setConfirmCompleteOpen(true)}
                   disabled={completeMutation.isPending}
                 >
                   {completeMutation.isPending ? "Đang xác nhận..." : "Đã nhận hàng"}
@@ -178,6 +180,16 @@ export default function OrderDetailPage() {
           }}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={confirmCompleteOpen}
+        title="Xác nhận đã nhận hàng"
+        description="Sau khi xác nhận, đơn hàng sẽ được chuyển sang trạng thái hoàn thành."
+        confirmLabel="Đã nhận hàng"
+        isPending={completeMutation.isPending}
+        onOpenChange={setConfirmCompleteOpen}
+        onConfirm={handleCompleteOrder}
+      />
     </div>
   );
 }

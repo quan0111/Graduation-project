@@ -22,7 +22,7 @@ export const OrderItems: React.FC<OrderItemsProps> = ({ items }) => {
           <div className="min-w-0 flex-1">
             <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
               <div className="min-w-0">
-                <p className="truncate text-base font-semibold text-slate-950">
+                <p className="whitespace-normal break-words text-base font-semibold text-slate-950">
                   {item.product_name}
                 </p>
                 <p className="mt-1 text-sm text-slate-500">

@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { API_URL_ANALYTICS, API_URL_FINANCE } from '@/constant/config';
 import { apiClient } from '@/lib/api';
+import { formatDate } from '@/lib/date';
 import { useDashboard } from '@/modules/home/api/dashboard';
 import { useGetAllOrders } from '@/modules/orders/api/get-all-orders';
 import { useProducts } from '@/modules/products/api/get-all-product';
@@ -72,7 +73,7 @@ const buildRevenueData = (orders: any[], period: string) => {
       const date = new Date(now);
       date.setDate(now.getDate() - index);
       const key = formatDateKey(date);
-      buckets.set(key, { label: date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }), revenue: 0, orders: 0, users: new Set() });
+      buckets.set(key, { label: formatDate(date).slice(0, 5), revenue: 0, orders: 0, users: new Set() });
     }
   } else {
     const monthCount = period === '3months' ? 3 : period === '1year' ? 12 : 6;

@@ -19,7 +19,12 @@ COMMIT;
 ALTER TABLE "FlashSale" ALTER COLUMN "updatedAt" DROP DEFAULT;
 
 -- AlterTable
-ALTER TABLE "OrderShopPackage" ALTER COLUMN "updatedAt" DROP DEFAULT;
+DO $$
+BEGIN
+  IF to_regclass('"OrderShopPackage"') IS NOT NULL THEN
+    ALTER TABLE "OrderShopPackage" ALTER COLUMN "updatedAt" DROP DEFAULT;
+  END IF;
+END $$;
 
 -- AlterTable
 ALTER TABLE "ReviewReply" ALTER COLUMN "updatedAt" DROP DEFAULT;

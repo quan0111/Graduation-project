@@ -2,6 +2,7 @@ import { ShieldAlert, Undo2, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { formatDateTime } from "@/lib/date";
 
 import {
   useModerationCases,
@@ -102,7 +103,7 @@ export default function ViolationsPage() {
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <p className="font-medium text-slate-950">{item.user?.email || `User #${item.userId}`}</p>
-                  <p className="mt-1 text-sm text-slate-500">{item.severity} · {item.status} · {new Date(item.detectedAt).toLocaleString("vi-VN")}</p>
+                  <p className="mt-1 text-sm text-slate-500">{item.severity} · {item.status} · {formatDateTime(item.detectedAt)}</p>
                   <p className="mt-2 text-sm text-slate-700">{item.reason}</p>
                 </div>
 

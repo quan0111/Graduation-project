@@ -3,6 +3,7 @@
 import { AlertTriangle, CheckCircle, FileText } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { formatDateTime } from "@/lib/date"
 
 const iconBySeverity: Record<string, any> = {
   INFO: CheckCircle,
@@ -35,7 +36,7 @@ export function RecentActivity({ activities = [] }: { activities?: any[] }) {
                   <div className="flex-1">
                     <p className="text-sm text-foreground">{activity.message || activity.type}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {activity.time ? new Date(activity.time).toLocaleString("vi-VN") : "N/A"}
+                      {formatDateTime(activity.time, "N/A")}
                     </p>
                   </div>
                 </div>

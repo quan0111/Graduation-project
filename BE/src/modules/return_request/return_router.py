@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from src.core.dependencies import get_current_user, get_role_value, require_admin, require_seller
 from src.modules.return_request.return_schema import (
@@ -71,6 +71,16 @@ async def confirm_gateway_refund(
     user=Depends(require_admin),
 ):
     return await ReturnService.confirm_gateway_refund(return_id, user.id, data)
+
+
+@router.post("/{return_id}/gateway-refund/request", response_model=ReturnOut)
+async def request_gateway_refund(
+    return_id: int,
+    request: Request,
+    user=Depends(require_admin),
+):
+    client_host = request.client.host if request.client else "127.0.0.1"
+    return await ReturnService.request_gateway_refund(return_id, user.id, client_host)
 
 
 @router.patch("/{return_id}/refund", response_model=ReturnOut)

@@ -14,6 +14,7 @@ import { Activity, BarChart3, ClipboardList, PackageCheck, TrendingUp } from "lu
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDate } from "@/lib/date";
 import { useGetSellerOrders } from "@/modules/order/api/get-seller-orders";
 import { getOrderVisibleSubtotal, getStatusMeta } from "@/modules/order/utils/order";
 import { useSellerReport } from "@/modules/seller/api/finance";
@@ -57,10 +58,7 @@ export default function SellerAnalyticsPage() {
     () =>
       (report?.dailyRevenue ?? dashboard?.salesTrend ?? []).map((item) => ({
         ...item,
-        label:
-          "date" in item
-            ? new Date(item.date).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })
-            : item.label,
+        label: "date" in item ? formatDate(item.date).slice(0, 5) : item.label,
       })),
     [dashboard?.salesTrend, report?.dailyRevenue],
   );

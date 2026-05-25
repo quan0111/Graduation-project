@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 
 class FlashSaleService:
     @staticmethod
+    def _to_value(value):
+        return value.value if hasattr(value, "value") else str(value)
+
+    @staticmethod
     def _normalize_status(status: str):
         normalized = status.upper()
         if normalized not in FLASH_SALE_STATUSES:
@@ -69,7 +73,7 @@ class FlashSaleService:
             for item in flash_sale.items or []:
                 product = item.product
                 shop = item.shop
-                if not product or product.deletedAt or product.status != "ACTIVE":
+                if not product or product.deletedAt or FlashSaleService._to_value(product.status) != "ACTIVE":
                     continue
                 if not shop or shop.deletedAt or not shop.isActive:
                     continue
@@ -294,7 +298,7 @@ class FlashSaleService:
             if not product:
                 errors.append({"productId": target["productId"], "variantId": target.get("variantId"), "reason": "Product not found"})
                 continue
-            if product.status != "ACTIVE":
+            if FlashSaleService._to_value(product.status) != "ACTIVE":
                 errors.append({"productId": product.id, "variantId": target.get("variantId"), "reason": "Product is not active"})
                 continue
             if not product.shop or product.shop.deletedAt or not product.shop.isActive:

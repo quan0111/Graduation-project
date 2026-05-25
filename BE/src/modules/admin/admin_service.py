@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from src.core.database import prisma
 from src.core.cache import CacheManager, cache_result
 from src.core.security import hash_password
@@ -27,15 +29,16 @@ class AdminService:
         if status not in allowed:
             raise HTTPException(400, "Invalid product status")
 
-        if status in {"BANNED", "REJECT"} and not ban_reason:
-            raise HTTPException(400, "Bắt buộc phải cung cấp lý do khi ban hoặc từ chối sản phẩm")
-
         product = await prisma.product.find_unique(
             where={"id": product_id},
             include={"shop": True},
         )
         if not product or product.deletedAt:
             raise HTTPException(404, "Product not found")
+
+        previous_status = AdminService._to_value(product.status)
+        if (status in {"BANNED", "REJECT"} or (status == "ACTIVE" and previous_status in {"BANNED", "REJECT"})) and not ban_reason:
+            raise HTTPException(400, "Reason is required for this product moderation action")
 
         async with prisma.tx() as tx:
             updated = await tx.product.update(
@@ -52,6 +55,19 @@ class AdminService:
                         "reason": ban_reason,
                         "reviewedById": admin_id,
                     }
+                )
+            elif status == "ACTIVE":
+                await tx.productmoderationcase.update_many(
+                    where={
+                        "productId": product_id,
+                        "status": {"in": ["OPEN", "SELLER_SUBMITTED", "UNDER_REVIEW"]},
+                    },
+                    data={
+                        "status": "APPROVED_RESTORED",
+                        "adminNote": ban_reason or "Product restored by admin",
+                        "reviewedById": admin_id,
+                        "resolvedAt": datetime.utcnow(),
+                    },
                 )
 
         # 🔔 Gửi notification cho shop owner khi sản phẩm bị BANNED hoặc REJECT
@@ -79,6 +95,23 @@ class AdminService:
                 )
             )
 
+        elif status == "ACTIVE" and previous_status in {"BANNED", "REJECT"} and product.shop and product.shop.ownerId:
+            await NotificationService.create(
+                NotificationCreate(
+                    userId=product.shop.ownerId,
+                    title="Sản phẩm đã được mở bán lại",
+                    content=f"Sản phẩm '{product.name}' trong shop '{product.shop.name}' đã được Admin mở bán lại.",
+                    type="SYSTEM",
+                    metadata={
+                        "productId": product_id,
+                        "productName": product.name,
+                        "shopId": product.shop.id,
+                        "from": previous_status,
+                        "status": status,
+                    },
+                )
+            )
+
         await AuditService.create(
             actor_id=admin_id,
             action="PRODUCT.STATUS_UPDATED",
@@ -87,6 +120,7 @@ class AdminService:
             target_user_id=product.shop.ownerId if product.shop else None,
             severity="WARNING" if status in {"BANNED", "REJECT"} else "INFO",
             metadata={
+                "from": previous_status,
                 "status": status,
                 "reason": ban_reason,
                 "caseId": moderation_case.id if status in {"BANNED", "REJECT"} and moderation_case else None,
@@ -305,9 +339,20 @@ class AdminService:
             include={
                 "user": True,
                 "items": {"include": {"shop": True}},
-                "payment": True,
+                "payment": {"include": {"events": True}},
                 "shippingAddress": True,
+                "shipment": True,
+                "shipmentEvents": True,
+                "packages": {"include": {"shop": True}},
                 "cancellation": True,
+                "returnRequests": {
+                    "include": {
+                        "items": True,
+                        "evidences": True,
+                        "reviewedBy": True,
+                    }
+                },
+                "paymentEvents": True,
             },
             order={"createdAt": "desc"}
         )
@@ -341,19 +386,50 @@ class AdminService:
             order={"createdAt": "desc"}
         )
     @staticmethod
-    async def update_seller(shop_id: int, data: SellerFilter):
+    async def update_seller(shop_id: int, data: SellerFilter, admin_id: int | None = None):
 
         shop = await prisma.shop.find_unique(
-            where={"id": shop_id}
+            where={"id": shop_id},
+            include={"owner": True},
         )
 
         if not shop:
             raise HTTPException(404, "Shop not found")
 
-        return await prisma.shop.update(
+        payload = data.dict(exclude_unset=True, exclude={"isVerified"})
+        previous_active = shop.isActive
+
+        updated = await prisma.shop.update(
             where={"id": shop_id},
-            data=data.dict(exclude_unset=True, exclude={"isVerified"})
+            data=payload,
         )
+
+        if "isActive" in payload and payload["isActive"] != previous_active:
+            if shop.ownerId:
+                await NotificationService.create(
+                    NotificationCreate(
+                        userId=shop.ownerId,
+                        title="Shop đã được duyệt" if payload["isActive"] else "Shop đã bị tạm khóa",
+                        content=(
+                            f"Shop '{shop.name}' đã được Admin duyệt và có thể hoạt động."
+                            if payload["isActive"]
+                            else f"Shop '{shop.name}' đã bị Admin tạm khóa. Vui lòng liên hệ hỗ trợ nếu cần xử lý."
+                        ),
+                        type="SYSTEM",
+                        metadata={"shopId": shop_id, "isActive": payload["isActive"]},
+                    )
+                )
+            await AuditService.create(
+                actor_id=admin_id,
+                action="SELLER.APPROVED" if payload["isActive"] else "SELLER.DEACTIVATED",
+                entity_type="Shop",
+                entity_id=shop_id,
+                target_user_id=shop.ownerId,
+                severity="INFO" if payload["isActive"] else "WARNING",
+                metadata={"from": previous_active, "to": payload["isActive"]},
+            )
+
+        return updated
 
     @staticmethod
     async def get_seller_stats(shop_id: int):
@@ -373,7 +449,7 @@ class AdminService:
         delivered_items = [
             item
             for item in delivered_items
-            if item.order and item.order.deletedAt is None and item.order.status in ["DELIVERED", "COMPLETED"]  # Both COD and prepaid orders
+            if item.order and item.order.deletedAt is None and AdminService._to_value(item.order.status) in ["DELIVERED", "COMPLETED"]  # Both COD and prepaid orders
         ]
 
         delivered_order_ids = {item.orderId for item in delivered_items}
@@ -388,9 +464,42 @@ class AdminService:
         }
 
     @staticmethod
-    async def bulk_update_sellers(ids: list[int], isActive: bool):
+    async def bulk_update_sellers(ids: list[int], isActive: bool, admin_id: int | None = None):
+        shops = await prisma.shop.find_many(
+            where={"id": {"in": ids}},
+            include={"owner": True},
+        )
 
-        return await prisma.shop.update_many(
+        result = await prisma.shop.update_many(
             where={"id": {"in": ids}},
             data={"isActive": isActive}
         )
+
+        for shop in shops:
+            if shop.isActive == isActive:
+                continue
+            if shop.ownerId:
+                await NotificationService.create(
+                    NotificationCreate(
+                        userId=shop.ownerId,
+                        title="Shop đã được duyệt" if isActive else "Shop đã bị tạm khóa",
+                        content=(
+                            f"Shop '{shop.name}' đã được Admin duyệt và có thể hoạt động."
+                            if isActive
+                            else f"Shop '{shop.name}' đã bị Admin tạm khóa. Vui lòng liên hệ hỗ trợ nếu cần xử lý."
+                        ),
+                        type="SYSTEM",
+                        metadata={"shopId": shop.id, "isActive": isActive},
+                    )
+                )
+            await AuditService.create(
+                actor_id=admin_id,
+                action="SELLER.APPROVED" if isActive else "SELLER.DEACTIVATED",
+                entity_type="Shop",
+                entity_id=shop.id,
+                target_user_id=shop.ownerId,
+                severity="INFO" if isActive else "WARNING",
+                metadata={"from": shop.isActive, "to": isActive, "bulk": True},
+            )
+
+        return result

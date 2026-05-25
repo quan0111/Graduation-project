@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/table';
 import { API_URL_ORDER } from '@/constant/config';
 import { apiClient } from '@/lib/api';
+import { formatDateTime } from '@/lib/date';
 
 type Payment = {
   id: number;
@@ -41,9 +42,6 @@ const formatCurrency = (amount?: number | null) =>
     currency: 'VND',
     maximumFractionDigits: 0,
   }).format(amount || 0);
-
-const formatDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString('vi-VN') : 'Chưa có';
 
 const statusMeta: Record<string, { label: string; className: string }> = {
   SUCCESS: { label: 'Thành công', className: 'border-success/20 bg-success/10 text-success' },
@@ -183,7 +181,7 @@ export default function TransactionsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center text-muted-foreground">
-                          {formatDate(payment.paidAt || payment.createdAt)}
+                          {formatDateTime(payment.paidAt || payment.createdAt, 'Chưa có')}
                         </TableCell>
                         <TableCell className="text-center">
                           <DropdownMenu>
@@ -234,7 +232,7 @@ export default function TransactionsPage() {
                       <Badge variant="outline">{event.status || '-'}</Badge>
                     </div>
                     <p className="mt-1 text-muted-foreground">
-                      {new Date(event.createdAt).toLocaleString('vi-VN')} · Retry #{event.retryCount}
+                      {formatDateTime(event.createdAt)} · Retry #{event.retryCount}
                     </p>
                     <p className="mt-2 text-xs text-muted-foreground">
                       Provider: {event.providerOrderId || '-'} · Transaction: {event.transactionId || '-'}

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { API_URL_INVENTORY } from "@/constant/config";
 import { apiClient } from "@/lib/api";
+import { formatDateTime } from "@/lib/date";
 import { useGetAllShop } from "@/modules/shop/api/shop/get-all-shop";
 
 type InventoryLedger = {
@@ -155,7 +156,7 @@ export default function AdminInventoryPage() {
                   {filtered.map((item) => (
                     <tr key={item.id} className="border-b">
                       <td className="px-4 py-3 text-muted-foreground">
-                        {new Date(item.createdAt).toLocaleString("vi-VN")}
+                        {formatDateTime(item.createdAt)}
                       </td>
                       <td className="px-4 py-3 font-medium">{item.product?.name || `#${item.productId ?? "-"}`}</td>
                       <td className="px-4 py-3">

@@ -11,6 +11,7 @@ import { useDeleteCategory } from "../api/delete-category";
 import { useUpdateCategory } from "../api/update-category";
 import { CategoryCreateModal } from "../components/category-create-modal";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/common/app-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
@@ -21,6 +22,7 @@ export default function CategoriesPage() {
   const [editName, setEditName] = useState("");
   const [editSlug, setEditSlug] = useState("");
   const [editParentId, setEditParentId] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
 
   const { data: categories = [], isLoading, isError } = useGetCategories();
   const updateCategoryMutation = useUpdateCategory({
@@ -56,9 +58,14 @@ export default function CategoriesPage() {
     setEditParentId(c.parentId ? String(c.parentId) : "");
   };
 
-  const handleDelete = async (c: any) => {
-    if (!window.confirm(`Xóa danh mục "${c.name}"?`)) return;
-    await deleteCategoryMutation.mutateAsync(c.id);
+  const handleDelete = (c: any) => {
+    setDeleteTarget(c);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    await deleteCategoryMutation.mutateAsync(deleteTarget.id);
+    setDeleteTarget(null);
   };
 
   const handleSaveEdit = async () => {
@@ -163,6 +170,17 @@ export default function CategoriesPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Xóa danh mục"
+        description={deleteTarget ? `Xóa danh mục "${deleteTarget.name}"?` : ""}
+        confirmLabel="Xóa"
+        variant="destructive"
+        isPending={deleteCategoryMutation.isPending}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+      />
     </main>
   );
 }

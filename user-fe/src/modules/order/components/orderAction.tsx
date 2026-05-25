@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/common/app-dialog";
 import { useAddItem } from "@/modules/cart/api/add-item";
 
 import { useCancelOrder } from "../api/cancel-order";
@@ -15,10 +17,9 @@ export const OrderActions = ({ order }: Props) => {
   const navigate = useNavigate();
   const cancelMutation = useCancelOrder();
   const addCartMutation = useAddItem();
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
 
   const handleCancel = async () => {
-    if (!window.confirm("Bạn chắc chắn muốn hủy đơn này?")) return;
-
     try {
       await cancelMutation.mutateAsync({
         orderId: order.id,
@@ -26,6 +27,7 @@ export const OrderActions = ({ order }: Props) => {
       });
 
       toast.success("Đơn hàng đã được hủy");
+      setCancelConfirmOpen(false);
     } catch {
       toast.error("Không thể hủy đơn hàng");
     }
@@ -68,7 +70,7 @@ export const OrderActions = ({ order }: Props) => {
         Xem chi tiết
       </Button>
       {canCancel ? (
-        <Button variant="destructive" onClick={handleCancel}>
+        <Button variant="destructive" onClick={() => setCancelConfirmOpen(true)}>
           Hủy đơn
         </Button>
       ) : null}
@@ -77,6 +79,17 @@ export const OrderActions = ({ order }: Props) => {
           Mua lại
         </Button>
       ) : null}
+
+      <ConfirmDialog
+        open={cancelConfirmOpen}
+        title="Hủy đơn hàng"
+        description="Bạn chắc chắn muốn hủy đơn này?"
+        confirmLabel="Hủy đơn"
+        variant="destructive"
+        isPending={cancelMutation.isPending}
+        onOpenChange={setCancelConfirmOpen}
+        onConfirm={handleCancel}
+      />
     </div>
   );
 };

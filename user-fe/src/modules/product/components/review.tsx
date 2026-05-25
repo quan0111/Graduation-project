@@ -3,6 +3,7 @@ import { Star } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import { formatDateTime } from "@/lib/date";
 import { ReviewForm } from "@/modules/review/components/reviewForm";
 import { useReviewsByProduct } from "@/modules/review/api/get-review";
 
@@ -152,7 +153,7 @@ export const ProductReviews = ({
                     </div>
                     {createdAt && (
                       <p className="mt-2 text-sm text-[#757575]">
-                        {new Date(createdAt).toLocaleDateString("vi-VN")}
+                        {formatDateTime(createdAt)}
                       </p>
                     )}
                     {review.comment && <p className="mt-4 leading-7">{review.comment}</p>}

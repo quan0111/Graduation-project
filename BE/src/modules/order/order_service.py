@@ -43,24 +43,11 @@ ORDER_STATUSES = {
 }
 
 ADMIN_TRANSITIONS = {
-    "PENDING": {"PENDING_PAYMENT", "PAID", "PAYMENT_FAILED", "CONFIRMED", "CANCELLED_BY_CUSTOMER", "CANCELLED"},
-    "PENDING_PAYMENT": {"PAID", "PAYMENT_FAILED", "PAYMENT_EXPIRED", "CANCELLED_BY_CUSTOMER", "CANCELLED"},
-    "PAYMENT_FAILED": {"PENDING_PAYMENT", "PAYMENT_EXPIRED", "CANCELLED_BY_CUSTOMER", "CANCELLED"},
-    "PAYMENT_EXPIRED": {"PENDING_PAYMENT", "CANCELLED_BY_CUSTOMER", "CANCELLED"},
-    "PAID": {"CONFIRMED"},
-    "CONFIRMED": {"PROCESSING", "CANCEL_REQUESTED", "CANCELLED_BY_SELLER", "CANCELLED"},
-    "PROCESSING": {"READY_TO_SHIP", "CANCEL_REQUESTED", "CANCELLED_BY_SELLER", "CANCELLED"},
-    "READY_TO_SHIP": {"SHIPPED", "CANCEL_REQUESTED", "CANCELLED_BY_SELLER", "CANCELLED"},
-    "SHIPPED": {"IN_TRANSIT", "DELIVERY_FAILED", "RETURN_TO_SENDER"},
-    "IN_TRANSIT": {"OUT_FOR_DELIVERY", "DELIVERY_FAILED", "RETURN_TO_SENDER"},
-    "OUT_FOR_DELIVERY": {"DELIVERED", "DELIVERY_FAILED", "RETURN_TO_SENDER"},
-    "DELIVERED": {"COMPLETED", "RETURN_REQUESTED"},
-    "COMPLETED": {"RETURN_REQUESTED"},
-    "CANCEL_REQUESTED": {"CANCEL_APPROVED", "CANCEL_REJECTED", "CANCELLED"},
-    "CANCEL_REJECTED": {"CONFIRMED", "PROCESSING"},
-    "CANCEL_APPROVED": {"CANCELLED"},
-    "CANCELLED_BY_CUSTOMER": {"CANCELLED"},
-    "CANCELLED_BY_SELLER": {"CANCELLED"},
+    "PENDING": {"CANCELLED"},
+    "PENDING_PAYMENT": {"CANCELLED"},
+    "PAYMENT_FAILED": {"CANCELLED"},
+    "PAYMENT_EXPIRED": {"CANCELLED"},
+    "CANCEL_REQUESTED": {"CANCELLED", "PAID", "CONFIRMED"},
     "DELIVERY_FAILED": {"RETURN_TO_SENDER", "CANCELLED"},
     "RETURN_TO_SENDER": {"CANCELLED"},
 }
@@ -98,10 +85,13 @@ ORDER_INCLUDE = {
             "shop": True,
         },
     },
-    "payment": True,
+    "payment": {"include": {"events": True}},
     "user": True,
     "shippingAddress": True,
     "shipment": True,
+    "shipmentEvents": True,
+    "cancellation": True,
+    "returnRequests": {"include": {"items": True, "evidences": True}},
     "packages": {"include": {"shop": True}},
 }
 
@@ -375,6 +365,54 @@ class OrderService:
             )
 
     @staticmethod
+    async def _release_coupon_redemptions(client, order_id: int):
+        redemptions = await client.couponredemption.find_many(where={"orderId": order_id})
+        for redemption in redemptions:
+            await client.coupon.update_many(
+                where={"id": redemption.couponId, "usedCount": {"gt": 0}},
+                data={"usedCount": {"decrement": 1}},
+            )
+        if redemptions:
+            await client.couponredemption.delete_many(where={"orderId": order_id})
+
+    @staticmethod
+    async def _restore_flash_sale_sales(client, order):
+        order_created_at = getattr(order, "createdAt", None)
+        if not order_created_at:
+            return
+
+        flash_sales = await client.flashsale.find_many(
+            where={
+                "startsAt": {"lte": order_created_at},
+                "endsAt": {"gte": order_created_at},
+            }
+        )
+        flash_sale_ids = [flash_sale.id for flash_sale in flash_sales]
+        if not flash_sale_ids:
+            return
+
+        for item in getattr(order, "items", []) or []:
+            quantity = int(getattr(item, "quantity", 0) or 0)
+            if quantity <= 0:
+                continue
+
+            where = {
+                "flashSaleId": {"in": flash_sale_ids},
+                "productId": item.productId,
+                "shopId": item.shopId,
+                "salePrice": float(item.price or 0),
+                "soldCount": {"gte": quantity},
+            }
+            where["variantId"] = item.variantId if item.variantId else None
+
+            sale_item = await client.flashsaleitem.find_first(where=where)
+            if sale_item:
+                await client.flashsaleitem.update_many(
+                    where={"id": sale_item.id, "soldCount": {"gte": quantity}},
+                    data={"soldCount": {"decrement": quantity}},
+                )
+
+    @staticmethod
     def _filter_order_items_for_shop(order, shop_id: int):
         filtered_items = [
             item
@@ -448,24 +486,25 @@ class OrderService:
                     raise HTTPException(404, "Product not found")
 
                 # Check product status
-                if product.status == "BANNED":
+                product_status = OrderService._to_value(product.status)
+                if product_status == "BANNED":
                     raise HTTPException(
                         400,
                         f"Sản phẩm '{product.name}' đã bị cấm và không thể đặt hàng",
                     )
 
-                if product.status != "ACTIVE":
+                if product_status != "ACTIVE":
                     raise HTTPException(
                         400,
-                        f"Sản phẩm '{product.name}' hiện không khả dụng (trạng thái: {product.status})",
+                        f"Sản phẩm '{product.name}' hiện không khả dụng (trạng thái: {product_status})",
                     )
 
                 if product.shopId != item.shopId:
                     raise HTTPException(400, "Shop does not match product")
+                if not item.variantId:
+                    raise HTTPException(400, "Variant is required for inventory-managed checkout")
                 if variant and variant.productId != item.productId:
                     raise HTTPException(400, "Variant does not match product")
-                if not variant and product.variants:
-                    raise HTTPException(400, "Variant is required for this product")
 
                 price, flash_sale_item = await OrderService._resolve_checkout_price(tx, item, product, variant, now)
                 subtotal += price * item.quantity
@@ -720,18 +759,19 @@ class OrderService:
                 if not product:
                     raise HTTPException(404, "Product not found")
 
-                if product.status == "BANNED":
+                product_status = OrderService._to_value(product.status)
+                if product_status == "BANNED":
                     raise HTTPException(400, f"Sản phẩm '{product.name}' đã bị cấm và không thể đặt hàng")
 
-                if product.status != "ACTIVE":
-                    raise HTTPException(400, f"Sản phẩm '{product.name}' hiện không khả dụng (trạng thái: {product.status})")
+                if product_status != "ACTIVE":
+                    raise HTTPException(400, f"Sản phẩm '{product.name}' hiện không khả dụng (trạng thái: {product_status})")
 
                 if product.shopId != item.shopId:
                     raise HTTPException(400, "Shop does not match product")
+                if not item.variantId:
+                    raise HTTPException(400, "Variant is required for inventory-managed checkout")
                 if variant and variant.productId != item.productId:
                     raise HTTPException(400, "Variant does not match product")
-                if not variant and product.variants:
-                    raise HTTPException(400, "Variant is required for this product")
 
                 price, flash_sale_item = await OrderService._resolve_checkout_price(tx, item, product, variant, now)
                 subtotal += price * item.quantity
@@ -1083,6 +1123,10 @@ class OrderService:
                         },
                     )
 
+        if shop_id is None:
+            await OrderService._restore_flash_sale_sales(tx, order)
+            await OrderService._release_coupon_redemptions(tx, order_id)
+
     @staticmethod
     async def _record_cancellation(
         tx,
@@ -1091,12 +1135,13 @@ class OrderService:
         actor_id: int | None = None,
         reason: str = "Order cancelled",
         status: str = "CANCELLED",
+        note: str | None = None,
     ):
         existing = await tx.ordercancellation.find_unique(where={"orderId": order_id})
         data = {
             "cancelledBy": cancelled_by,
             "reason": reason,
-            "note": f"actorId={actor_id}" if actor_id is not None else None,
+            "note": note if note is not None else (f"actorId={actor_id}" if actor_id is not None else None),
             "status": status,
         }
         if existing:
@@ -1109,6 +1154,17 @@ class OrderService:
         )
 
     @staticmethod
+    def _previous_status_from_cancellation(cancellation):
+        note = getattr(cancellation, "note", None) if cancellation else None
+        if not note:
+            return None
+        for part in str(note).split(";"):
+            key, _, value = part.partition("=")
+            if key.strip() == "previousStatus" and value.strip() in ORDER_STATUSES:
+                return value.strip()
+        return None
+
+    @staticmethod
     async def update_order(order_id: int, current_user, order_data: OrderUpdate):
         order = await OrderService.assert_order_visibility(order_id, current_user)
         data = order_data.model_dump(exclude_unset=True)
@@ -1117,6 +1173,7 @@ class OrderService:
             return order
 
         next_status = OrderService._normalize_status(data["status"])
+        action_reason = (data.get("reason") or "").strip()
         current_status = OrderService._to_value(order.status)
         role = get_role_value(current_user)
         shop = None
@@ -1168,6 +1225,14 @@ class OrderService:
                 )
                 updated = await OrderService._sync_order_status_from_packages(tx, order_id)
             else:
+                admin_rejecting_cancel = role == "ADMIN" and current_status == "CANCEL_REQUESTED" and next_status in {"PAID", "CONFIRMED"}
+                admin_sensitive_action = role == "ADMIN" and (
+                    next_status in TERMINAL_CANCEL_STATUSES
+                    or admin_rejecting_cancel
+                    or next_status == "RETURN_TO_SENDER"
+                )
+                if admin_sensitive_action and not action_reason:
+                    raise HTTPException(400, "Reason is required for this admin action")
                 if next_status in TERMINAL_CANCEL_STATUSES and current_status not in TERMINAL_CANCEL_STATUSES:
                     if order.payment and OrderService._to_value(order.payment.status) in {"SUCCESS", "PAYMENT_SUCCESS"}:
                         raise HTTPException(400, "Paid orders must be refunded before cancellation")
@@ -1177,7 +1242,21 @@ class OrderService:
                         order_id,
                         cancelled_by=role if role in {"CUSTOMER", "SELLER", "ADMIN"} else "SYSTEM",
                         actor_id=current_user.id,
-                        reason=f"Status updated to {next_status}",
+                        reason=action_reason or ("Admin approved cancellation request" if role == "ADMIN" and current_status == "CANCEL_REQUESTED" else f"Status updated to {next_status}"),
+                        status="APPROVED" if role == "ADMIN" and current_status == "CANCEL_REQUESTED" else "CANCELLED",
+                    )
+                elif admin_rejecting_cancel:
+                    cancellation = await tx.ordercancellation.find_unique(where={"orderId": order_id})
+                    previous_status = OrderService._previous_status_from_cancellation(cancellation)
+                    if previous_status in {"PAID", "CONFIRMED"} and next_status != previous_status:
+                        raise HTTPException(400, f"Cancel request must be rejected back to {previous_status}")
+                    await OrderService._record_cancellation(
+                        tx,
+                        order_id,
+                        cancelled_by="ADMIN",
+                        actor_id=current_user.id,
+                        reason=action_reason,
+                        status="REJECTED",
                     )
 
                 await tx.order.update(
@@ -1197,7 +1276,7 @@ class OrderService:
             entity_id=order_id,
             target_user_id=order.userId,
             severity="INFO",
-            metadata={"from": current_status, "to": next_status, "role": role},
+            metadata={"from": current_status, "to": next_status, "role": role, "reason": action_reason or None},
         )
         await OrderService._notify_order_update(order_id, next_status, actor_id=current_user.id)
         if role == "SELLER" and shop is not None:
@@ -1205,7 +1284,7 @@ class OrderService:
         return updated
 
     @staticmethod
-    async def cancel_order(order_id: int, current_user):
+    async def cancel_order(order_id: int, current_user, reason: str | None = None, note: str | None = None):
         async with prisma.tx() as tx:
             order = await tx.order.find_first(
                 where={
@@ -1238,13 +1317,16 @@ class OrderService:
 
             if next_status in TERMINAL_CANCEL_STATUSES:
                 await OrderService._restore_stock(order_id, tx, actor_id=current_user.id)
+            reason_text = (reason or "").strip()
+            note_text = (note or "").strip()
             await OrderService._record_cancellation(
                 tx,
                 order_id,
                 cancelled_by="CUSTOMER",
                 actor_id=current_user.id,
-                reason="Customer requested cancellation" if next_status == "CANCEL_REQUESTED" else "Customer cancelled order",
+                reason=reason_text or ("Customer requested cancellation" if next_status == "CANCEL_REQUESTED" else "Customer cancelled order"),
                 status="REQUESTED" if next_status == "CANCEL_REQUESTED" else "CANCELLED",
+                note=f"actorId={current_user.id};previousStatus={order_status}" + (f";note={note_text}" if note_text else ""),
             )
 
             await tx.order.update(

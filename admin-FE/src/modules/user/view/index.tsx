@@ -12,6 +12,7 @@ import { useToggleUserStatus } from "../api/update-user";
 import { Loader2 } from "lucide-react";
 import type { IUser } from "../types";
 import { toast } from "sonner";
+import { formatDateTime } from "@/lib/date";
 
 export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -98,7 +99,7 @@ export default function UsersPage() {
     {
       key: "createdAt",
       label: "Ngày tham gia",
-      render: (u: any) => <span className="text-xs">{new Date(u.createdAt).toLocaleDateString('vi-VN')}</span>,
+      render: (u: any) => <span className="text-xs">{formatDateTime(u.createdAt)}</span>,
     },
     {
       key: "actions",

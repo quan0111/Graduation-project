@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 import { useAuditLogs } from "../api/audit";
+import { formatDateTime } from "@/lib/date";
 
 const severityClass: Record<string, string> = {
   INFO: "bg-blue-100 text-blue-700",
@@ -130,7 +131,7 @@ export default function AuditPage() {
             <tbody>
               {logs.map((log) => (
                 <tr key={log.id} className="border-b last:border-b-0">
-                  <td className="whitespace-nowrap px-4 py-3">{new Date(log.createdAt).toLocaleString("vi-VN")}</td>
+                  <td className="whitespace-nowrap px-4 py-3">{formatDateTime(log.createdAt)}</td>
                   <td className="px-4 py-3 font-medium text-slate-950">{log.action}</td>
                   <td className="px-4 py-3">
                     {log.entityType}

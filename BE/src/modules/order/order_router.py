@@ -6,6 +6,7 @@ from src.core.dependencies import get_current_user, require_admin, require_selle
 from src.modules.order.order_schema import (
     CheckoutCreate,
     CheckoutOut,
+    CancelOrderRequest,
     OrderCreate,
     OrderOut,
     OrderUpdate,
@@ -135,8 +136,8 @@ async def update_order(
 
 
 @router.patch("/{order_id}/cancel")
-async def cancel_order(order_id: int, user=Depends(get_current_user)):
-    await OrderService.cancel_order(order_id, user)
+async def cancel_order(order_id: int, data: CancelOrderRequest | None = None, user=Depends(get_current_user)):
+    await OrderService.cancel_order(order_id, user, data.reason if data else None, data.note if data else None)
     return {"message": "Order cancelled successfully"}
 
 

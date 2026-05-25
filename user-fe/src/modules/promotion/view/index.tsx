@@ -13,6 +13,20 @@ import { CategoryFilter } from "../components/categoryFilter";
 import { PromotionGrid } from "../components/grid";
 import { ALL_PROMOTIONS, usePromotionCoupons, usePromotions } from "../hooks/usePromotion";
 
+const BANNER_LAYOUT_CLASS: Record<string, string> = {
+  FULL: "md:col-span-12",
+  HALF: "md:col-span-6",
+  ONE_THIRD: "md:col-span-4",
+  TWO_THIRDS: "md:col-span-8",
+  ONE_QUARTER: "md:col-span-3",
+  THREE_QUARTERS: "md:col-span-9",
+};
+
+const getBannerLayoutClass = (layout?: string | null) => {
+  const normalizedLayout = String(layout || "ONE_THIRD").toUpperCase();
+  return BANNER_LAYOUT_CLASS[normalizedLayout] ?? BANNER_LAYOUT_CLASS.ONE_THIRD;
+};
+
 export default function PromotionPage() {
   const [searchParams] = useSearchParams();
   const campaignId = Number(searchParams.get("campaign") || 0);
@@ -74,13 +88,13 @@ export default function PromotionPage() {
         </section>
 
         {banners.length > 1 ? (
-          <section className="grid gap-4 md:grid-cols-3">
-            {banners.slice(1, 4).map((banner) => (
+          <section className="grid gap-4 md:grid-cols-12">
+            {banners.slice(1, 7).map((banner) => (
               <Link
                 key={banner.id}
                 to={banner.linkUrl || "/promotions"}
                 onClick={() => trackBannerClick.mutate(banner.id)}
-                className="group overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-orange-100"
+                className={`group overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-orange-100 ${getBannerLayoutClass(banner.layout)}`}
               >
                 <img src={banner.imageUrl} alt={banner.title} className="h-36 w-full object-cover transition group-hover:scale-105" />
                 <div className="p-4">

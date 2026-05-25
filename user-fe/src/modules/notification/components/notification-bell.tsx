@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { getStorefrontAccessToken } from "@/lib/auth-storage";
+import { formatDateTime } from "@/lib/date";
 import {
   type Notification,
   useGetNotifications,
@@ -153,7 +154,7 @@ export function NotificationBell() {
                   <p className="text-sm font-semibold text-slate-900">{notification.title}</p>
                   <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{notification.content}</p>
                   <p className="mt-2 text-[11px] text-slate-400">
-                    {new Date(notification.createdAt).toLocaleString("vi-VN")}
+                    {formatDateTime(notification.createdAt)}
                   </p>
                 </button>
               ))

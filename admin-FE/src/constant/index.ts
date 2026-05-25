@@ -69,6 +69,7 @@ export type OrderStatusType =
 
 export const PaymentMethod = {
   Cod: "cod",
+  Momo: "momo",
   Vnpay: "vnpay",
   Stripe: "stripe",
 } as const;
@@ -78,8 +79,16 @@ export type PaymentMethodType =
 
   export const PaymentStatus = {
   Pending: "pending",
+  PendingPayment: "pending_payment",
   Success: "success",
+  PaymentSuccess: "payment_success",
   Failed: "failed",
+  PaymentFailed: "payment_failed",
+  PaymentExpired: "payment_expired",
+  Refunding: "refunding",
+  Refunded: "refunded",
+  RefundFailed: "refund_failed",
+  PartiallyRefunded: "partially_refunded",
 } as const;
 
 export type PaymentStatusType =

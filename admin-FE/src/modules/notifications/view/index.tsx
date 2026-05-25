@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { API_URL, API_URL_NOTIFICATION } from "@/constant/config";
 import { apiClient } from "@/lib/api";
 import { getAdminAccessToken } from "@/lib/auth-storage";
+import { formatDateTime } from "@/lib/date";
 
 type AdminNotification = {
   id: number;
@@ -174,7 +175,7 @@ export default function NotificationsPage() {
                       </span>
                       {!notification.isRead ? <span className="size-2 rounded-full bg-primary" /> : null}
                       <span className="text-xs text-muted-foreground">
-                        {new Date(notification.createdAt).toLocaleString("vi-VN")}
+                        {formatDateTime(notification.createdAt)}
                       </span>
                     </div>
                     <p className="font-semibold">{notification.title}</p>

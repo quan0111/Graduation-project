@@ -7,9 +7,10 @@ type Props = {
   order: any;
   onView?: (order: any) => void;
   onDelete?: (order: any) => void;
+  canCancel?: boolean;
 };
 
-export function OrderActions({ order, onView, onDelete }: Props) {
+export function OrderActions({ order, onView, onDelete, canCancel = false }: Props) {
   return (
     <div className="flex justify-center gap-2">
       
@@ -22,21 +23,16 @@ export function OrderActions({ order, onView, onDelete }: Props) {
         <Eye className="w-4 h-4" />
       </Button>
 
-      {/* DELETE */}
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => {
-          const confirmDelete = confirm(
-            `Xóa đơn hàng ${order.orderId}?`
-          );
-          if (confirmDelete) {
-            onDelete?.(order);
-          }
-        }}
-      >
-        <Trash2 className="w-4 h-4 text-destructive" />
-      </Button>
+      {canCancel ? (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => onDelete?.(order)}
+          title="Hủy đơn"
+        >
+          <Trash2 className="w-4 h-4 text-destructive" />
+        </Button>
+      ) : null}
     </div>
   );
 }

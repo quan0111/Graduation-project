@@ -6,6 +6,7 @@ from src.core.cache import CacheManager, cache_invalidate, cache_result
 from src.core.config import settings
 from src.core.database import prisma
 from src.core.dependencies import get_role_value
+from src.modules.audit.audit_service import AuditService
 from src.modules.product.product_schema import (
     ProductCreate,
     ProductOut,
@@ -28,6 +29,10 @@ class ProductService:
     @staticmethod
     def _is_admin(viewer) -> bool:
         return get_role_value(viewer) == "ADMIN"
+
+    @staticmethod
+    def _to_value(value):
+        return value.value if hasattr(value, "value") else str(value)
 
     @staticmethod
     async def _get_shop_for_owner(user_id: int):
@@ -76,6 +81,8 @@ class ProductService:
     @staticmethod
     def _build_product_payload(product_data: ProductCreate | SellerProductCreate, shop_id: int, status: str):
         variants = product_data.variants or []
+        if not variants:
+            raise HTTPException(400, "Product must have at least one variant so stock can be tracked")
         variant_prices = [variant.price for variant in variants if variant.price is not None]
         base_price = min(variant_prices) if variant_prices else getattr(product_data, "price", 0) or 0
 
@@ -281,7 +288,7 @@ class ProductService:
         if not product or product.deletedAt is not None:
             raise HTTPException(404, "Product not found")
 
-        if product.status != "ACTIVE":
+        if ProductService._to_value(product.status) != "ACTIVE":
             if not viewer:
                 raise HTTPException(404, "Product not found")
 
@@ -340,6 +347,7 @@ class ProductService:
 
         data = product_data.model_dump(exclude_unset=True)
         update_data = {}
+        previous_status = ProductService._to_value(existing.status)
 
         if "name" in data:
             update_data["name"] = data["name"]
@@ -366,10 +374,55 @@ class ProductService:
                 raise HTTPException(403, "Only admin can change product status")
             update_data["status"] = data["status"]
 
+        resubmit_for_review = (
+            is_owner
+            and not is_admin
+            and previous_status == "REJECT"
+            and any(key in update_data for key in ["name", "price", "description", "slug", "category"])
+        )
+        if resubmit_for_review:
+            update_data["status"] = "APPROVAL"
+
         await prisma.product.update(
             where={"id": product_id},
             data=update_data,
         )
+
+        if resubmit_for_review:
+            case = await prisma.productmoderationcase.find_first(
+                where={
+                    "productId": product_id,
+                    "status": {"in": ["OPEN", "SELLER_SUBMITTED", "UNDER_REVIEW", "REJECTED_UPHELD"]},
+                },
+                order={"createdAt": "desc"},
+            )
+            if case:
+                await prisma.productmoderationcase.update(
+                    where={"id": case.id},
+                    data={
+                        "status": "SELLER_SUBMITTED",
+                        "sellerNote": "Seller đã chỉnh sửa sản phẩm bị từ chối và gửi duyệt lại.",
+                        "resolvedAt": None,
+                    },
+                )
+            else:
+                await prisma.productmoderationcase.create(
+                    data={
+                        "productId": product_id,
+                        "sellerId": viewer.id,
+                        "status": "SELLER_SUBMITTED",
+                        "reason": "Seller chỉnh sửa sản phẩm bị từ chối và gửi duyệt lại.",
+                        "sellerNote": "Seller đã chỉnh sửa sản phẩm bị từ chối và gửi duyệt lại.",
+                    }
+                )
+            await AuditService.create(
+                actor_id=viewer.id,
+                action="PRODUCT.RESUBMITTED_FOR_REVIEW",
+                entity_type="Product",
+                entity_id=product_id,
+                severity="INFO",
+                metadata={"from": previous_status, "to": "APPROVAL"},
+            )
 
         return await ProductService._serialize_product(product_id)
 

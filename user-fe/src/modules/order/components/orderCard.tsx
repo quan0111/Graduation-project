@@ -20,8 +20,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       <OrderHeader order={order} expanded={expanded} onClick={onToggle} />
       <div
         className={[
-          "overflow-hidden transition-all duration-300",
-          expanded ? "max-h-300 opacity-100" : "max-h-0 opacity-0",
+          "transition-all duration-300",
+          expanded ? "overflow-visible opacity-100" : "max-h-0 overflow-hidden opacity-0",
         ].join(" ")}
       >
         <OrderDetails order={order} />

@@ -27,7 +27,8 @@ class ReturnReviewUpdate(BaseModel):
 
 
 class GatewayRefundConfirm(BaseModel):
-    transactionId: str
+    transactionId: Optional[str] = None
+    status: Literal["SUCCESS", "FAILED"] = "SUCCESS"
     note: Optional[str] = None
 
 

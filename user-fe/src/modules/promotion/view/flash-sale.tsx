@@ -4,6 +4,7 @@ import { ArrowLeft, Clock3, Flame, Grid2X2, PackageCheck, Store, Tag } from "luc
 
 import { ProductCard } from "@/modules/product/components/productcard";
 import { useActiveFlashSales } from "@/modules/promotion/api/flash-sale";
+import { formatDateTime } from "@/lib/date";
 import {
   getFlashSaleDiscountPercent,
   getFlashSaleDisplayPrice,
@@ -50,19 +51,6 @@ const TEXT = {
   related: "Ưu đãi liên quan",
   relatedSubtitle: "Thêm sản phẩm đang giảm giá trong các chiến dịch khác.",
   itemSuffix: "sp",
-};
-
-const formatDateTime = (value: string) => {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(date);
 };
 
 export default function FlashSalePage() {

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
 import { ProgressBar } from "./progressBar";
 import { CopyCodeButton } from "./copyCodeButton";
+import { formatDate } from "@/lib/date";
 
 type Promotion = {
   id: string;
@@ -62,7 +63,7 @@ export const PromotionCard: React.FC<PromotionCardProps> = ({
         <div className="flex items-center text-xs mt-2">
           <Clock size={12} />
           <span className="ml-1">
-            {new Date(promo.validUntil).toLocaleDateString()}
+            {formatDate(promo.validUntil)}
           </span>
         </div>
 

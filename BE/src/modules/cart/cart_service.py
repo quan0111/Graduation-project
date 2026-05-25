@@ -4,6 +4,9 @@ from src.core.dependencies import get_role_value
 
 
 class CartService:
+    @staticmethod
+    def _to_value(value):
+        return value.value if hasattr(value, "value") else str(value)
 
     async def get_or_create_cart(self, user_id: int):
         cart = await prisma.cart.find_unique(
@@ -88,21 +91,25 @@ class CartService:
         cart = await self.get_or_create_cart(user_id)
 
         product = await prisma.product.find_unique(
-            where={"id": data.productId}
+            where={"id": data.productId},
+            include={"variants": True},
         )
         if not product:
             raise HTTPException(400, "Product not found")
 
         # 🚫 Chặn sản phẩm bị ban hoặc chưa active
-        if product.status == "BANNED":
+        product_status = self._to_value(product.status)
+        if product_status == "BANNED":
             raise HTTPException(400, "Sản phẩm này đã bị cấm và không thể thêm vào giỏ hàng")
-        if product.status != "ACTIVE":
+        if product_status != "ACTIVE":
             raise HTTPException(400, "Sản phẩm không còn khả dụng")
 
         if product.shopId != data.shopId:
             raise HTTPException(400, "Shop does not match product")
 
         variant_id = data.variantId if data.variantId else None
+        if not variant_id:
+            raise HTTPException(400, "Variant is required so product stock can be checked")
 
         # 🚫 Kiểm tra stock nếu có variant
         if variant_id:
@@ -209,11 +216,14 @@ class CartService:
             # 🚩 Xác định trạng thái item
             item_status = "OK"
 
+            product_status = self._to_value(product.status) if product else None
             if not product or product.deletedAt:
                 item_status = "UNAVAILABLE"
-            elif product.status == "BANNED":
+            elif product_status == "BANNED":
                 item_status = "BANNED"
-            elif product.status != "ACTIVE":
+            elif product_status != "ACTIVE":
+                item_status = "UNAVAILABLE"
+            elif not variant:
                 item_status = "UNAVAILABLE"
             elif variant:
                 if variant.stock <= 0:

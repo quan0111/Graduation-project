@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useParams } from "react-router-dom";
 
+import type { MarketingBanner } from "@/modules/marketing/api/marketing";
+import { useActiveBanners, useTrackBannerAction } from "@/modules/marketing/api/marketing";
+import { MarketingBannerStrip } from "@/modules/marketing/components/marketing-banner-strip";
 import { ProductActions } from "@/modules/product/components/Action";
 import { ProductAttributes } from "@/modules/product/components/specification";
 import { ProductDescription } from "@/modules/product/components/description";
@@ -26,6 +29,7 @@ export default function ProductDetailPage() {
   const { id } = useParams();
   const productId = Number(id);
   const user = useAuthStore((state) => state.user);
+  const viewedBannerIdsRef = useRef<Set<number>>(new Set());
 
   const { data: rawProduct, isLoading, error } = useGetProductByID(productId, {
     enabled: Number.isFinite(productId) && productId > 0,
@@ -35,6 +39,8 @@ export default function ProductDetailPage() {
     productId: Number.isFinite(productId) && productId > 0 ? productId : undefined,
   });
   const { trackAddToCart, trackClick, trackView } = useTrackProductBehavior();
+  const { data: productDetailBanners = [] } = useActiveBanners("PRODUCT_DETAIL");
+  const trackBannerAction = useTrackBannerAction();
   const { addRecentlyViewed } = useRecentlyViewed();
   const trackedViewByProductIdRef = useRef<Set<number>>(new Set());
 
@@ -67,6 +73,16 @@ export default function ProductDetailPage() {
     addRecentlyViewed(product);
   }, [product, trackView, addRecentlyViewed]);
 
+  useEffect(() => {
+    productDetailBanners.forEach((banner) => {
+      if (viewedBannerIdsRef.current.has(banner.id)) {
+        return;
+      }
+      viewedBannerIdsRef.current.add(banner.id);
+      trackBannerAction.mutate({ bannerId: banner.id, action: "VIEW" });
+    });
+  }, [productDetailBanners, trackBannerAction]);
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -87,10 +103,15 @@ export default function ProductDetailPage() {
   }
 
   const recommendationCandidates = recommendedProducts.filter((item) => item.id !== product.id).slice(0, 5);
+  const handleBannerClick = (banner: MarketingBanner) => {
+    trackBannerAction.mutate({ bannerId: banner.id, action: "CLICK" });
+  };
 
   return (
     <div className="min-h-screen bg-[#fffaf6] pb-12 pt-6">
       <div className="mx-auto max-w-7xl space-y-6 px-4 md:px-6">
+        <MarketingBannerStrip banners={productDetailBanners.slice(0, 6)} onBannerClick={handleBannerClick} />
+
         <div className="grid gap-6 rounded-3xl border border-orange-100 bg-white p-5 shadow-sm lg:grid-cols-12">
           <div className="lg:col-span-5">
             <ProductGallery images={galleryImages} name={product.name} />

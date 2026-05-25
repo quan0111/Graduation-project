@@ -70,6 +70,7 @@ export interface IOrderItem {
 }
 export type PaymentMethodType =
   | "COD"
+  | "MOMO"
   | "VNPAY"
   | "STRIPE"
 
@@ -83,6 +84,7 @@ export type PaymentStatusType =
   | "PAYMENT_EXPIRED"
   | "REFUNDING"
   | "REFUNDED"
+  | "REFUND_FAILED"
   | "PARTIALLY_REFUNDED"
 
 export interface IPayment {

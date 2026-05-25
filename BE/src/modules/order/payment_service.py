@@ -20,6 +20,8 @@ PAYMENT_STATUS_ALIASES = {
 }
 PAYMENT_SUCCESS_STATUSES = {"SUCCESS", "PAYMENT_SUCCESS"}
 PAYMENT_FAILED_STATUSES = {"FAILED", "PAYMENT_FAILED"}
+PAYMENT_PENDING_STATUSES = {"PENDING", "PENDING_PAYMENT"}
+MOMO_PENDING_RESULT_CODES = {"1000", "7000", "7002", "9000"}
 
 
 class PaymentService:
@@ -203,6 +205,7 @@ class PaymentService:
             if role != "ADMIN" and payment.order.userId != current_user.id:
                 raise HTTPException(403, "Forbidden")
 
+        payment = await PaymentService._sync_gateway_status_if_pending(payment)
         return PaymentService._to_out(payment)
 
     @staticmethod
@@ -235,6 +238,7 @@ class PaymentService:
         if not payment:
             raise HTTPException(404, "Payment not found")
 
+        payment = await PaymentService._sync_gateway_status_if_pending(payment)
         return PaymentService._to_out(payment)
 
     @staticmethod
@@ -270,7 +274,7 @@ class PaymentService:
 
         status = PaymentService._normalize_status(status)
         current_status = PaymentService._to_value(payment.status)
-        if current_status in PAYMENT_SUCCESS_STATUSES | PAYMENT_FAILED_STATUSES | {"PAYMENT_EXPIRED", "REFUNDED", "PARTIALLY_REFUNDED"}:
+        if current_status in PAYMENT_SUCCESS_STATUSES | PAYMENT_FAILED_STATUSES | {"PAYMENT_EXPIRED", "REFUNDED", "PARTIALLY_REFUNDED", "REFUND_FAILED"}:
             return payment
 
         callback_amount = PaymentService._callback_amount(callback_data)
@@ -313,6 +317,42 @@ class PaymentService:
             PaymentGatewayCreate(orderId=payment.orderId, method=PaymentService._to_value(payment.method)),
             current_user,
             ip_address,
+        )
+
+    @staticmethod
+    async def _sync_gateway_status_if_pending(payment):
+        method = PaymentService._to_value(payment.method).upper()
+        status = PaymentService._to_value(payment.status)
+        if method != "MOMO" or status not in PAYMENT_PENDING_STATUSES or not payment.providerOrderId:
+            return payment
+
+        try:
+            query_response = MoMoService.query_payment(
+                provider_order_id=payment.providerOrderId,
+                request_id=payment.requestId,
+            )
+        except Exception:
+            return payment
+
+        result_code = str(query_response.get("resultCode"))
+        if result_code == "0":
+            return await PaymentService._update_gateway_callback(
+                provider_order_id=payment.providerOrderId,
+                status="SUCCESS",
+                callback_data=query_response,
+                transaction_id=str(query_response.get("transId")) if query_response.get("transId") is not None else None,
+                provider_message=query_response.get("message") or result_code,
+            )
+
+        if result_code in MOMO_PENDING_RESULT_CODES:
+            return payment
+
+        return await PaymentService._update_gateway_callback(
+            provider_order_id=payment.providerOrderId,
+            status="FAILED",
+            callback_data=query_response,
+            transaction_id=str(query_response.get("transId")) if query_response.get("transId") is not None else None,
+            provider_message=query_response.get("message") or result_code,
         )
 
     @staticmethod

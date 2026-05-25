@@ -12,6 +12,7 @@ class BannerCreate(BaseModel):
     redirectUrl: Optional[str] = None
     buttonText: Optional[str] = None
     position: str = "HOME_TOP"
+    layout: str = "ONE_THIRD"
     status: str = "DRAFT"
     priority: int = 0
     startAt: Optional[datetime] = None
@@ -26,6 +27,7 @@ class BannerUpdate(BaseModel):
     redirectUrl: Optional[str] = None
     buttonText: Optional[str] = None
     position: Optional[str] = None
+    layout: Optional[str] = None
     status: Optional[str] = None
     priority: Optional[int] = None
     startAt: Optional[datetime] = None
@@ -53,6 +55,7 @@ class BannerOut(BaseModel):
     redirectUrl: Optional[str] = None
     buttonText: Optional[str] = None
     position: str
+    layout: str = "ONE_THIRD"
     status: str
     priority: int
     startAt: Optional[datetime] = None

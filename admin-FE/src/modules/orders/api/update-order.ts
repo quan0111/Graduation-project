@@ -6,7 +6,7 @@ import type { IOrder } from "../types";
 
 export const updateOrder = async (params: {
   id: number;
-  data: Partial<IOrder>;
+  data: Partial<IOrder> & { reason?: string };
 }): Promise<IOrder> => {
   const res = await apiClient.patch(
     `${API_URL_ORDER}/${params.id}`,

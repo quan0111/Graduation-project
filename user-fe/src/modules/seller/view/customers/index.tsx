@@ -2,6 +2,7 @@ import { useState, type ComponentType } from "react";
 import { Mail, Phone, Search, ShoppingBag, TrendingUp } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
+import { formatDateTime } from "@/lib/date";
 import { SellerDashboardLayout } from "@/modules/seller/component/shop-layout";
 import { useSellerCustomers } from "@/modules/seller/api/get-seller-customers";
 
@@ -95,7 +96,7 @@ export default function SellerCustomersPage() {
                       <td className="px-6 py-4 text-slate-900">{customer.order_count || 0}</td>
                       <td className="px-6 py-4 font-medium text-slate-900">{currency.format(customer.total_spent || 0)}</td>
                       <td className="px-6 py-4 text-sm text-slate-600">
-                        {customer.last_order_date ? new Date(customer.last_order_date).toLocaleDateString("vi-VN") : "Chưa có"}
+                        {formatDateTime(customer.last_order_date, "Chưa có")}
                       </td>
                     </tr>
                   ))}

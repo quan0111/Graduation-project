@@ -1,7 +1,8 @@
 import { ProductActions } from "./product-action";
 import { ProductStatusBadge } from "./product-badge";
+import { formatDateTime } from "@/lib/date";
 
-export const productColumns = (onApprove: any, onReject: any, onBan: any, onView: any) => [
+export const productColumns = (onApprove: any, onReject: any, onBan: any, onUnban: any, onView: any) => [
   {
     key: "name",
     label: "Sản phẩm",
@@ -45,7 +46,7 @@ export const productColumns = (onApprove: any, onReject: any, onBan: any, onView
   {
     key: "submitDate",
     label: "Ngày gửi",
-    render: (product: any) => new Date(product.createdAt).toLocaleDateString(),
+    render: (product: any) => formatDateTime(product.createdAt),
   },
   {
     key: "actions",
@@ -56,6 +57,7 @@ export const productColumns = (onApprove: any, onReject: any, onBan: any, onView
         onApprove={onApprove}
         onReject={onReject}
         onBan={onBan}
+        onUnban={onUnban}
         onView={onView}
       />
     ),

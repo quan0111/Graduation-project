@@ -97,6 +97,7 @@ export const PaymentStatus = {
   PaymentExpired: "payment_expired",
   Refunding: "refunding",
   Refunded: "refunded",
+  RefundFailed: "refund_failed",
   PartiallyRefunded: "partially_refunded",
 } as const;
 

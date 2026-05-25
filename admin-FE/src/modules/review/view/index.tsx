@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { DataTable } from "@/components/common/data-table";
+import { ConfirmDialog } from "@/components/common/app-dialog";
 import { ReviewFilter } from "../components/search-filter-review";
 import { reviewColumns } from "../components/review-collum";
 import { useGetReview } from "../api/get-review";
@@ -18,6 +19,7 @@ const normalizeReviews = (value: any) => {
 export default function ReviewsPage() {
   const [search, setSearch] = useState("");
   const [ratingFilter, setRatingFilter] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
 
 
@@ -33,12 +35,18 @@ export default function ReviewsPage() {
   // ================= HANDLERS =================
 
   const handleDelete = (review: any) => {
-    if (!confirm("Xóa review này?")) return;
+    setDeleteTarget(review);
+  };
 
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
     updateMutation.mutate(
-      { ...review, deleteAt: new Date().toISOString() },
+      { ...deleteTarget, deleteAt: new Date().toISOString() },
       {
-        onSuccess: () => toast.success("Xóa thành công"),
+        onSuccess: () => {
+          toast.success("Xóa thành công");
+          setDeleteTarget(null);
+        },
         onError: () => toast.error("Xóa thất bại"),
       }
     );
@@ -136,6 +144,17 @@ export default function ReviewsPage() {
         data={filtered}
         columns={columns}
         title="Danh sách đánh giá"
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Xóa review"
+        description="Xóa review này?"
+        confirmLabel="Xóa"
+        variant="destructive"
+        isPending={updateMutation.isPending}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
       />
     </main>
   );

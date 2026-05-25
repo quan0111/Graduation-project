@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDateTime } from "@/lib/date";
 import { SellerDashboardLayout } from "@/modules/seller/component/shop-layout";
 import { useAddSupportMessage, useSellerSupportTickets } from "@/modules/support/api/support";
 import { useSupportRealtime } from "@/modules/support/hooks/use-support-realtime";
@@ -77,7 +78,7 @@ export default function SellerSupportPage() {
                   >
                     <p className="mb-1 text-xs opacity-70">{message.senderRole}</p>
                     <p>{message.message}</p>
-                    <p className="mt-2 text-[11px] opacity-70">{new Date(message.createdAt).toLocaleString("vi-VN")}</p>
+                    <p className="mt-2 text-[11px] opacity-70">{formatDateTime(message.createdAt)}</p>
                   </div>
                 ))}
               </div>

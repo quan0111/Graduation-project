@@ -1,8 +1,9 @@
 import { isAxiosError } from "axios";
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
 
-import { API_URL_LOGIN, API_URL_ORDER, API_URL_PRODUCT, API_URL_SHOP } from "@/constant/config";
+import { API_URL, API_URL_LOGIN, API_URL_ORDER, API_URL_PRODUCT, API_URL_SHOP } from "@/constant/config";
 import { apiClient } from "@/lib/api";
+import { formatDate } from "@/lib/date";
 
 import type {
   SellerDashboardData,
@@ -229,7 +230,6 @@ function normalizeOrders(orders: OrderResponse[], shopId: number): ShopScopedOrd
 }
 
 function buildTrend(orders: ShopScopedOrder[]): SellerDashboardTrendPoint[] {
-  const formatter = new Intl.DateTimeFormat("vi-VN", { weekday: "short" });
   const days = Array.from({ length: 7 }, (_, index) => {
     const date = new Date();
     date.setHours(0, 0, 0, 0);
@@ -242,7 +242,7 @@ function buildTrend(orders: ShopScopedOrder[]): SellerDashboardTrendPoint[] {
     const dayOrders = orders.filter((order) => order.createdAt.slice(0, 10) === dayKey);
 
     return {
-      label: formatter.format(day),
+      label: formatDate(day).slice(0, 5),
       revenue: dayOrders.reduce((sum, order) => sum + order.revenue, 0),
       orders: dayOrders.length,
     };
@@ -371,6 +371,9 @@ function buildRecentOrders(orders: ShopScopedOrder[]): SellerDashboardRecentOrde
 }
 
 export const getSellerDashboard = async (): Promise<SellerDashboardData> => {
+  const backendResponse = await apiClient.get<SellerDashboardData>(`${API_URL}seller/dashboard`);
+  return backendResponse.data;
+
   const me = normalizeUser(await getProfile());
 
   if (me.role !== "SELLER") {
@@ -381,7 +384,7 @@ export const getSellerDashboard = async (): Promise<SellerDashboardData> => {
 
   try {
     shop = normalizeShop(await getMyShop());
-  } catch (error) {
+  } catch (error: any) {
     if (isAxiosError(error) && error.response?.status === 404) {
       return createEmptyDashboard("no-shop", me);
     }

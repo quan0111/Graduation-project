@@ -14,6 +14,7 @@ import {
 } from "@/modules/seller/api/finance";
 import { SellerDashboardLayout } from "@/modules/seller/component/shop-layout";
 import { formatCurrency } from "@/modules/seller/utils/dashboard";
+import { formatDate, formatDateTime } from "@/lib/date";
 
 export default function SellerFinancePage() {
   const [payoutAmount, setPayoutAmount] = useState("");
@@ -26,7 +27,7 @@ export default function SellerFinancePage() {
     () =>
       (report?.dailyRevenue ?? []).map((item) => ({
         ...item,
-        label: new Date(item.date).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }),
+        label: formatDate(item.date).slice(0, 5),
       })),
     [report],
   );
@@ -153,7 +154,7 @@ export default function SellerFinancePage() {
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-slate-500">
-                    {item.type} · tồn {item.stockBefore ?? "-"} → {item.stockAfter ?? "-"} · {new Date(item.createdAt).toLocaleString("vi-VN")}
+                    {item.type} · tồn {item.stockBefore ?? "-"} → {item.stockAfter ?? "-"} · {formatDateTime(item.createdAt)}
                   </p>
                 </div>
               ))}

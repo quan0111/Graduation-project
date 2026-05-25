@@ -1,8 +1,9 @@
 import { OrderActions } from "./order-action";
 import { formatCurrency } from "../utils/index";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { formatDateTime } from "@/lib/date";
 
-const statusOptions = [
+export const statusOptions = [
   { value: "PENDING", label: "Chờ xử lý", color: "bg-yellow-500" },
   { value: "PENDING_PAYMENT", label: "Chờ thanh toán", color: "bg-yellow-500" },
   { value: "CONFIRMED", label: "Đã xác nhận", color: "bg-blue-500" },
@@ -29,24 +30,11 @@ const statusOptions = [
 ];
 
 const adminTransitions: Record<string, string[]> = {
-  PENDING: ["PENDING_PAYMENT", "PAID", "PAYMENT_FAILED", "CONFIRMED", "CANCELLED_BY_CUSTOMER", "CANCELLED"],
-  PENDING_PAYMENT: ["PAID", "PAYMENT_FAILED", "PAYMENT_EXPIRED", "CANCELLED_BY_CUSTOMER", "CANCELLED"],
-  PAYMENT_FAILED: ["PENDING_PAYMENT", "PAYMENT_EXPIRED", "CANCELLED_BY_CUSTOMER", "CANCELLED"],
-  PAYMENT_EXPIRED: ["PENDING_PAYMENT", "CANCELLED_BY_CUSTOMER", "CANCELLED"],
-  PAID: ["CONFIRMED"],
-  CONFIRMED: ["PROCESSING", "CANCEL_REQUESTED", "CANCELLED_BY_SELLER", "CANCELLED"],
-  PROCESSING: ["READY_TO_SHIP", "CANCEL_REQUESTED", "CANCELLED_BY_SELLER", "CANCELLED"],
-  READY_TO_SHIP: ["SHIPPED", "CANCEL_REQUESTED", "CANCELLED_BY_SELLER", "CANCELLED"],
-  SHIPPED: ["IN_TRANSIT", "DELIVERY_FAILED", "RETURN_TO_SENDER"],
-  IN_TRANSIT: ["OUT_FOR_DELIVERY", "DELIVERY_FAILED", "RETURN_TO_SENDER"],
-  OUT_FOR_DELIVERY: ["DELIVERED", "DELIVERY_FAILED", "RETURN_TO_SENDER"],
-  DELIVERED: ["COMPLETED", "RETURN_REQUESTED"],
-  COMPLETED: ["RETURN_REQUESTED"],
-  CANCEL_REQUESTED: ["CANCEL_APPROVED", "CANCEL_REJECTED", "CANCELLED"],
-  CANCEL_REJECTED: ["CONFIRMED", "PROCESSING"],
-  CANCEL_APPROVED: ["CANCELLED"],
-  CANCELLED_BY_CUSTOMER: ["CANCELLED"],
-  CANCELLED_BY_SELLER: ["CANCELLED"],
+  PENDING: ["CANCELLED"],
+  PENDING_PAYMENT: ["CANCELLED"],
+  PAYMENT_FAILED: ["CANCELLED"],
+  PAYMENT_EXPIRED: ["CANCELLED"],
+  CANCEL_REQUESTED: ["CANCELLED"],
   DELIVERY_FAILED: ["RETURN_TO_SENDER", "CANCELLED"],
   RETURN_TO_SENDER: ["CANCELLED"],
 };
@@ -54,6 +42,45 @@ const adminTransitions: Record<string, string[]> = {
 const getStatusColor = (status: string) => {
   const found = statusOptions.find((opt) => opt.value === status);
   return found ? found.color : "bg-gray-500";
+};
+
+export const getOrderStatusLabel = (status?: string | null) =>
+  statusOptions.find((opt) => opt.value === status)?.label || status || "N/A";
+
+export const getAdminOrderActionLabel = (currentStatus?: string | null, nextStatus?: string | null) => {
+  if (currentStatus === "CANCEL_REQUESTED" && nextStatus === "CANCELLED") return "Duyệt hủy";
+  if (currentStatus === "CANCEL_REQUESTED" && ["PAID", "CONFIRMED"].includes(String(nextStatus))) return "Từ chối hủy";
+  if (nextStatus === "CANCELLED") return "Hủy đơn";
+  if (nextStatus === "RETURN_TO_SENDER") return "Hoàn về seller";
+  return getOrderStatusLabel(nextStatus);
+};
+
+const isPaidOrder = (order: any) => {
+  const payment = order.raw?.payment || order.raw?.Payment || order.payment || order.Payment;
+  const status = String(payment?.status || "").toUpperCase();
+  return ["SUCCESS", "PAYMENT_SUCCESS"].includes(status);
+};
+
+const getCancelRequestPreviousStatus = (order: any) => {
+  const cancellation = order.raw?.cancellation || order.raw?.Cancellation || order.cancellation || order.Cancellation;
+  const note = String(cancellation?.note || "");
+  const previous = note
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith("previousStatus="))
+    ?.split("=")[1];
+
+  return previous === "PAID" ? "PAID" : "CONFIRMED";
+};
+
+const getAdminAllowedNextStatuses = (order: any) => {
+  const allowed = [...(adminTransitions[order.status] || [])];
+  if (order.status === "CANCEL_REQUESTED") {
+    allowed.push(getCancelRequestPreviousStatus(order));
+  }
+  if (!isPaidOrder(order)) return allowed;
+
+  return allowed.filter((status) => status !== "CANCELLED");
 };
 
 export const orderColumns = (
@@ -76,6 +103,7 @@ export const orderColumns = (
   {
     key: "total",
     label: "Tổng tiền",
+    exportValue: (o: any) => `${formatCurrency(o.total)}đ`,
     render: (o: any) => (
       <div className="text-right">
         {formatCurrency(o.total)}đ
@@ -86,8 +114,18 @@ export const orderColumns = (
   {
     key: "status",
     label: "Trạng thái",
+    exportValue: (o: any) => getOrderStatusLabel(o.status),
     render: (o: any) => {
-      const allowedNext = adminTransitions[o.status] || [];
+      const allowedNext = getAdminAllowedNextStatuses(o);
+      if (!allowedNext.length) {
+        return (
+          <div className="flex w-[220px] items-center gap-2 rounded-md border px-3 py-2 text-sm">
+            <div className={`h-2 w-2 rounded-full ${getStatusColor(o.status)}`} />
+            {getOrderStatusLabel(o.status)}
+          </div>
+        );
+      }
+
       const filteredOptions = statusOptions.filter(
         (opt) => opt.value === o.status || allowedNext.includes(opt.value)
       );
@@ -108,7 +146,7 @@ export const orderColumns = (
               <SelectItem key={option.value} value={option.value}>
                 <div className="flex items-center gap-2">
                   <div className={`h-2 w-2 rounded-full ${option.color}`} />
-                  {option.label}
+                  {option.value === o.status ? option.label : getAdminOrderActionLabel(o.status, option.value)}
                 </div>
               </SelectItem>
             ))}
@@ -121,8 +159,9 @@ export const orderColumns = (
   {
     key: "date",
     label: "Ngày",
+    exportValue: (o: any) => formatDateTime(o.date),
     render: (o: any) => (
-      <div className="text-center">{o.date}</div>
+      <div className="text-center">{formatDateTime(o.date)}</div>
     ),
   },
 
@@ -134,6 +173,7 @@ export const orderColumns = (
         order={o}
         onView={onView}
         onDelete={onDelete}
+        canCancel={getAdminAllowedNextStatuses(o).includes("CANCELLED") && o.status !== "CANCEL_REQUESTED"}
       />
     ),
   },

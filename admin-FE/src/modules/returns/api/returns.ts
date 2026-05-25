@@ -55,13 +55,21 @@ const reviewReturnRequest = async ({
 const confirmGatewayRefund = async ({
   returnId,
   transactionId,
+  status = "SUCCESS",
 }: {
   returnId: number;
   transactionId: string;
+  status?: "SUCCESS" | "FAILED";
 }) => {
   const response = await apiClient.patch(`${API_URL_RETURN}/${returnId}/gateway-refund`, {
     transactionId,
+    status,
   });
+  return response.data;
+};
+
+const requestGatewayRefund = async (returnId: number) => {
+  const response = await apiClient.post(`${API_URL_RETURN}/${returnId}/gateway-refund/request`);
   return response.data;
 };
 
@@ -79,4 +87,9 @@ export const useReviewReturnRequest = () =>
 export const useConfirmGatewayRefund = () =>
   useMutation({
     mutationFn: confirmGatewayRefund,
+  });
+
+export const useRequestGatewayRefund = () =>
+  useMutation({
+    mutationFn: requestGatewayRefund,
   });

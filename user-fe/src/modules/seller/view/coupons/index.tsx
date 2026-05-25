@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatDate } from "@/lib/date";
 
 import { useGetCoupon } from "@/modules/coupon/api/get-coupon";
 import { useCreateCoupon } from "@/modules/coupon/api/create-coupon";
@@ -146,9 +147,7 @@ export default function SellerCouponsPage() {
                             {coupon.usedCount}/{coupon.usageLimit || "∞"}
                           </td>
                           <td className="px-4 py-3 text-slate-600">
-                            {coupon.validUntil
-                              ? new Date(coupon.validUntil).toLocaleDateString("vi-VN")
-                              : "Không giới hạn"}
+                            {formatDate(coupon.validUntil, "Không giới hạn")}
                           </td>
                           <td className="px-4 py-3">
                             <span

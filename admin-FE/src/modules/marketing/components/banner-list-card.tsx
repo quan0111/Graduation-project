@@ -3,6 +3,7 @@ import { Eye, MousePointerClick, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDateTime } from "@/lib/date";
 
 import { useBannerStats } from "../api/marketing";
 import type { Banner } from "../types";
@@ -40,7 +41,14 @@ const POSITION_LABEL: Record<string, string> = {
   PRODUCT_DETAIL: "Chi tiết sản phẩm",
 };
 
-const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleString("vi-VN") : null);
+const LAYOUT_LABEL: Record<string, string> = {
+  FULL: "Full",
+  HALF: "1/2",
+  ONE_THIRD: "1/3",
+  TWO_THIRDS: "2/3",
+  ONE_QUARTER: "1/4",
+  THREE_QUARTERS: "3/4",
+};
 
 const formatCtr = (value?: number) => `${Math.round((value ?? 0) * 10000) / 100}%`;
 
@@ -70,8 +78,8 @@ export function BannerListCard({ banners, isError = false, isLoading = false, pe
 
 function BannerRow({ banner }: { banner: Banner }) {
   const { data: stats, isLoading } = useBannerStats(banner.id);
-  const startsAt = formatDate(banner.startAt);
-  const endsAt = formatDate(banner.endAt);
+  const startsAt = banner.startAt ? formatDateTime(banner.startAt) : null;
+  const endsAt = banner.endAt ? formatDateTime(banner.endAt) : null;
 
   return (
     <div className="flex items-start gap-3 rounded-lg border p-3">
@@ -81,6 +89,7 @@ function BannerRow({ banner }: { banner: Banner }) {
           <p className="truncate font-medium">{banner.title}</p>
           <Badge variant="outline">{STATUS_LABEL[banner.status] || banner.status}</Badge>
           <Badge variant="secondary">{POSITION_LABEL[banner.position] || banner.position}</Badge>
+          <Badge variant="secondary">{LAYOUT_LABEL[banner.layout || "ONE_THIRD"] || banner.layout}</Badge>
         </div>
         {banner.subtitle ? <p className="line-clamp-1 text-sm text-muted-foreground">{banner.subtitle}</p> : null}
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">

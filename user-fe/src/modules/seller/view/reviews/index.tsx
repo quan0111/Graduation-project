@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { API_URL_REVIEW } from "@/constant/config";
 import { apiClient } from "@/lib/api";
+import { formatDateTime } from "@/lib/date";
 import { useReplyReview } from "@/modules/review/api/reply-review";
 import { SellerDashboardLayout } from "@/modules/seller/component/shop-layout";
 
@@ -154,7 +155,7 @@ export default function SellerReviewsPage() {
                     <p className="text-sm font-semibold text-slate-950">{review.productName}</p>
                     <p className="mt-1 text-xs text-slate-500">
                       {review.user?.fullName || review.user?.email || TEXT.customer} ·{" "}
-                      {review.createdAt ? new Date(review.createdAt).toLocaleString("vi-VN") : TEXT.unknownTime}
+                      {formatDateTime(review.createdAt, TEXT.unknownTime)}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-600">
@@ -195,7 +196,7 @@ export default function SellerReviewsPage() {
                         <div key={reply.id}>
                           <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">{reply.content}</p>
                           {reply.createdAt ? (
-                            <p className="mt-1 text-xs text-slate-500">{new Date(reply.createdAt).toLocaleString("vi-VN")}</p>
+                            <p className="mt-1 text-xs text-slate-500">{formatDateTime(reply.createdAt)}</p>
                           ) : null}
                         </div>
                       ))}

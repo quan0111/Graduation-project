@@ -1,3 +1,5 @@
+import { formatDate as formatDateValue, formatDateTime as formatDateTimeValue } from "@/lib/date";
+
 /**
  * Format price to Vietnamese Dong format
  * @example formatPrice(100000) => "100,000đ"
@@ -16,16 +18,7 @@ export function formatPrice(price: string | number): string {
  * @example formatDate("2024-01-15") => "15/01/2024"
  */
 export function formatDate(dateString: string): string {
-  try {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    })
-  } catch {
-    return dateString
-  }
+  return formatDateValue(dateString, dateString)
 }
 
 /**
@@ -33,18 +26,7 @@ export function formatDate(dateString: string): string {
  * @example formatDateTime("2024-01-15T10:30:00") => "15/01/2024 10:30"
  */
 export function formatDateTime(dateString: string): string {
-  try {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  } catch {
-    return dateString
-  }
+  return formatDateTimeValue(dateString, dateString)
 }
 
 /**

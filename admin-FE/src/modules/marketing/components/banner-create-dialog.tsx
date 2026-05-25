@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useUploadImage } from "@/modules/upload/api/upload-image";
 
-import type { BannerCreatePayload, BannerPosition, BannerStatus } from "../types";
+import type { BannerCreatePayload, BannerLayout, BannerPosition, BannerStatus } from "../types";
 import { getApiErrorMessage } from "../utils/error";
 
 type BannerFormState = {
@@ -24,6 +24,7 @@ type BannerFormState = {
   redirectUrl: string;
   buttonText: string;
   position: BannerPosition;
+  layout: BannerLayout;
   status: BannerStatus;
   priority: string;
   startAt: string;
@@ -60,6 +61,7 @@ const COPY = {
   redirectUrl: "URL điều hướng",
   buttonText: "Nút CTA",
   position: "Vị trí",
+  layout: "Layout",
   status: "Trạng thái",
   priority: "Độ ưu tiên",
   startAt: "Bắt đầu",
@@ -83,6 +85,7 @@ const INITIAL_FORM: BannerFormState = {
   redirectUrl: "",
   buttonText: "",
   position: "HOME_TOP",
+  layout: "ONE_THIRD",
   status: "ACTIVE",
   priority: "0",
   startAt: "",
@@ -95,6 +98,15 @@ const POSITION_OPTIONS: Array<{ value: BannerPosition; label: string }> = [
   { value: "HOME_BOTTOM", label: "Cuối trang chủ" },
   { value: "CATEGORY_TOP", label: "Đầu trang danh mục" },
   { value: "PRODUCT_DETAIL", label: "Chi tiết sản phẩm" },
+];
+
+const LAYOUT_OPTIONS: Array<{ value: BannerLayout; label: string }> = [
+  { value: "FULL", label: "Full" },
+  { value: "HALF", label: "1/2" },
+  { value: "ONE_THIRD", label: "1/3" },
+  { value: "TWO_THIRDS", label: "2/3" },
+  { value: "ONE_QUARTER", label: "1/4" },
+  { value: "THREE_QUARTERS", label: "3/4" },
 ];
 
 const STATUS_OPTIONS: Array<{ value: BannerStatus; label: string }> = [
@@ -248,6 +260,7 @@ export function BannerCreateDialog({ open, pending = false, onOpenChange, onSubm
         redirectUrl: optionalValue(form.redirectUrl),
         buttonText: optionalValue(form.buttonText),
         position: form.position,
+        layout: form.layout,
         status: form.status,
         priority,
         startAt: startDate?.toISOString() ?? null,
@@ -331,7 +344,7 @@ export function BannerCreateDialog({ open, pending = false, onOpenChange, onSubm
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="banner-position">{COPY.position}</Label>
               <select
@@ -341,6 +354,21 @@ export function BannerCreateDialog({ open, pending = false, onOpenChange, onSubm
                 onChange={(event) => updateField("position", event.currentTarget.value as BannerPosition)}
               >
                 {POSITION_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="banner-layout">{COPY.layout}</Label>
+              <select
+                id="banner-layout"
+                className={selectClassName}
+                value={form.layout}
+                onChange={(event) => updateField("layout", event.currentTarget.value as BannerLayout)}
+              >
+                {LAYOUT_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>

@@ -1,6 +1,7 @@
 import { CheckCircle, Clock, MapPin, Package, Truck } from "lucide-react";
 import type { ComponentType } from "react";
 
+import { formatDateTime } from "@/lib/date";
 import type { Shipment, ShipmentEvent } from "../api/get-shipment";
 
 interface ShipmentTrackingProps {
@@ -145,7 +146,7 @@ export const ShipmentTracking: React.FC<ShipmentTrackingProps> = ({
                     ) : null}
                     {time ? (
                       <p className="mt-1 text-xs text-slate-500">
-                        {new Date(time).toLocaleString("vi-VN")}
+                        {formatDateTime(time)}
                       </p>
                     ) : null}
                   </div>
@@ -213,7 +214,7 @@ function TimelineItem({
       </div>
       <div className="flex-1">
         <p className="text-sm font-medium text-slate-900">{label}</p>
-        {time ? <p className="text-xs text-slate-500">{new Date(time).toLocaleString("vi-VN")}</p> : null}
+        {time ? <p className="text-xs text-slate-500">{formatDateTime(time)}</p> : null}
       </div>
     </div>
   );

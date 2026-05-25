@@ -178,6 +178,12 @@ class CheckoutCreate(OrderCreate):
 
 class OrderUpdate(BaseModel):
     status: Optional[str] = None
+    reason: Optional[str] = None
+
+
+class CancelOrderRequest(BaseModel):
+    reason: Optional[str] = None
+    note: Optional[str] = None
 
 
 class OrderStatusUpdate(BaseModel):

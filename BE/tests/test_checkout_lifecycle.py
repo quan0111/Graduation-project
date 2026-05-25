@@ -1,9 +1,11 @@
 import unittest
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 from fastapi import HTTPException
 
-from src.modules.order.order_service import OrderService, SELLER_TRANSITIONS
+from src.modules.order.order_service import ADMIN_TRANSITIONS, OrderService, SELLER_TRANSITIONS
+from src.modules.product.service.product import ProductService
 
 
 class CheckoutLifecycleTest(unittest.IsolatedAsyncioTestCase):
@@ -21,6 +23,60 @@ class CheckoutLifecycleTest(unittest.IsolatedAsyncioTestCase):
 
         with self.assertRaises(HTTPException) as exc:
             OrderService._assert_transition("PENDING", "SHIPPED", SELLER_TRANSITIONS)
+
+        self.assertEqual(exc.exception.status_code, 400)
+
+    def test_admin_cannot_operate_seller_shipping_flow(self):
+        with self.assertRaises(HTTPException) as exc:
+            OrderService._assert_transition("PAID", "SHIPPED", ADMIN_TRANSITIONS)
+
+        self.assertEqual(exc.exception.status_code, 400)
+
+    def test_product_requires_variant_for_stock_tracking(self):
+        product_data = SimpleNamespace(
+            variants=[],
+            name="No variant",
+            description=None,
+            slug=None,
+            images=[],
+            attributes=[],
+            tags=[],
+            categoryId=1,
+            price=1000,
+        )
+
+        with self.assertRaises(HTTPException) as exc:
+            ProductService._build_product_payload(product_data, shop_id=1, status="DRAFT")
+
+        self.assertEqual(exc.exception.status_code, 400)
+
+    async def test_coupon_limit_update_is_atomic(self):
+        client = SimpleNamespace(
+            coupon=SimpleNamespace(update_many=AsyncMock(return_value=0)),
+            couponredemption=SimpleNamespace(create=AsyncMock()),
+        )
+
+        with self.assertRaises(HTTPException) as exc:
+            await OrderService._apply_coupon_redemptions(
+                client,
+                {"appliedCoupons": [{"id": 1, "usageLimit": 5}]},
+                order_id=10,
+                user_id=20,
+            )
+
+        self.assertEqual(exc.exception.status_code, 400)
+        client.couponredemption.create.assert_not_awaited()
+
+    async def test_flash_sale_quota_update_is_atomic(self):
+        client = SimpleNamespace(
+            flashsaleitem=SimpleNamespace(update_many=AsyncMock(return_value=0)),
+        )
+
+        with self.assertRaises(HTTPException) as exc:
+            await OrderService._apply_flash_sale_sales(
+                client,
+                [{"id": 1, "quantity": 2, "stockLimit": 10}],
+            )
 
         self.assertEqual(exc.exception.status_code, 400)
 

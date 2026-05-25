@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { formatDateTime } from "@/lib/date";
 import {
   type SupportTicket,
   useAddSupportMessage,
@@ -117,7 +118,7 @@ export default function SupportPage() {
                       <td className="px-4 py-4">{ticket.shop?.name || "-"}</td>
                       <td className="px-4 py-4">{ticket.priority}</td>
                       <td className="px-4 py-4">{badge(ticket.status)}</td>
-                      <td className="px-4 py-4 text-xs">{new Date(ticket.updatedAt).toLocaleString("vi-VN")}</td>
+                      <td className="px-4 py-4 text-xs">{formatDateTime(ticket.updatedAt)}</td>
                       <td className="px-4 py-4">
                         <Button size="sm" variant="ghost" onClick={() => setSelectedTicket(ticket)}>
                           <Eye className="size-4" />
@@ -160,7 +161,7 @@ export default function SupportPage() {
                 >
                   <p className="mb-1 text-xs opacity-70">{message.senderRole} · {message.sender?.email || "Hệ thống"}</p>
                   <p>{message.message}</p>
-                  <p className="mt-2 text-[11px] opacity-70">{new Date(message.createdAt).toLocaleString("vi-VN")}</p>
+                  <p className="mt-2 text-[11px] opacity-70">{formatDateTime(message.createdAt)}</p>
                 </div>
               ))}
             </div>

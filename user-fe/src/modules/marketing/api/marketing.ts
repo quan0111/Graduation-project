@@ -13,6 +13,7 @@ export interface MarketingBanner {
   linkUrl?: string | null;
   buttonText?: string | null;
   position?: string | null;
+  layout?: string | null;
   status?: string;
   priority?: number;
 }
@@ -27,10 +28,13 @@ type TrackBannerActionPayload = {
 const normalizeBanner = (banner: MarketingBanner): MarketingBanner => ({
   ...banner,
   linkUrl: banner.linkUrl ?? banner.redirectUrl ?? null,
+  layout: banner.layout ?? "ONE_THIRD",
 });
 
-const getActiveBanners = async (): Promise<MarketingBanner[]> => {
-  const response = await apiClient.get<MarketingBanner[]>(`${API_URL_MARKETING}/banners`);
+const getActiveBanners = async (position?: string): Promise<MarketingBanner[]> => {
+  const response = await apiClient.get<MarketingBanner[]>(`${API_URL_MARKETING}/banners`, {
+    params: position ? { position } : undefined,
+  });
   return response.data.map(normalizeBanner);
 };
 
@@ -46,10 +50,10 @@ const trackBannerClick = async (bannerId: number) => {
   return trackBannerAction({ bannerId, action: "CLICK" });
 };
 
-export const useActiveBanners = () => {
+export const useActiveBanners = (position?: string) => {
   return useQuery({
-    queryKey: ["marketing", "banners"],
-    queryFn: getActiveBanners,
+    queryKey: ["marketing", "banners", position ?? "all"],
+    queryFn: () => getActiveBanners(position),
     staleTime: 60_000,
   });
 };

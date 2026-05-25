@@ -5,6 +5,7 @@ import { Link } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatDateTime } from "@/lib/date"
 
 const formatCurrency = (value?: number) =>
   new Intl.NumberFormat("vi-VN", {
@@ -60,7 +61,7 @@ export function PendingProducts({ products = [] }: { products?: any[] }) {
               <div className="flex items-center gap-2">
                 <div className="mr-2 flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="size-3" />
-                  {product.submittedAt ? new Date(product.submittedAt).toLocaleString("vi-VN") : "N/A"}
+                  {formatDateTime(product.submittedAt, "N/A")}
                 </div>
                 <Link to="/products" className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground">
                   <Eye className="size-4" />

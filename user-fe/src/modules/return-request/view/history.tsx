@@ -2,6 +2,7 @@ import { RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
+import { formatDateTime } from "@/lib/date";
 import { useUserReturnRequests } from "@/modules/return-request/api/get-return";
 import { useAuthStore } from "@/stores/auth.store";
 
@@ -97,7 +98,7 @@ export default function ReturnHistoryPage() {
                     <td className="px-5 py-4">
                       <Badge variant="outline">{statusLabelOverrides[item.status] || statusLabel[item.status] || item.status}</Badge>
                     </td>
-                    <td className="px-5 py-4 text-slate-500">{new Date(item.createdAt).toLocaleDateString("vi-VN")}</td>
+                    <td className="px-5 py-4 text-slate-500">{formatDateTime(item.createdAt)}</td>
                   </tr>
                 ))}
                 {!returns.length && (

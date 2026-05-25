@@ -11,6 +11,7 @@ export type PaymentStatusType =
   | "payment_expired"
   | "refunding"
   | "refunded"
+  | "refund_failed"
   | "partially_refunded";
 export type ShipmentStatusType =
   | "ready_to_ship"

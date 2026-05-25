@@ -20,17 +20,25 @@ export const ProductVariants = ({
       <div className="flex flex-wrap gap-3">
         {variants.map((variant) => {
           const active = selected?.id === variant.id;
+          const isSoldOut = Number(variant.stock || 0) <= 0;
           const thumbnail = variant.variantImages?.[0]?.url ?? variant.images?.[0]?.url;
 
           return (
             <button
               key={variant.id}
               type="button"
-              onClick={() => onSelect(variant)}
-              className={`flex min-w-30 items-center gap-2 border px-3 py-2 text-sm ${
-                active
-                  ? "border-[#ee4d2d] text-[#ee4d2d]"
-                  : "border-gray-300 hover:border-[#ee4d2d]"
+              onClick={() => {
+                if (!isSoldOut) {
+                  onSelect(variant);
+                }
+              }}
+              disabled={isSoldOut}
+              className={`relative flex min-w-30 items-center gap-2 overflow-hidden border px-3 py-2 text-sm transition ${
+                isSoldOut
+                  ? "cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400 opacity-70"
+                  : active
+                    ? "border-[#ee4d2d] text-[#ee4d2d]"
+                    : "border-gray-300 hover:border-[#ee4d2d]"
               }`}
             >
               {thumbnail && (
@@ -41,6 +49,11 @@ export const ProductVariants = ({
                 />
               )}
               <span>{variant.name}</span>
+              {isSoldOut && (
+                <span className="ml-1 rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                  Hết hàng
+                </span>
+              )}
             </button>
           );
         })}

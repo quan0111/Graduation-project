@@ -5,12 +5,14 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TextPromptDialog } from "@/components/common/app-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   type ReturnRequest,
   useAdminReturnRequests,
   useConfirmGatewayRefund,
+  useRequestGatewayRefund,
   useReviewReturnRequest,
 } from "@/modules/returns/api/returns";
 
@@ -81,11 +83,13 @@ export default function ReturnsPage() {
   const [selectedReturn, setSelectedReturn] = useState<ReturnRequest | null>(null);
   const [rejectCandidate, setRejectCandidate] = useState<ReturnRequest | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [gatewayRefundTarget, setGatewayRefundTarget] = useState<ReturnRequest | null>(null);
   const queryClient = useQueryClient();
 
   const { data: returns = [], isLoading, isError } = useAdminReturnRequests();
   const reviewMutation = useReviewReturnRequest();
   const gatewayRefundMutation = useConfirmGatewayRefund();
+  const requestGatewayRefundMutation = useRequestGatewayRefund();
 
   const filteredReturns = useMemo(
     () =>
@@ -125,16 +129,30 @@ export default function ReturnsPage() {
   };
 
   const handleGatewayRefund = (returnReq: ReturnRequest) => {
-    const transactionId = window.prompt(`Nhập mã giao dịch hoàn tiền cho return #${returnReq.id}`);
-    if (!transactionId?.trim()) {
-      return;
-    }
+    setGatewayRefundTarget(returnReq);
+  };
 
+  const handleRequestGatewayRefund = (returnReq: ReturnRequest) => {
+    requestGatewayRefundMutation.mutate(returnReq.id, {
+      onSuccess: async () => {
+        toast.success("Đã gửi yêu cầu hoàn tiền gateway");
+        await queryClient.invalidateQueries({ queryKey: ["returns", "admin"] });
+      },
+      onError: (error: any) => {
+        const detail = error?.response?.data?.detail;
+        toast.error(typeof detail === "string" ? detail : "Không thể gửi refund gateway");
+      },
+    });
+  };
+
+  const handleConfirmGatewayRefund = (transactionId: string) => {
+    if (!gatewayRefundTarget) return;
     gatewayRefundMutation.mutate(
-      { returnId: returnReq.id, transactionId: transactionId.trim() },
+      { returnId: gatewayRefundTarget.id, transactionId },
       {
         onSuccess: async () => {
           toast.success("Đã xác nhận hoàn tiền gateway");
+          setGatewayRefundTarget(null);
           await queryClient.invalidateQueries({ queryKey: ["returns", "admin"] });
         },
         onError: (error: any) => {
@@ -240,14 +258,24 @@ export default function ReturnsPage() {
                             </>
                           )}
                           {canConfirmGatewayRefund(returnReq.status) && returnReq.gatewayRefundStatus !== "SUCCESS" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleGatewayRefund(returnReq)}
-                              disabled={gatewayRefundMutation.isPending}
-                            >
-                              Refund
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleRequestGatewayRefund(returnReq)}
+                                disabled={requestGatewayRefundMutation.isPending}
+                              >
+                                Gửi refund
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleGatewayRefund(returnReq)}
+                                disabled={gatewayRefundMutation.isPending}
+                              >
+                                Xác nhận
+                              </Button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -364,6 +392,18 @@ export default function ReturnsPage() {
           </div>
         </div>
       )}
+
+      <TextPromptDialog
+        open={Boolean(gatewayRefundTarget)}
+        title="Xác nhận hoàn tiền gateway"
+        description={gatewayRefundTarget ? `Nhập mã giao dịch hoàn tiền cho return #${gatewayRefundTarget.id}.` : ""}
+        label="Mã giao dịch"
+        placeholder="VD: RF123456789"
+        confirmLabel="Xác nhận hoàn tiền"
+        isPending={gatewayRefundMutation.isPending}
+        onOpenChange={(open) => !open && setGatewayRefundTarget(null)}
+        onConfirm={handleConfirmGatewayRefund}
+      />
     </main>
   );
 }

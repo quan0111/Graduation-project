@@ -9,6 +9,10 @@ from src.modules.product.product_schema import VariantCreate, VariantOut, Varian
 
 class VariantService:
     @staticmethod
+    def _to_value(value):
+        return value.value if hasattr(value, "value") else str(value)
+
+    @staticmethod
     async def _assert_variant_access(variant_id: int, viewer) -> tuple:
         variant = await prisma.productvariant.find_unique(
             where={"id": variant_id},
@@ -134,11 +138,12 @@ class VariantService:
                 where={"productId": product.id, "deletedAt": None}
             )
             total_stock = sum((item.stock or 0) for item in variants)
-            new_status = "ACTIVE" if total_stock > 0 and product.status == "OUT_OF_STOCK" else product.status
-            if total_stock <= 0 and product.status == "ACTIVE":
+            current_status = VariantService._to_value(product.status)
+            new_status = "ACTIVE" if total_stock > 0 and current_status == "OUT_OF_STOCK" else current_status
+            if total_stock <= 0 and current_status == "ACTIVE":
                 new_status = "OUT_OF_STOCK"
 
-            if new_status != product.status:
+            if new_status != current_status:
                 await prisma.product.update(
                     where={"id": product.id},
                     data={"status": new_status},

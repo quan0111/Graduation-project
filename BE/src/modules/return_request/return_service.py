@@ -1,4 +1,5 @@
 from datetime import datetime
+from types import SimpleNamespace
 
 from fastapi import HTTPException
 from prisma import Json
@@ -8,6 +9,8 @@ from src.modules.audit.audit_service import AuditService
 from src.modules.inventory.inventory_service import InventoryService
 from src.modules.notification.notification_schema import NotificationCreate
 from src.modules.notification.notification_service import NotificationService
+from src.modules.order.momo_service import MoMoService
+from src.modules.order.vnpay_service import VNPayService
 
 
 RETURN_INCLUDE = {
@@ -43,6 +46,7 @@ RETURN_REVIEW_STATUS_ALIASES = {
     "REJECTED": "RETURN_REJECTED",
 }
 PAYMENT_SUCCESS_STATUSES = {"SUCCESS", "PAYMENT_SUCCESS"}
+PREPAID_PAYMENT_METHODS = {"MOMO", "VNPAY", "STRIPE"}
 
 
 class ReturnService:
@@ -116,6 +120,70 @@ class ReturnService:
         return all(
             returned_quantities.get(item.id, 0) >= int(item.quantity or 0)
             for item in order_items
+        )
+
+    @staticmethod
+    async def _record_payment_refund_event(
+        client,
+        payment,
+        status: str,
+        return_id: int,
+        refund_amount: float | None = None,
+        transaction_id: str | None = None,
+        message: str | None = None,
+        payload: dict | None = None,
+    ):
+        await client.paymentevent.create(
+            data={
+                "paymentId": payment.id,
+                "orderId": payment.orderId,
+                "provider": ReturnService._to_value(payment.method),
+                "eventType": "STATUS_SYNCED",
+                "status": status,
+                "providerOrderId": payment.providerOrderId,
+                "requestId": payment.requestId,
+                "transactionId": transaction_id,
+                "message": message or f"Refund status synced for return #{return_id}",
+                "payload": Json(
+                    {
+                        "returnId": return_id,
+                        "refundAmount": refund_amount,
+                        "refundStatus": status,
+                        **(payload or {}),
+                    }
+                ),
+            }
+        )
+
+    @staticmethod
+    async def _mark_payment_refunding_if_needed(client, return_request):
+        order = await client.order.find_unique(
+            where={"id": return_request.orderId},
+            include={"payment": True},
+        )
+        payment = order.payment if order else None
+        if not payment:
+            return
+
+        payment_method = ReturnService._to_value(payment.method)
+        payment_status = ReturnService._to_value(payment.status)
+        if payment_method not in PREPAID_PAYMENT_METHODS or payment_status not in PAYMENT_SUCCESS_STATUSES:
+            return
+
+        updated_payment = await client.payment.update(
+            where={"id": payment.id},
+            data={
+                "status": "REFUNDING",
+                "providerMessage": f"Refund pending for return #{return_request.id}",
+            },
+        )
+        await ReturnService._record_payment_refund_event(
+            client,
+            updated_payment,
+            "REFUNDING",
+            return_request.id,
+            refund_amount=return_request.refundAmount,
+            message=f"Refund pending for return #{return_request.id}",
         )
 
     @staticmethod
@@ -295,6 +363,8 @@ class ReturnService:
                 data=update_data,
                 include=RETURN_INCLUDE,
             )
+            if next_status in RETURN_APPROVED_STATUSES:
+                await ReturnService._mark_payment_refunding_if_needed(tx, updated)
 
         await ReturnService._notify_return_update(return_id, next_status, actor_id=admin_id)
         await AuditService.create(
@@ -325,54 +395,130 @@ class ReturnService:
 
             payment_method = ReturnService._to_value(payment.method)
             payment_status = ReturnService._to_value(payment.status)
-            if payment_method not in {"MOMO", "VNPAY", "STRIPE"} or payment_status not in PAYMENT_SUCCESS_STATUSES:
+            if payment_method not in PREPAID_PAYMENT_METHODS or payment_status not in PAYMENT_SUCCESS_STATUSES | {"REFUNDING", "REFUND_FAILED"}:
                 raise HTTPException(400, "Gateway refund confirmation is only required for successful prepaid orders")
+
+            requested_status = getattr(data, "status", "SUCCESS") or "SUCCESS"
+            if requested_status == "SUCCESS" and not data.transactionId:
+                raise HTTPException(400, "Refund transaction id is required")
+            gateway_refund_status = "SUCCESS" if requested_status == "SUCCESS" else "FAILED"
+            payment_refund_status = "REFUND_FAILED"
+            if gateway_refund_status == "SUCCESS":
+                is_full_refund = await ReturnService._is_order_fully_covered_by_returns(tx, return_request.orderId)
+                payment_refund_status = "REFUNDED" if is_full_refund else "PARTIALLY_REFUNDED"
 
             updated = await tx.returnrequest.update(
                 where={"id": return_id},
                 data={
-                    "gatewayRefundStatus": "SUCCESS",
+                    "gatewayRefundStatus": gateway_refund_status,
                     "gatewayRefundTransactionId": data.transactionId,
-                    "gatewayRefundedAt": datetime.utcnow(),
+                    "gatewayRefundedAt": datetime.utcnow() if gateway_refund_status == "SUCCESS" else None,
                 },
                 include=RETURN_INCLUDE,
             )
 
-            await tx.paymentevent.create(
+            updated_payment = await tx.payment.update(
+                where={"id": payment.id},
                 data={
-                    "paymentId": payment.id,
-                    "orderId": payment.orderId,
-                    "provider": payment_method,
-                    "eventType": "STATUS_SYNCED",
-                    "status": "SUCCESS",
-                    "providerOrderId": payment.providerOrderId,
-                    "requestId": payment.requestId,
-                    "transactionId": data.transactionId,
-                    "message": data.note or f"Gateway refund confirmed for return #{return_id}",
-                    "payload": Json(
-                        {
-                            "returnId": return_id,
-                            "refundAmount": return_request.refundAmount,
-                            "gatewayRefundStatus": "SUCCESS",
-                        }
-                    ),
-                }
+                    "status": payment_refund_status,
+                    "transactionId": data.transactionId or payment.transactionId,
+                    "providerMessage": data.note or f"Gateway refund {gateway_refund_status.lower()} for return #{return_id}",
+                },
+            )
+            await ReturnService._record_payment_refund_event(
+                tx,
+                updated_payment,
+                payment_refund_status,
+                return_id,
+                refund_amount=return_request.refundAmount,
+                transaction_id=data.transactionId,
+                message=data.note or f"Gateway refund {gateway_refund_status.lower()} for return #{return_id}",
+                payload={
+                    "gatewayRefundStatus": gateway_refund_status,
+                    "providerResponse": getattr(data, "providerResponse", None),
+                },
             )
 
-        await ReturnService._notify_return_update(return_id, "GATEWAY_REFUND_CONFIRMED", actor_id=admin_id)
+        notification_status = "GATEWAY_REFUND_CONFIRMED" if gateway_refund_status == "SUCCESS" else "GATEWAY_REFUND_FAILED"
+        await ReturnService._notify_return_update(return_id, notification_status, actor_id=admin_id)
         await AuditService.create(
             actor_id=admin_id,
-            action="RETURN.GATEWAY_REFUND_CONFIRMED",
+            action=f"RETURN.{notification_status}",
             entity_type="ReturnRequest",
             entity_id=return_id,
             target_user_id=updated.userId,
-            severity="INFO",
+            severity="INFO" if gateway_refund_status == "SUCCESS" else "WARNING",
             metadata={
                 "transactionId": data.transactionId,
                 "refundAmount": updated.refundAmount,
+                "gatewayRefundStatus": gateway_refund_status,
+                "paymentStatus": payment_refund_status,
             },
         )
         return updated
+
+    @staticmethod
+    async def request_gateway_refund(return_id: int, admin_id: int, ip_address: str = "127.0.0.1"):
+        return_request = await prisma.returnrequest.find_unique(
+            where={"id": return_id},
+            include={"order": {"include": {"payment": True}}},
+        )
+        if not return_request:
+            raise HTTPException(404, "Return not found")
+
+        order = return_request.order
+        payment = order.payment if order else None
+        if not payment:
+            raise HTTPException(400, "Return has no payment record")
+
+        payment_method = ReturnService._to_value(payment.method)
+        payment_status = ReturnService._to_value(payment.status)
+        if payment_method not in {"MOMO", "VNPAY"} or payment_status not in PAYMENT_SUCCESS_STATUSES | {"REFUNDING", "REFUND_FAILED"}:
+            raise HTTPException(400, "Gateway refund can only be requested for successful MoMo/VNPay payments")
+
+        amount = int(round(float(return_request.refundAmount or 0)))
+        if amount <= 0:
+            raise HTTPException(400, "Refund amount must be greater than 0")
+
+        is_full_refund = await ReturnService._is_order_fully_covered_by_returns(prisma, return_request.orderId)
+        try:
+            if payment_method == "MOMO":
+                gateway_result = MoMoService.refund(
+                    return_id=return_id,
+                    amount=amount,
+                    original_transaction_id=str(payment.transactionId or ""),
+                )
+            else:
+                gateway_result = VNPayService.refund(
+                    return_id=return_id,
+                    provider_order_id=payment.providerOrderId,
+                    amount=amount,
+                    transaction_id=payment.transactionId,
+                    transaction_date=payment.paidAt,
+                    created_by=f"admin-{admin_id}",
+                    ip_address=ip_address,
+                    full_refund=is_full_refund,
+                )
+        except HTTPException as exc:
+            detail = exc.detail if isinstance(exc.detail, dict) else {"message": exc.detail}
+            gateway_result = {
+                "success": False,
+                "transactionId": None,
+                "message": detail.get("message") or f"{payment_method} refund request failed",
+                "responseData": detail,
+            }
+
+        status = "SUCCESS" if gateway_result.get("success") else "FAILED"
+        return await ReturnService.confirm_gateway_refund(
+            return_id,
+            admin_id,
+            SimpleNamespace(
+                status=status,
+                transactionId=gateway_result.get("transactionId"),
+                note=gateway_result.get("message") or f"{payment_method} refund {status.lower()}",
+                providerResponse=gateway_result,
+            ),
+        )
 
     @staticmethod
     async def mark_picked_up(return_id: int, seller_id: int):

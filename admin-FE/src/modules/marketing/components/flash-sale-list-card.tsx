@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDateTime } from "@/lib/date";
 
 import type { FlashSale } from "../types";
 
@@ -49,10 +50,6 @@ const STATUS_LABEL: Record<string, string> = {
 
 const formatCurrency = (amount: number) => {
   return `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 }).format(amount)}đ`;
-};
-
-const formatDateTime = (value: string) => {
-  return new Date(value).toLocaleString("vi-VN");
 };
 
 const FLASH_SALE_INDEX_LINK = "/flash-sale";

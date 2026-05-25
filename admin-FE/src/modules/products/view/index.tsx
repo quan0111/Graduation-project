@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { DataTable } from "@/components/common/data-table";
 import { Button } from "@/components/ui/button";
+import { TextPromptDialog } from "@/components/common/app-dialog";
 
 import { useProducts } from "../api/get-all-product";
 import { useGetCategories } from "@/modules/categories/api/category";
@@ -13,6 +14,7 @@ import { ProductFilter } from "../component/filter-search-product";
 import { ProductPreviewModal } from "../component/product-preview-modal";
 
 type ProductStatus = "ACTIVE" | "REJECT" | "BANNED";
+type ProductModerationStatus = "REJECT" | "BANNED";
 
 export default function ProductsPage() {
   const { data: products = [] } = useProducts();
@@ -26,6 +28,8 @@ export default function ProductsPage() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [selected, setSelected] = useState<any>(null);
   const [open, setOpen] = useState(false);
+  const [moderationTarget, setModerationTarget] = useState<{ product: any; status: ProductModerationStatus } | null>(null);
+  const [unbanTarget, setUnbanTarget] = useState<any>(null);
 
   const filtered = useMemo(
     () =>
@@ -47,11 +51,11 @@ export default function ProductsPage() {
     [category, products, search, status],
   );
 
-  const patchStatus = async (id: number, nextStatus: ProductStatus, successMessage: string) => {
+  const patchStatus = async (id: number, nextStatus: ProductStatus, successMessage: string, reason?: string) => {
     try {
       await updateProductMutation.mutateAsync({
         id,
-        data: { status: nextStatus },
+        data: { status: nextStatus, banReason: reason },
       });
       toast.success(successMessage);
     } catch (error: any) {
@@ -59,27 +63,48 @@ export default function ProductsPage() {
     }
   };
 
-  const handleApprove = (product: any) => patchStatus(product.id, "ACTIVE", "Đã duyệt sản phẩm");
-  const handleReject = async (product: any) => {
-    const reason = window.prompt("Nhập lý do từ chối sản phẩm");
-    if (!reason?.trim()) return;
+  const handleApprove = (product: any) => {
+    if (["BANNED", "REJECT"].includes(product.status)) {
+      setUnbanTarget(product);
+      return;
+    }
+    patchStatus(product.id, "ACTIVE", "Đã duyệt sản phẩm");
+  };
+  const openModerationDialog = (product: any, nextStatus: ProductModerationStatus) => {
+    setModerationTarget({ product, status: nextStatus });
+  };
+
+  const handleModerationSubmit = async (reason: string) => {
+    if (!moderationTarget) return;
+    const { product, status: nextStatus } = moderationTarget;
     try {
-      await reportViolationMutation.mutateAsync({ id: product.id, status: "REJECT", reason });
-      toast.success("Đã từ chối sản phẩm và tạo hồ sơ vi phạm");
+      await reportViolationMutation.mutateAsync({ id: product.id, status: nextStatus, reason });
+      toast.success(
+        nextStatus === "REJECT"
+          ? "Đã từ chối sản phẩm và tạo hồ sơ vi phạm"
+          : "Đã khóa sản phẩm và tạo hồ sơ vi phạm",
+      );
+      setModerationTarget(null);
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || "Từ chối sản phẩm thất bại");
+      toast.error(
+        error?.response?.data?.detail ||
+          (nextStatus === "REJECT" ? "Từ chối sản phẩm thất bại" : "Khóa sản phẩm thất bại"),
+      );
     }
   };
-  const handleBan = async (product: any) => {
-    const reason = window.prompt("Nhập lý do khóa sản phẩm vi phạm");
-    if (!reason?.trim()) return;
-    try {
-      await reportViolationMutation.mutateAsync({ id: product.id, status: "BANNED", reason });
-      toast.success("Đã khóa sản phẩm và tạo hồ sơ vi phạm");
-    } catch (error: any) {
-      toast.error(error?.response?.data?.detail || "Khóa sản phẩm thất bại");
-    }
+
+  const handleReject = (product: any) => openModerationDialog(product, "REJECT");
+  const handleBan = (product: any) => openModerationDialog(product, "BANNED");
+  const handleUnban = (product: any) => {
+    setUnbanTarget(product);
   };
+
+  const handleConfirmUnban = async (reason: string) => {
+    if (!unbanTarget) return;
+    await patchStatus(unbanTarget.id, "ACTIVE", "Đã mở bán lại sản phẩm", reason);
+    setUnbanTarget(null);
+  };
+
   const handleView = (product: any) => {
     setSelected(product);
     setOpen(true);
@@ -90,7 +115,7 @@ export default function ProductsPage() {
       selectedIds.map((id) =>
         updateProductMutation.mutateAsync({
           id,
-          data: { status: "ACTIVE" },
+          data: { status: "ACTIVE", banReason: "Bulk approve by admin" },
         }),
       ),
     );
@@ -131,12 +156,38 @@ export default function ProductsPage() {
 
       <DataTable
         data={filtered}
-        columns={productColumns(handleApprove, handleReject, handleBan, handleView)}
+        columns={productColumns(handleApprove, handleReject, handleBan, handleUnban, handleView)}
         title="Danh sách sản phẩm"
         onSelectChange={setSelectedIds}
       />
 
       <ProductPreviewModal open={open} onClose={() => setOpen(false)} product={selected} />
+
+      <TextPromptDialog
+        open={Boolean(moderationTarget)}
+        title={moderationTarget?.status === "REJECT" ? "Từ chối sản phẩm" : "Cấm bán sản phẩm"}
+        description={moderationTarget ? `Nhập lý do xử lý sản phẩm "${moderationTarget.product.name}".` : ""}
+        label="Lý do"
+        placeholder="Nhập lý do rõ ràng để shop có thể theo dõi"
+        confirmLabel={moderationTarget?.status === "REJECT" ? "Từ chối" : "Cấm bán"}
+        multiline
+        isPending={reportViolationMutation.isPending}
+        onOpenChange={(dialogOpen) => !dialogOpen && setModerationTarget(null)}
+        onConfirm={handleModerationSubmit}
+      />
+
+      <TextPromptDialog
+        open={Boolean(unbanTarget)}
+        title="Mở bán lại sản phẩm"
+        description={unbanTarget ? `Mở bán lại sản phẩm "${unbanTarget.name}"?` : ""}
+        confirmLabel="Mở bán lại"
+        label="Lý do"
+        placeholder="Nhập lý do mở bán lại"
+        multiline
+        isPending={updateProductMutation.isPending}
+        onOpenChange={(dialogOpen) => !dialogOpen && setUnbanTarget(null)}
+        onConfirm={handleConfirmUnban}
+      />
     </main>
   );
 }

@@ -54,8 +54,7 @@ async def bulk_update(
     isActive: bool,
     user=Depends(require_admin),
 ):
-    _ = user
-    return await AdminService.bulk_update_sellers(ids, isActive)
+    return await AdminService.bulk_update_sellers(ids, isActive, admin_id=user.id)
 
 
 @router.patch("/sellers/{shop_id}")
@@ -64,8 +63,7 @@ async def update_seller(
     data: SellerFilter,
     user=Depends(require_admin),
 ):
-    _ = user
-    return await AdminService.update_seller(shop_id, data)
+    return await AdminService.update_seller(shop_id, data, admin_id=user.id)
 
 
 @router.get("/sellers/{shop_id}/stats")

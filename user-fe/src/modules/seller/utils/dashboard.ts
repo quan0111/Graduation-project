@@ -1,3 +1,5 @@
+import { formatShortDateTime as formatShortDateTimeValue } from "@/lib/date";
+
 const orderStatusLabelMap: Record<string, string> = {
   PENDING: "Chờ xác nhận",
   CONFIRMED: "Đã xác nhận",
@@ -92,12 +94,7 @@ export function formatCompactCurrency(value: number) {
 }
 
 export function formatShortDateTime(value: string) {
-  return new Intl.DateTimeFormat("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+  return formatShortDateTimeValue(value);
 }
 
 export function getOrderStatusLabel(status: string) {

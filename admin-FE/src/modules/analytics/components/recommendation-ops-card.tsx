@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { API_URL_ANALYTICS } from "@/constant/config";
 import { apiClient } from "@/lib/api";
+import { formatDateTime } from "@/lib/date";
 
 type RecommendationMetrics = {
   k: number;
@@ -136,7 +137,7 @@ export function RecommendationOpsCard() {
           <div className="rounded-lg border p-3">
             <p className="font-medium">Lần chạy gần nhất</p>
             <p className="mt-1 text-muted-foreground">
-              {trainResult?.trainedAt ? new Date(trainResult.trainedAt).toLocaleString("vi-VN") : "Chưa chạy trong phiên này"}
+              {formatDateTime(trainResult?.trainedAt, "Chưa chạy trong phiên này")}
             </p>
           </div>
         </div>

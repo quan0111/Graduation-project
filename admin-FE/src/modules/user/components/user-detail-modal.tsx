@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Mail, Phone, Calendar, MapPin, Shield } from "lucide-react";
 import type { IUser } from "../types";
 import { RoleBadge, StatusBadge } from "./user-badge";
+import { formatDateTime } from "@/lib/date";
 
 interface UserDetailModalProps {
   user: IUser | null;
@@ -69,7 +70,7 @@ export const UserDetailModal = ({ user, open, onClose }: UserDetailModalProps) =
                 <Calendar className="w-4 h-4 text-muted-foreground" />
                 <span className="text-muted-foreground">Ngày tham gia:</span>
               </div>
-              <p className="ml-6">{new Date(user.createdAt).toLocaleDateString("vi-VN")}</p>
+              <p className="ml-6">{formatDateTime(user.createdAt)}</p>
             </div>
 
             <div className="space-y-2">
@@ -106,7 +107,7 @@ export const UserDetailModal = ({ user, open, onClose }: UserDetailModalProps) =
           {/* Thời gian cập nhật */}
           <div className="pt-4 border-t">
             <p className="text-xs text-muted-foreground">
-              Cập nhật lần cuối: {new Date(user.updatedAt).toLocaleString("vi-VN")}
+              Cập nhật lần cuối: {formatDateTime(user.updatedAt)}
             </p>
           </div>
         </div>

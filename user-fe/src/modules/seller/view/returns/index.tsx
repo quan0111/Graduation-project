@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { formatDateTime } from "@/lib/date";
 import { useMarkReturnReceived, useRefundReturnRequest } from "@/modules/return-request/api/create-return";
 import { type ReturnRequest, useSellerReturnRequests } from "@/modules/return-request/api/get-return";
 import { SellerDashboardLayout } from "@/modules/seller/component/shop-layout";
@@ -273,7 +274,7 @@ export default function SellerReturnsPage() {
                   <div className="mt-1">{renderStatusBadge(selectedReturn.status)}</div>
                 </div>
                 <Info label="Số tiền hoàn" value={formatCurrency(getRefundAmount(selectedReturn))} />
-                <Info label="Ngày tạo" value={new Date(selectedReturn.createdAt).toLocaleString("vi-VN")} />
+                <Info label="Ngày tạo" value={formatDateTime(selectedReturn.createdAt)} />
               </div>
 
               <ReturnTimeline status={selectedReturn.status} />

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { NoticeDialog } from "@/components/common/app-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,6 +64,7 @@ export const CouponForm: React.FC<CouponFormProps> = ({
   const [targetId, setTargetId] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
+  const [notice, setNotice] = useState("");
 
   const filteredProducts = useMemo(() => {
     const keyword = productSearch.trim().toLowerCase();
@@ -102,17 +104,17 @@ export const CouponForm: React.FC<CouponFormProps> = ({
 
   const handleSubmit = () => {
     if (!code.trim()) {
-      alert("Vui lòng nhập mã coupon");
+      setNotice("Vui lòng nhập mã coupon");
       return;
     }
 
     if (!discountValue || Number(discountValue) <= 0) {
-      alert("Vui lòng nhập giá trị giảm giá hợp lệ");
+      setNotice("Vui lòng nhập giá trị giảm giá hợp lệ");
       return;
     }
 
     if (!isAdmin && targetType === "PRODUCT" && selectedProductIds.length === 0) {
-      alert("Chọn ít nhất một sản phẩm áp dụng coupon");
+      setNotice("Chọn ít nhất một sản phẩm áp dụng coupon");
       return;
     }
 
@@ -151,7 +153,8 @@ export const CouponForm: React.FC<CouponFormProps> = ({
     filteredProducts.length > 0 && filteredProducts.every((product) => selectedProductSet.has(product.id));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
       <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-slate-900">
@@ -387,6 +390,14 @@ export const CouponForm: React.FC<CouponFormProps> = ({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+
+      <NoticeDialog
+        open={Boolean(notice)}
+        title="Kiểm tra coupon"
+        description={notice}
+        onOpenChange={(open) => !open && setNotice("")}
+      />
+    </>
   );
 };

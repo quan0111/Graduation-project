@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { formatShortDateTime } from "@/lib/date";
 import {
   type SupportMessage,
   type SupportTicket,
@@ -34,18 +35,6 @@ const senderLabel: Record<string, string> = {
 const parsePositiveInt = (value: string | null) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-};
-
-const formatDateTime = (value?: string) => {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    day: "2-digit",
-    month: "2-digit",
-  }).format(date);
 };
 
 const getLastMessage = (ticket: SupportTicket) => ticket.messages[ticket.messages.length - 1];
@@ -223,7 +212,7 @@ export default function CustomerMessagesPage() {
                       </div>
                       <Badge variant="outline">{statusLabel[ticket.status] ?? ticket.status}</Badge>
                     </div>
-                    <p className="mt-3 text-xs text-slate-400">{formatDateTime(lastMessage?.createdAt ?? ticket.updatedAt)}</p>
+                    <p className="mt-3 text-xs text-slate-400">{formatShortDateTime(lastMessage?.createdAt ?? ticket.updatedAt, "")}</p>
                   </button>
                 );
               })}
@@ -315,7 +304,7 @@ export default function CustomerMessagesPage() {
                         >
                           <p className="mb-1 text-xs opacity-75">{senderLabel[message.senderRole] ?? message.senderRole}</p>
                           <p className="whitespace-pre-wrap wrap-break-word leading-6">{message.message}</p>
-                          <p className="mt-2 text-[11px] opacity-70">{formatDateTime(message.createdAt)}</p>
+                          <p className="mt-2 text-[11px] opacity-70">{formatShortDateTime(message.createdAt, "")}</p>
                         </div>
                       </div>
                     );

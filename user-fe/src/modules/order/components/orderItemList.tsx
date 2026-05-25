@@ -17,7 +17,7 @@ export const OrderItemList: React.FC<OrderItemListProps> = ({ items }) => {
           />
 
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-slate-900">{item.product_name}</p>
+            <p className="whitespace-normal break-words text-sm font-medium text-slate-900">{item.product_name}</p>
             <p className="text-xs text-slate-500">{item.variant_name || "Mặc định"}</p>
           </div>
 

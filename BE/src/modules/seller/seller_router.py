@@ -8,6 +8,11 @@ from src.modules.seller.seller_service import SellerService
 router = APIRouter(prefix="/seller", tags=["Seller"])
 
 
+@router.get("/dashboard")
+async def dashboard(user=Depends(get_current_user)):
+    return await SellerService.get_dashboard(user)
+
+
 @router.post("/")
 async def apply(data: SellerApplicationCreate, user=Depends(get_current_user)):
     if get_role_value(user) == "ADMIN":

@@ -14,6 +14,7 @@ class MarketingService:
             "imageUrl": data.imageUrl,
             "status": data.status if hasattr(data, "status") else "ACTIVE",
             "position": data.position if hasattr(data, "position") else "HOME_TOP",
+            "layout": data.layout if hasattr(data, "layout") else "ONE_THIRD",
             "createdBy": {"connect": {"id": user_id}},
         }
 
@@ -48,6 +49,7 @@ class MarketingService:
             "redirectUrl",
             "buttonText",
             "position",
+            "layout",
             "status",
             "priority",
             "startAt",

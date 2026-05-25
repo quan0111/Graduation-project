@@ -421,6 +421,7 @@ enum PaymentStatus {
   PAYMENT_EXPIRED
   REFUNDING
   REFUNDED
+  REFUND_FAILED
   PARTIALLY_REFUNDED
 }
 
@@ -953,6 +954,7 @@ model Banner {
   redirectUrl    String?
   buttonText     String?
   position       BannerPosition
+  layout         String         @default("ONE_THIRD")
   status         BannerStatus   @default(DRAFT)
   priority       Int            @default(0)
   startAt        DateTime?
@@ -990,6 +992,8 @@ enum BannerPosition {
   HOME_TOP
   HOME_MIDDLE
   HOME_BOTTOM
+  CATEGORY_TOP
+  PRODUCT_DETAIL
   CATEGORY_PAGE
   SHOP_PAGE
 }

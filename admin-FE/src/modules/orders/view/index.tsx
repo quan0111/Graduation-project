@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { DataTable } from "@/components/common/data-table";
-import { orderColumns } from "../components/order-collums";
+import { getAdminOrderActionLabel, getOrderStatusLabel, orderColumns } from "../components/order-collums";
 import { OrderStats } from "../components/order-stats";
 import { OrderFilter } from "../components/search-filter-order";
 import { OrderDetailModal } from "../components/order-detail-modal";
-import { useGetAllOrders } from "../api/get-all-orders";
+import { getAllOrders, useGetAllOrders } from "../api/get-all-orders";
 import { useUpdateOrder } from "../api/update-order";
+import { TextPromptDialog } from "@/components/common/app-dialog";
 import { toast } from "sonner";
 import type { OrderStatusType } from "../types";
 
@@ -16,6 +17,8 @@ export default function OrdersPage() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [cancelTarget, setCancelTarget] = useState<any>(null);
+  const [statusTarget, setStatusTarget] = useState<{ order: any; status: OrderStatusType } | null>(null);
 
   // 👇 CALL API
   const { data: orderPage, isLoading, isError } = useGetAllOrders({ page, limit: 20, search });
@@ -31,40 +34,68 @@ export default function OrdersPage() {
   };
 
   const handleDelete = (order: any) => {
-    if (!confirm(`Hủy đơn ${order.orderId}?`)) return;
+    setCancelTarget(order);
+  };
 
+  const handleConfirmDelete = (reason: string) => {
+    if (!cancelTarget) return;
     updateStatusMutation.mutate({
-      id: Number(order.id),
-      data: { status: "CANCELLED" as OrderStatusType },
+      id: Number(cancelTarget.id),
+      data: { status: "CANCELLED" as OrderStatusType, reason },
     }, {
-      onSuccess: () => toast.success("Hủy đơn thành công"),
-      onError: () => toast.error("Hủy đơn thất bại"),
+      onSuccess: () => {
+        toast.success("Hủy đơn thành công");
+        setCancelTarget(null);
+      },
+      onError: (error: any) => {
+        const detail = error?.response?.data?.detail;
+        toast.error(typeof detail === "string" ? detail : "Hủy đơn thất bại");
+      },
     });
   };
 
   const handleUpdateStatus = (id: string, status: string) => {
+    const order = mappedOrders.find((item) => String(item.id) === String(id));
+    setStatusTarget({ order: order || { id, orderId: `#${id}` }, status: status as OrderStatusType });
+  };
+
+  const handleConfirmUpdateStatus = (reason: string) => {
+    if (!statusTarget) return;
     updateStatusMutation.mutate(
-      { id: Number(id), data: { status: status as OrderStatusType } },
+      { id: Number(statusTarget.order.id), data: { status: statusTarget.status, reason } },
       {
-        onSuccess: () => toast.success("Cập nhật trạng thái thành công"),
-        onError: () => toast.error("Cập nhật trạng thái thất bại"),
+        onSuccess: () => {
+          toast.success("Cập nhật trạng thái thành công");
+          setStatusTarget(null);
+        },
+        onError: (error: any) => {
+          const detail = error?.response?.data?.detail;
+          toast.error(typeof detail === "string" ? detail : "Cập nhật trạng thái thất bại");
+        },
       }
     );
   };
 
   // ================= MAP DATA =================
 
-  const mappedOrders = orders.map((o: any) => ({
+  const mapOrder = (o: any) => ({
     id: o.id,
     raw: o,
     orderId: `#${o.id}`,
-    shop: o.shop?.name || o.items?.find((item: any) => item.shop?.name)?.shop?.name || "N/A",
-    customer: o.user?.fullName || o.User?.fullName || "N/A",
-    total: o.totalAmount || 0,
+    shop:
+      o.shop?.name ||
+      o.Shop?.name ||
+      (o.items || o.Items || []).find((item: any) => item.shop?.name || item.Shop?.name)?.shop?.name ||
+      (o.items || o.Items || []).find((item: any) => item.shop?.name || item.Shop?.name)?.Shop?.name ||
+      "N/A",
+    customer: o.user?.fullName || o.User?.fullName || o.user?.email || o.User?.email || "N/A",
+    total: o.totalAmount ?? o.total_amount ?? o.total ?? 0,
     items: o.items?.length || o.Items?.length || 0,
     status: o.status,
     date: o.createdAt || o.created_at,
-  }));
+  });
+
+  const mappedOrders = orders.map(mapOrder);
 
   const columns = orderColumns(
     handleView,
@@ -93,6 +124,11 @@ export default function OrdersPage() {
         total={pagination?.total}
         page={page}
         onPageChange={setPage}
+        exportRows={async () => {
+          const total = pagination?.total || 10000;
+          const response = await getAllOrders({ page: 1, limit: Math.max(total, 1), search });
+          return response.data.map(mapOrder);
+        }}
         title="Danh sách đơn hàng"
       />
 
@@ -100,6 +136,33 @@ export default function OrdersPage() {
         open={open}
         onClose={() => setOpen(false)}
         order={selectedOrder}
+      />
+
+      <TextPromptDialog
+        open={Boolean(cancelTarget)}
+        title="Hủy đơn hàng"
+        description={cancelTarget ? `Hủy đơn ${cancelTarget.orderId}?` : ""}
+        confirmLabel="Hủy đơn"
+        label="Lý do"
+        placeholder="Nhập lý do hủy đơn"
+        multiline
+        isPending={updateStatusMutation.isPending}
+        onOpenChange={(open) => !open && setCancelTarget(null)}
+        onConfirm={handleConfirmDelete}
+      />
+
+      <TextPromptDialog
+        open={Boolean(statusTarget)}
+        title="Đổi trạng thái đơn hàng"
+        description={
+          statusTarget
+            ? `${getAdminOrderActionLabel(statusTarget.order.status, statusTarget.status)} ${statusTarget.order.orderId}? Trạng thái hiện tại: ${getOrderStatusLabel(statusTarget.order.status)}.`
+            : ""
+        }
+        confirmLabel="Cập nhật"
+        isPending={updateStatusMutation.isPending}
+        onOpenChange={(open) => !open && setStatusTarget(null)}
+        onConfirm={handleConfirmUpdateStatus}
       />
     </main>
   );

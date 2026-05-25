@@ -5,6 +5,13 @@ export type BannerPosition =
   | "HOME_BOTTOM"
   | "CATEGORY_TOP"
   | "PRODUCT_DETAIL";
+export type BannerLayout =
+  | "FULL"
+  | "HALF"
+  | "ONE_THIRD"
+  | "TWO_THIRDS"
+  | "ONE_QUARTER"
+  | "THREE_QUARTERS";
 
 export type Banner = {
   id: number;
@@ -15,6 +22,7 @@ export type Banner = {
   redirectUrl?: string | null;
   buttonText?: string | null;
   position: BannerPosition | string;
+  layout?: BannerLayout | string | null;
   status: BannerStatus | string;
   priority: number;
   startAt?: string | null;
@@ -38,6 +46,7 @@ export type BannerCreatePayload = {
   redirectUrl?: string | null;
   buttonText?: string | null;
   position: BannerPosition;
+  layout: BannerLayout;
   status: BannerStatus;
   priority: number;
   startAt?: string | null;

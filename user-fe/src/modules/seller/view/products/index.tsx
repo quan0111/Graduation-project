@@ -10,6 +10,7 @@ import { ProductFormModal } from "@/modules/seller/component/product-form-modal"
 import { SellerDashboardLayout } from "@/modules/seller/component/shop-layout";
 import { useDeleteProduct } from "@/modules/seller/api/delete-product";
 import { type SellerProduct, useSellerProducts } from "@/modules/seller/api/get-seller-products";
+import { formatDateTime as formatDateTimeValue } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 type ProductFilterStatus = "all" | "active" | "inactive";
@@ -31,14 +32,7 @@ const formatCurrency = (value: number) =>
   }).format(Number(value || 0));
 
 const formatDateTime = (value?: string) => {
-  if (!value) return "N/A";
-  return new Intl.DateTimeFormat("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+  return formatDateTimeValue(value, "N/A");
 };
 
 const getProductStock = (product: SellerProduct) =>

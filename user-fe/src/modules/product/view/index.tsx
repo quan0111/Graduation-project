@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import type { MarketingBanner } from "@/modules/marketing/api/marketing";
+import { useActiveBanners, useTrackBannerAction } from "@/modules/marketing/api/marketing";
+import { MarketingBannerStrip } from "@/modules/marketing/components/marketing-banner-strip";
 import { CatalogHeader } from "@/modules/product/components/catalogHeader";
 import { CatalogSearch } from "@/modules/product/components/catalogSearch";
 import { FilterSidebar } from "@/modules/product/components/sideBar";
@@ -25,6 +28,7 @@ const TEXT = {
 
 export default function ProductPage() {
   const [searchParams] = useSearchParams();
+  const viewedBannerIdsRef = useRef<Set<number>>(new Set());
   const categoryFilter = searchParams.get("category")?.toLowerCase().trim() ?? "";
   const categoryIdParam = Number(searchParams.get("categoryId") ?? searchParams.get("category_id") ?? NaN);
   const categoryId = Number.isFinite(categoryIdParam) ? categoryIdParam : undefined;
@@ -44,6 +48,8 @@ export default function ProductPage() {
     categoryId,
   });
   const { data: recommendedProducts = [], isLoading: recommendationLoading } = useRecommendations({ topK: 10 });
+  const { data: categoryTopBanners = [] } = useActiveBanners("CATEGORY_TOP");
+  const trackBannerAction = useTrackBannerAction();
   const { trackClick } = useTrackProductBehavior();
 
   const apiProducts: IProduct[] = useMemo(
@@ -55,6 +61,20 @@ export default function ProductPage() {
     setSearch(searchParam);
     setDebouncedSearch(searchParam.trim().toLowerCase());
   }, [searchParam]);
+
+  useEffect(() => {
+    categoryTopBanners.forEach((banner) => {
+      if (viewedBannerIdsRef.current.has(banner.id)) {
+        return;
+      }
+      viewedBannerIdsRef.current.add(banner.id);
+      trackBannerAction.mutate({ bannerId: banner.id, action: "VIEW" });
+    });
+  }, [categoryTopBanners, trackBannerAction]);
+
+  const handleBannerClick = (banner: MarketingBanner) => {
+    trackBannerAction.mutate({ bannerId: banner.id, action: "CLICK" });
+  };
 
   const shops = useMemo(() => {
     const shopMap = new Map<number, IShop>();
@@ -106,6 +126,7 @@ export default function ProductPage() {
   return (
     <div className="min-h-screen bg-[#fffaf6] pb-12 pt-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 md:px-6">
+        <MarketingBannerStrip banners={categoryTopBanners.slice(0, 6)} onBannerClick={handleBannerClick} />
         <CatalogHeader totalProducts={apiProducts.length} />
 
         <div className="grid gap-6 lg:grid-cols-4">

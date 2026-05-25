@@ -1,4 +1,5 @@
 import type { OrderStatusType } from "@/constant";
+import { formatDate as formatDateValue, formatDateTime as formatDateTimeValue } from "@/lib/date";
 
 import type { IOrder, IOrderAddress } from "../types";
 
@@ -10,25 +11,11 @@ export const formatCurrency = (value: number) =>
   }).format(value || 0);
 
 export const formatDateTime = (value?: string | null) => {
-  if (!value) return "-";
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+  return formatDateTimeValue(value);
 };
 
 export const formatShortDate = (value?: string | null) => {
-  if (!value) return "-";
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(new Date(value));
+  return formatDateValue(value);
 };
 
 export const joinAddress = (address?: IOrderAddress | null) => {

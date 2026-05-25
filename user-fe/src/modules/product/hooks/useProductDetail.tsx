@@ -7,7 +7,7 @@ export const useProductDetail = (product?: IProduct) => {
 
   useEffect(() => {
     if (product?.variants?.length) {
-      setSelectedVariant(product.variants[0]);
+      setSelectedVariant(product.variants.find((variant) => Number(variant.stock || 0) > 0) ?? null);
     } else {
       setSelectedVariant(null);
     }
@@ -21,7 +21,8 @@ export const useProductDetail = (product?: IProduct) => {
 
   const originalPrice = selectedVariant?.price || product?.price || 0;
 
-  const stock = selectedVariant?.stock ?? product?.stock ?? product?.totalStock ?? 0;
+  const hasVariants = Boolean(product?.variants?.length);
+  const stock = selectedVariant?.stock ?? (hasVariants ? 0 : product?.stock ?? product?.totalStock ?? 0);
 
   return {
     selectedVariant,

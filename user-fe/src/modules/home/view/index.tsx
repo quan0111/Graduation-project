@@ -51,25 +51,24 @@ const features = [
   },
 ];
 
-const isHomeBanner = (banner: MarketingBanner) => String(banner.position ?? "").startsWith("HOME_");
-
 export default function HomePage() {
   const viewedBannerIdsRef = useRef<Set<number>>(new Set());
 
   const { data: rawProducts = [], isLoading: productsLoading, isError: productsError } = useGetProduct();
   const { data: categoriesRes = [], isLoading: categoriesLoading, isError: categoriesError } = useGetCategories();
   const { data: recommendedProducts = [], isLoading: recommendationLoading } = useRecommendations({ topK: 10 });
-  const { data: activeBanners = [] } = useActiveBanners();
+  const { data: topBanners = [], isLoading: topBannersLoading } = useActiveBanners("HOME_TOP");
+  const { data: middleBanners = [] } = useActiveBanners("HOME_MIDDLE");
+  const { data: bottomBanners = [] } = useActiveBanners("HOME_BOTTOM");
   const trackBannerAction = useTrackBannerAction();
   const { trackClick } = useTrackProductBehavior();
 
   const products: IProduct[] = rawProducts.map((product) => normalizeProduct(product as Record<string, unknown>));
   const categories: ICategory[] = categoriesRes.map(transformCategory);
-  const homeBanners = useMemo(() => activeBanners.filter(isHomeBanner), [activeBanners]);
-  const heroBanner = homeBanners.find((banner) => banner.position === "HOME_TOP") ?? homeBanners[0] ?? null;
-  const marketingBanners = homeBanners
-    .filter((banner) => banner.id !== heroBanner?.id)
-    .slice(0, 3);
+  const homeBanners = useMemo(
+    () => [...topBanners, ...middleBanners, ...bottomBanners],
+    [topBanners, middleBanners, bottomBanners],
+  );
 
   useEffect(() => {
     homeBanners.forEach((banner) => {
@@ -110,8 +109,10 @@ export default function HomePage() {
       features={features}
       products={products.slice(0, 10)}
       recommendedProducts={recommendedProducts}
-      heroBanner={heroBanner}
-      marketingBanners={marketingBanners}
+      topBanners={topBanners.slice(0, 6)}
+      middleBanners={middleBanners.slice(0, 6)}
+      bottomBanners={bottomBanners.slice(0, 6)}
+      showHero={!topBannersLoading && !topBanners.length}
       isRecommendationLoading={recommendationLoading}
       onBannerClick={handleBannerClick}
       onProductClick={(product, source) => trackClick(product.id, { source, page: "home" })}

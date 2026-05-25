@@ -6,6 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -22,6 +30,7 @@ import {
 } from '@/components/ui/table';
 import { API_URL_COUPON } from '@/constant/config';
 import { apiClient } from '@/lib/api';
+import { formatDate } from '@/lib/date';
 
 type Coupon = {
   id: number;
@@ -40,6 +49,8 @@ type Coupon = {
   isActive: boolean;
 };
 
+type CreateCouponScope = 'ORDER' | 'SHIPPING' | 'CATEGORY';
+
 const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(amount);
 
@@ -48,11 +59,17 @@ const formatDiscount = (coupon: Coupon) =>
     ? `${coupon.discountValue}%`
     : `${formatCurrency(coupon.discountValue)}đ`;
 
-const formatDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString('vi-VN') : 'Không giới hạn';
-
 export default function PromotionsPage() {
   const [search, setSearch] = useState('');
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    code: '',
+    value: '10',
+    scope: 'ORDER' as CreateCouponScope,
+    categoryId: '',
+  });
+  const [editCoupon, setEditCoupon] = useState<Coupon | null>(null);
+  const [editDescription, setEditDescription] = useState('');
   const queryClient = useQueryClient();
   const { data: coupons = [], isLoading, isError } = useQuery({
     queryKey: ['admin', 'coupons'],
@@ -85,32 +102,38 @@ export default function PromotionsPage() {
     onSuccess: invalidateCoupons,
   });
 
+  const openCreateDialog = () => {
+    setCreateForm({ code: '', value: '10', scope: 'ORDER', categoryId: '' });
+    setCreateOpen(true);
+  };
+
   const handleCreate = async () => {
-    const code = window.prompt('Nhap ma khuyen mai');
-    if (!code?.trim()) return;
-    const value = Number(window.prompt('Giá trị giảm giá (%)', '10'));
-    if (!Number.isFinite(value) || value <= 0) return;
-    const scopeInput = window.prompt('Loai voucher: ORDER, SHIPPING hoac CATEGORY', 'ORDER')?.trim().toUpperCase();
-    const scope = scopeInput === 'SHIPPING' || scopeInput === 'CATEGORY' ? scopeInput : 'ORDER';
-    const applicableCategoryId = scope === 'CATEGORY'
-      ? Number(window.prompt('Nhap ID nganh hang ap dung'))
-      : undefined;
-    if (scope === 'CATEGORY' && (!Number.isFinite(applicableCategoryId) || !applicableCategoryId)) return;
+    const code = createForm.code.trim().toUpperCase();
+    const value = Number(createForm.value);
+    const applicableCategoryId = createForm.scope === 'CATEGORY' ? Number(createForm.categoryId) : undefined;
+    if (!code || !Number.isFinite(value) || value <= 0) return;
+    if (createForm.scope === 'CATEGORY' && (!Number.isFinite(applicableCategoryId) || !applicableCategoryId)) return;
     await createCoupon.mutateAsync({
-      code: code.trim().toUpperCase(),
-      description: `Voucher ${code.trim().toUpperCase()}`,
-      scope,
+      code,
+      description: `Voucher ${code}`,
+      scope: createForm.scope,
       discountType: 'PERCENTAGE',
       discountValue: value,
       applicableCategoryId,
       isActive: true,
     });
+    setCreateOpen(false);
   };
 
-  const handleEdit = async (coupon: Coupon) => {
-    const description = window.prompt('Mô tả khuyến mãi', coupon.description || '');
-    if (description === null) return;
-    await updateCoupon.mutateAsync({ id: coupon.id, payload: { description } });
+  const openEditDialog = (coupon: Coupon) => {
+    setEditCoupon(coupon);
+    setEditDescription(coupon.description || '');
+  };
+
+  const handleEdit = async () => {
+    if (!editCoupon) return;
+    await updateCoupon.mutateAsync({ id: editCoupon.id, payload: { description: editDescription } });
+    setEditCoupon(null);
   };
 
   const filteredPromotions = useMemo(
@@ -136,7 +159,7 @@ export default function PromotionsPage() {
         </div>
         <Button
           className="bg-primary text-primary-foreground hover:bg-primary/90"
-          onClick={handleCreate}
+          onClick={openCreateDialog}
           disabled={createCoupon.isPending}
         >
           Thêm khuyến mãi
@@ -222,7 +245,7 @@ export default function PromotionsPage() {
                       <TableCell className="text-right text-foreground">
                         {coupon.usedCount} / {coupon.usageLimit || '∞'}
                       </TableCell>
-                      <TableCell className="text-center text-muted-foreground">{formatDate(coupon.validUntil)}</TableCell>
+                      <TableCell className="text-center text-muted-foreground">{formatDate(coupon.validUntil, 'Không giới hạn')}</TableCell>
                       <TableCell className="text-center">
                         <Badge
                           variant="outline"
@@ -243,7 +266,7 @@ export default function PromotionsPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="border-border bg-card">
-                            <DropdownMenuItem className="cursor-pointer text-foreground" onClick={() => handleEdit(coupon)}>
+                            <DropdownMenuItem className="cursor-pointer text-foreground" onClick={() => openEditDialog(coupon)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Chỉnh sửa
                             </DropdownMenuItem>
@@ -262,6 +285,90 @@ export default function PromotionsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Thêm khuyến mãi</DialogTitle>
+            <DialogDescription>Nhập thông tin mã khuyến mãi mới.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Mã khuyến mãi</label>
+              <Input
+                value={createForm.code}
+                onChange={(event) => setCreateForm((current) => ({ ...current, code: event.target.value.toUpperCase() }))}
+                placeholder="VD: SUMMER2026"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Giá trị giảm giá (%)</label>
+              <Input
+                type="number"
+                value={createForm.value}
+                onChange={(event) => setCreateForm((current) => ({ ...current, value: event.target.value }))}
+                placeholder="VD: 10"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Loại voucher</label>
+              <select
+                value={createForm.scope}
+                onChange={(event) => setCreateForm((current) => ({ ...current, scope: event.target.value as CreateCouponScope }))}
+                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+              >
+                <option value="ORDER">ORDER</option>
+                <option value="SHIPPING">SHIPPING</option>
+                <option value="CATEGORY">CATEGORY</option>
+              </select>
+            </div>
+            {createForm.scope === 'CATEGORY' ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">ID ngành hàng áp dụng</label>
+                <Input
+                  type="number"
+                  value={createForm.categoryId}
+                  onChange={(event) => setCreateForm((current) => ({ ...current, categoryId: event.target.value }))}
+                  placeholder="VD: 12"
+                />
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)} disabled={createCoupon.isPending}>
+              Hủy
+            </Button>
+            <Button type="button" onClick={handleCreate} disabled={createCoupon.isPending}>
+              Tạo khuyến mãi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(editCoupon)} onOpenChange={(open) => !open && setEditCoupon(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Chỉnh sửa khuyến mãi</DialogTitle>
+            <DialogDescription>Cập nhật mô tả cho mã {editCoupon?.code}.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Mô tả khuyến mãi</label>
+            <Input
+              value={editDescription}
+              onChange={(event) => setEditDescription(event.target.value)}
+              placeholder="Mô tả khuyến mãi"
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditCoupon(null)} disabled={updateCoupon.isPending}>
+              Hủy
+            </Button>
+            <Button type="button" onClick={handleEdit} disabled={updateCoupon.isPending}>
+              Lưu thay đổi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
