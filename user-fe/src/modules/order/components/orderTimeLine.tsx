@@ -194,7 +194,7 @@ export const OrderTimeline: React.FC<OrderTimelineProps> = ({ status, order }) =
                   <p className="text-sm font-semibold text-slate-900">{event.title}</p>
                   <p className="text-xs text-slate-500">{formatDateTime(event.at)}</p>
                 </div>
-                {event.detail ? <p className="mt-1 break-words text-sm text-slate-600">{event.detail}</p> : null}
+                {event.detail ? <p className="mt-1 wrap-break-word text-sm text-slate-600">{event.detail}</p> : null}
               </div>
             ))}
           </div>

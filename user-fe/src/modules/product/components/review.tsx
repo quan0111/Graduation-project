@@ -242,7 +242,7 @@ export const ProductReviews = ({
                     </div>
 
                     {review.comment ? (
-                      <p className="mt-4 whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">{review.comment}</p>
+                      <p className="mt-4 whitespace-pre-wrap wrap-break-word text-sm leading-7 text-slate-700">{review.comment}</p>
                     ) : null}
 
                     {media.length ? (
