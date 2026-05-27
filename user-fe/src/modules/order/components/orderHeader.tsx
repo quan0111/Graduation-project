@@ -17,6 +17,8 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
   onClick,
 }) => {
   const status = getStatusMeta(order.status);
+  const shopCount = new Set(order.items.map((item) => item.shop_id)).size;
+  const packageCount = order.shop_package ? 1 : order.packages?.length ?? 0;
 
   return (
     <button
@@ -42,6 +44,8 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500">
             <span>{formatDateTime(order.created_at)}</span>
             <span>{order.items.length} sản phẩm</span>
+            {shopCount > 1 ? <span>{shopCount} shop</span> : null}
+            {packageCount > 1 ? <span>{packageCount} gói tracking</span> : null}
             <span>{order.payment?.method ?? "Chưa có thanh toán"}</span>
           </div>
         </div>

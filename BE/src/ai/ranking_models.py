@@ -79,6 +79,10 @@ class LinearLearningToRankModel:
 class GradientBoostingLTRModel:
     """LightGBM/XGBoost wrapper with a linear fallback."""
 
+    MIN_BOOSTING_ROWS = 30
+    MIN_BOOSTING_USERS = 2
+    MIN_BOOSTING_PRODUCTS = 2
+
     def __init__(self):
         self.backend = "linear_fallback"
         self.feature_names: List[str] = []
@@ -96,14 +100,16 @@ class GradientBoostingLTRModel:
         rank_y = self._rank_labels(y)
         groups = self._groups(rows)
 
+        if self._should_use_linear_fallback(rows, x):
+            self._fit_linear(rows, backend="linear_fallback_small_data")
+            return
+
         if self._try_fit_lightgbm(x, rank_y, groups):
             return
         if self._try_fit_xgboost(x, rank_y, groups):
             return
 
-        self.model = LinearLearningToRankModel()
-        self.model.fit(rows)
-        self.backend = "linear_fallback"
+        self._fit_linear(rows, backend="linear_fallback")
 
     def predict(self, product_features: Dict[int, FeatureRow]) -> List[RankingPrediction]:
         if self.backend == "lightgbm":
@@ -145,8 +151,11 @@ class GradientBoostingLTRModel:
                 n_estimators=120,
                 learning_rate=0.05,
                 num_leaves=31,
+                min_child_samples=1,
+                min_data_in_bin=1,
                 random_state=42,
                 label_gain=[0, 1, 3, 7, 15, 31],
+                verbosity=-1,
             )
             self.model.fit(x, y, group=groups)
             self.backend = "lightgbm"
@@ -182,6 +191,24 @@ class GradientBoostingLTRModel:
         for user_id, _, _, _ in rows:
             counts[user_id] += 1
         return [count for _, count in sorted(counts.items())]
+
+    def _fit_linear(self, rows: Sequence[TrainingRow], backend: str) -> None:
+        self.model = LinearLearningToRankModel()
+        self.model.fit(rows)
+        self.feature_names = self.model.feature_names
+        self.backend = backend
+
+    @classmethod
+    def _should_use_linear_fallback(cls, rows: Sequence[TrainingRow], x: np.ndarray) -> bool:
+        if len(rows) < cls.MIN_BOOSTING_ROWS:
+            return True
+        if len({user_id for user_id, _, _, _ in rows}) < cls.MIN_BOOSTING_USERS:
+            return True
+        if len({product_id for _, product_id, _, _ in rows}) < cls.MIN_BOOSTING_PRODUCTS:
+            return True
+        if x.size == 0 or x.shape[1] == 0:
+            return True
+        return not np.any(np.ptp(x, axis=0) > 1e-12)
 
     @staticmethod
     def _rank_labels(y: np.ndarray) -> np.ndarray:

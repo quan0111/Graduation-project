@@ -287,7 +287,7 @@ export default function TransactionsPage() {
                         <TableCell className="text-foreground">#{payment.orderId}</TableCell>
                         <TableCell className="text-right text-foreground">{formatCurrency(payment.amount)}</TableCell>
                         <TableCell className="text-center text-foreground">{payment.method}</TableCell>
-                        <TableCell className="max-w-[180px] truncate text-center text-foreground">
+                        <TableCell className="max-w-45 truncate text-center text-foreground">
                           {payment.providerOrderId || "-"}
                         </TableCell>
                         <TableCell className="text-center">
@@ -411,7 +411,7 @@ function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 break-words font-medium text-foreground">{value}</p>
+      <p className="mt-1 wrap-break-word font-medium text-foreground">{value}</p>
     </div>
   );
 }

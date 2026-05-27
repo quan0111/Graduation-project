@@ -33,6 +33,9 @@ const filterOptions: Array<{ value: ShippingFilter; label: string }> = [
   { value: "done", label: "Đã giao" },
 ];
 
+const requiresHandoverInfo = (row: ShippingRow) =>
+  row.nextStatus === "shipped" && (!row.carrier?.trim() || !row.trackingNumber?.trim());
+
 export default function SellerShippingPage() {
   const [filter, setFilter] = useState<ShippingFilter>("all");
   const { data: orders = [], isLoading, isError } = useGetSellerOrders();
@@ -63,12 +66,16 @@ export default function SellerShippingPage() {
 
   const handleAdvance = async (row: ShippingRow) => {
     if (!row.nextStatus) return;
+    if (requiresHandoverInfo(row)) {
+      toast.error("Cần nhập đơn vị vận chuyển và mã vận đơn trước khi đánh dấu đã gửi hàng");
+      return;
+    }
 
     try {
       await shipmentMutation.mutateAsync({
         orderId: row.order.id,
-        carrier: row.carrier || "Tự vận chuyển",
-        trackingNumber: row.trackingNumber || `TM-${row.order.id}`,
+        carrier: row.carrier || undefined,
+        trackingNumber: row.trackingNumber || undefined,
         status: row.nextStatus,
         hasExisting: row.hasPackageOrShipment,
       });
@@ -163,7 +170,14 @@ export default function SellerShippingPage() {
                     </div>
 
                     <div className="flex gap-2">
-                      {row.nextStatus ? (
+                      {row.nextStatus && requiresHandoverInfo(row) ? (
+                        <Link
+                          to={`/seller/orders/${row.order.id}`}
+                          className={buttonVariants({ variant: "outline" })}
+                        >
+                          Nhập vận chuyển
+                        </Link>
+                      ) : row.nextStatus ? (
                         <Button
                           className="bg-[#ee4d2d] hover:bg-[#d93f21]"
                           onClick={() => handleAdvance(row)}

@@ -23,6 +23,94 @@ import NotificationsPage from "@/modules/notifications/view"
 import AdminFinancePage from "@/modules/finance/view"
 import MarketingPage from "@/modules/marketing/view"
 import AdminInventoryPage from "@/modules/inventory/view"
+
+const adminChildren = [
+  {
+    index: true,
+    element: <DashboardPage />,
+  },
+  {
+    path: "settings",
+    element: <SettingsPage />,
+  },
+  {
+    path: "users",
+    element: <UsersPage />,
+  },
+  {
+    path: "support",
+    element: <SupportPage />,
+  },
+  {
+    path: "transactions",
+    element: <TransactionsPage />,
+  },
+  {
+    path: "finance",
+    element: <AdminFinancePage />,
+  },
+  {
+    path: "shops",
+    element: <ShopsPage />,
+  },
+  {
+    path: "reviews",
+    element: <ReviewsPage />,
+  },
+  {
+    path: "promotions",
+    element: <PromotionsPage />,
+  },
+  {
+    path: "marketing",
+    element: <MarketingPage />,
+  },
+  {
+    path: "inventory",
+    element: <AdminInventoryPage />,
+  },
+  {
+    path: "products",
+    element: <ProductsPage />,
+  },
+  {
+    path: "orders",
+    element: <OrdersPage />,
+  },
+  {
+    path: "returns",
+    element: <ReturnsPage />,
+  },
+  {
+    path: "violations",
+    element: <ViolationsPage />,
+  },
+  {
+    path: "audit",
+    element: <AuditPage />,
+  },
+  {
+    path: "notifications",
+    element: <NotificationsPage />,
+  },
+  {
+    path: "categories",
+    element: <CategoriesPage />,
+  },
+  {
+    path: "analytics",
+    element: <AnalyticsPage />,
+  },
+  {
+    path: "profile",
+    element: <AdminProfilePage />,
+  },
+  {
+    path: "seller-applications",
+    element: <SellerApplicationsPage />,
+  },
+]
+
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -31,94 +119,16 @@ export const router = createBrowserRouter([
         <RootLayout />
       </ProtectedRoute>
     ),
-    children: [
-      {
-        index: true,
-        element: <DashboardPage />,
-      },
-      {
-        path: "settings",
-        element: <SettingsPage />,
-      },
-      {
-        path: "users",
-        element: <UsersPage />,
-      },
-      {
-        path: "support",
-        element: <SupportPage />,
-      },
-      {
-        path: "transactions",
-        element: <TransactionsPage />,
-      },
-      {
-        path: "finance",
-        element: <AdminFinancePage />,
-      },
-      {
-        path: "shops",
-        element: <ShopsPage />,
-      },
-      {
-        path: "reviews",
-        element: <ReviewsPage />,
-      },
-      {
-        path: "promotions",
-        element: <PromotionsPage />,
-      },
-      {
-        path: "marketing",
-        element: <MarketingPage />,
-      },
-      {
-        path: "inventory",
-        element: <AdminInventoryPage />,
-      },
-      {
-        path: "products",
-        element: <ProductsPage />,
-      },
-      {
-        path: "orders",
-        element: <OrdersPage />,
-      },
-      {
-        path: "returns",
-        element: <ReturnsPage />,
-      },
-      {
-        path: "violations",
-        element: <ViolationsPage />,
-      },
-      {
-        path: "audit",
-        element: <AuditPage />,
-      },
-      {
-        path: "notifications",
-        element: <NotificationsPage />,
-      },
-      {
-        path: "categories",
-        element: <CategoriesPage />,
-      },
-      {
-        path: "analytics",
-        element: <AnalyticsPage />,
-      }
-        ,
-      {
-        path: "profile",
-        element: <AdminProfilePage />,
-      },
-      {
-        path: "seller-applications",
-        element: <SellerApplicationsPage />,
-      },
-
-    ],
+    children: adminChildren,
+  },
+  {
+    path: "/admin",
+    element: (
+      <ProtectedRoute>
+        <RootLayout />
+      </ProtectedRoute>
+    ),
+    children: adminChildren,
   },
   {
     path: "/admin/login",

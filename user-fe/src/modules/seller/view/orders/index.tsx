@@ -29,7 +29,7 @@ export default function SellerOrdersPage() {
               <Metric label="Đơn khả dụng" value={String(orders.length)} icon={<ClipboardList className="size-4" />} />
               <Metric
                 label="Đơn có tracking"
-                value={String(orders.filter((order) => order.shipment || order.shop_package?.tracking_number).length)}
+                value={String(orders.filter((order) => order.shop_package?.tracking_number || order.shipment?.tracking_number).length)}
                 icon={<Truck className="size-4" />}
               />
             </div>
@@ -76,7 +76,7 @@ export default function SellerOrdersPage() {
                       {formatCurrency(getOrderVisibleSubtotal(order))}
                     </p>
                     <p className="mt-2 text-sm text-slate-500">
-                      Tracking: {order.shipment?.tracking_number || order.shop_package?.tracking_number || "Chưa cập nhật"}
+                      Tracking: {order.shop_package?.tracking_number || order.shipment?.tracking_number || "Chưa cập nhật"}
                     </p>
                   </div>
                 </div>

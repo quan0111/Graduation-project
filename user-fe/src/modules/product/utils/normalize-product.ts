@@ -3,6 +3,7 @@ import type { IActiveFlashSale, IProduct, IProductImage, IProductVariant, IVaria
 type UnknownRecord = Record<string, any>;
 
 const nowIso = new Date().toISOString();
+const byPosition = <T extends { position?: number }>(left: T, right: T) => Number(left.position || 0) - Number(right.position || 0);
 
 const normalizeActiveFlashSale = (sale?: UnknownRecord | null): IActiveFlashSale | null =>
   sale
@@ -19,27 +20,38 @@ const normalizeActiveFlashSale = (sale?: UnknownRecord | null): IActiveFlashSale
       }
     : null;
 
-const normalizeImage = (image: UnknownRecord): IProductImage => ({
-  id: Number(image.id ?? 0),
-  url: image.url ?? "",
-  position: Number(image.position ?? 0),
-  is_primary: Boolean(image.is_primary ?? image.isPrimary ?? false),
-  product_id: Number(image.product_id ?? image.productId ?? 0),
-  created_at: image.created_at ?? image.createdAt ?? nowIso,
-  deleted_at: image.deleted_at ?? image.deletedAt ?? null,
-});
+const normalizeImage = (image: UnknownRecord | string): IProductImage => {
+  const value = typeof image === "string" ? { url: image } : image;
 
-const normalizeVariantImage = (image: UnknownRecord): IVariantImage => ({
-  id: Number(image.id ?? 0),
-  url: image.url ?? "",
-  position: Number(image.position ?? 0),
-  variant_id: Number(image.variant_id ?? image.variantId ?? 0),
-  created_at: image.created_at ?? image.createdAt ?? nowIso,
-  deleted_at: image.deleted_at ?? image.deletedAt ?? null,
-});
+  return {
+    id: Number(value.id ?? 0),
+    url: value.url ?? value.imageUrl ?? value.image_url ?? "",
+    position: Number(value.position ?? 0),
+    is_primary: Boolean(value.is_primary ?? value.isPrimary ?? false),
+    product_id: Number(value.product_id ?? value.productId ?? 0),
+    created_at: value.created_at ?? value.createdAt ?? nowIso,
+    deleted_at: value.deleted_at ?? value.deletedAt ?? null,
+  };
+};
+
+const normalizeVariantImage = (image: UnknownRecord | string): IVariantImage => {
+  const value = typeof image === "string" ? { url: image } : image;
+
+  return {
+    id: Number(value.id ?? 0),
+    url: value.url ?? value.imageUrl ?? value.image_url ?? "",
+    position: Number(value.position ?? 0),
+    variant_id: Number(value.variant_id ?? value.variantId ?? 0),
+    created_at: value.created_at ?? value.createdAt ?? nowIso,
+    deleted_at: value.deleted_at ?? value.deletedAt ?? null,
+  };
+};
 
 const normalizeVariant = (variant: UnknownRecord): IProductVariant => {
-  const variantImages = (variant.images ?? variant.variantImages ?? []).map(normalizeVariantImage);
+  const variantImages = (variant.images ?? variant.variantImages ?? variant.variant_images ?? variant.VariantImage ?? [])
+    .map(normalizeVariantImage)
+    .filter((image: IVariantImage) => image.url && !image.deleted_at)
+    .sort(byPosition);
 
   return {
     id: Number(variant.id ?? 0),
@@ -72,8 +84,13 @@ const normalizeReview = (review: UnknownRecord) => ({
 });
 
 export const normalizeProduct = (product: UnknownRecord): IProduct => {
-  const images = (product.images ?? []).map(normalizeImage);
-  const variants = (product.variants ?? []).map(normalizeVariant);
+  const images = (product.images ?? product.Images ?? [])
+    .map(normalizeImage)
+    .filter((image: IProductImage) => image.url && !image.deleted_at)
+    .sort(byPosition);
+  const variants = (product.variants ?? [])
+    .map(normalizeVariant)
+    .filter((variant: IProductVariant) => !variant.deleted_at);
 
   return {
     id: Number(product.id ?? 0),

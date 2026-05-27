@@ -43,10 +43,12 @@ type CategoryPayload = {
 };
 
 const toPercent = (rate: number) => `${Math.round(rate * 10000) / 100}%`;
+const MIN_COMMISSION_PERCENT = 3;
+const MAX_COMMISSION_PERCENT = 7;
 
 const parseRate = (value: string) => {
   const percent = Number(value);
-  if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+  if (!Number.isFinite(percent) || percent < MIN_COMMISSION_PERCENT || percent > MAX_COMMISSION_PERCENT) {
     return null;
   }
   return percent / 100;
@@ -78,9 +80,9 @@ const upsertCategoryConfig = async (payload: CategoryPayload): Promise<CategoryC
 export function CommissionConfigCard() {
   const queryClient = useQueryClient();
   const [shopId, setShopId] = useState("");
-  const [shopRate, setShopRate] = useState("10");
+  const [shopRate, setShopRate] = useState("5");
   const [categoryId, setCategoryId] = useState("");
-  const [categoryRate, setCategoryRate] = useState("10");
+  const [categoryRate, setCategoryRate] = useState("5");
 
   const { data: shops = [] } = useGetAllShop();
   const { data: categories = [] } = useGetCategories();
@@ -121,7 +123,7 @@ export function CommissionConfigCard() {
     const rate = parseRate(shopRate);
     const selectedShopId = Number(shopId);
     if (!selectedShopId || rate === null) {
-      toast.error("Chọn shop và nhập tỷ lệ từ 0 đến 100%");
+      toast.error("Chọn shop và nhập tỷ lệ từ 3% đến 7%");
       return;
     }
     shopMutation.mutate({ shopId: selectedShopId, commissionRate: rate, isActive: true });
@@ -131,7 +133,7 @@ export function CommissionConfigCard() {
     const rate = parseRate(categoryRate);
     const selectedCategoryId = Number(categoryId);
     if (!selectedCategoryId || rate === null) {
-      toast.error("Chọn danh mục và nhập tỷ lệ từ 0 đến 100%");
+      toast.error("Chọn danh mục và nhập tỷ lệ từ 3% đến 7%");
       return;
     }
     categoryMutation.mutate({ categoryId: selectedCategoryId, commissionRate: rate, isActive: true });
@@ -147,7 +149,9 @@ export function CommissionConfigCard() {
           <Percent className="size-5 text-primary" />
           Cấu hình hoa hồng
         </CardTitle>
-        <CardDescription>Ưu tiên hoa hồng theo shop, sau đó đến danh mục, mặc định 10%.</CardDescription>
+        <CardDescription>
+          Phí nền tảng nằm trong 3-7%. Nếu không cấu hình riêng, hệ thống tự tính theo giá trị dòng hàng: dưới 500k là 7%, 500k-1tr là 6%, 1-2tr là 5%, 2-5tr là 4%, từ 5tr là 3%.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid gap-4 lg:grid-cols-2">
@@ -166,7 +170,14 @@ export function CommissionConfigCard() {
                   </option>
                 ))}
               </select>
-              <Input value={shopRate} onChange={(event) => setShopRate(event.currentTarget.value)} type="number" min={0} max={100} step={0.1} />
+              <Input
+                value={shopRate}
+                onChange={(event) => setShopRate(event.currentTarget.value)}
+                type="number"
+                min={MIN_COMMISSION_PERCENT}
+                max={MAX_COMMISSION_PERCENT}
+                step={0.1}
+              />
               <Button onClick={handleSaveShop} disabled={shopMutation.isPending}>
                 Lưu
               </Button>
@@ -188,7 +199,14 @@ export function CommissionConfigCard() {
                   </option>
                 ))}
               </select>
-              <Input value={categoryRate} onChange={(event) => setCategoryRate(event.currentTarget.value)} type="number" min={0} max={100} step={0.1} />
+              <Input
+                value={categoryRate}
+                onChange={(event) => setCategoryRate(event.currentTarget.value)}
+                type="number"
+                min={MIN_COMMISSION_PERCENT}
+                max={MAX_COMMISSION_PERCENT}
+                step={0.1}
+              />
               <Button onClick={handleSaveCategory} disabled={categoryMutation.isPending}>
                 Lưu
               </Button>

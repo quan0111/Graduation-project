@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 from fastapi import HTTPException
+from prisma import Json
 
 from src.core.database import prisma
 from src.modules.audit.audit_service import AuditService
@@ -16,6 +17,18 @@ class SecurityService:
     ADD_TO_CART_THRESHOLD = 40
     DISTINCT_PRODUCT_THRESHOLD = 60
     FAILED_LOGIN_THRESHOLD = 8
+
+    @staticmethod
+    def _json_safe(value):
+        if hasattr(value, "model_dump"):
+            return value.model_dump()
+        if isinstance(value, dict):
+            return {str(key): SecurityService._json_safe(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple, set)):
+            return [SecurityService._json_safe(item) for item in value]
+        if hasattr(value, "value"):
+            return value.value
+        return value
 
     @staticmethod
     async def inspect_behavior(user_id: int):
@@ -131,7 +144,7 @@ class SecurityService:
                     "reason": reason,
                     "severity": severity,
                     "actionTaken": action_taken,
-                    "metadata": metadata,
+                    **({"metadata": Json(SecurityService._json_safe(metadata))} if metadata is not None else {}),
                 }
             )
             if auto_lock and user.isActive:

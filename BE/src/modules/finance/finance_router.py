@@ -44,6 +44,24 @@ async def commission(order_id: int, user=Depends(require_seller_or_admin)):
     return await FinanceService.calculate_commission(order_id)
 
 
+@router.get("/admin/summary", response_model=AdminFinanceSummaryOut)
+async def admin_summary(sync: bool = True, user=Depends(require_admin)):
+    _ = user
+    return await FinanceService.get_admin_summary(sync=sync)
+
+
+@router.get("/commissions", response_model=List[PlatformCommissionOut])
+async def get_commissions(status: str | None = None, shop_id: int | None = None, limit: int = 100, user=Depends(require_admin)):
+    _ = user
+    return await FinanceService.get_commissions(status=status, shop_id=shop_id, limit=limit)
+
+
+@router.post("/commissions/sync")
+async def sync_commissions(days_back: int = 365, user=Depends(require_admin)):
+    _ = user
+    return await FinanceService.sync_commissions(days_back=days_back)
+
+
 @router.get("/commission-configs/shops", response_model=List[ShopCommissionConfigOut])
 async def get_shop_commission_configs(user=Depends(require_admin)):
     _ = user
@@ -75,8 +93,7 @@ async def create_payout(data: PayoutCreate, user=Depends(require_seller_or_admin
 
 @router.patch("/payout/{id}", response_model=PayoutOut)
 async def update_payout(id: int, data: PayoutUpdate, user=Depends(require_admin)):
-    _ = user
-    return await FinanceService.update_payout(id, data)
+    return await FinanceService.update_payout(id, data, reviewed_by_id=user.id)
 
 
 

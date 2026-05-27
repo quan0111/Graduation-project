@@ -2,7 +2,7 @@ from fastapi import Request, HTTPException
 
 from src.core.redis import RedisClient
 
-RATE_LIMIT = 120  
+RATE_LIMIT = 200  
 TIME_WINDOW = 60  
 
 request_logs = {}

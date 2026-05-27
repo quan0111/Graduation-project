@@ -26,6 +26,15 @@ SHIPMENT_TRANSITIONS = {
     "DELIVERY_FAILED": {"RETURN_TO_SENDER"},
 }
 
+TRACKING_LOCKED_STATUSES = {
+    "SHIPPED",
+    "IN_TRANSIT",
+    "OUT_FOR_DELIVERY",
+    "DELIVERED",
+    "DELIVERY_FAILED",
+    "RETURN_TO_SENDER",
+}
+
 
 class ShipmentService:
     @staticmethod
@@ -41,13 +50,49 @@ class ShipmentService:
 
     @staticmethod
     def _assert_status_transition(current_status: str, next_status: str):
-        if current_status == next_status:
-            return
         if next_status not in SHIPMENT_TRANSITIONS.get(current_status, set()):
             raise HTTPException(
                 400,
                 f"Invalid shipment transition: {current_status} -> {next_status}",
             )
+
+    @staticmethod
+    def _assert_tracking_editable(current_status: str, current_record, update_data: dict):
+        if current_status not in TRACKING_LOCKED_STATUSES:
+            return
+
+        for field in ("carrier", "trackingNumber"):
+            if field not in update_data:
+                continue
+            current_value = getattr(current_record, field, None) or ""
+            next_value = update_data.get(field) or ""
+            if next_value != current_value:
+                raise HTTPException(400, "Tracking cannot be edited after shipment is handed over")
+
+    @staticmethod
+    def _assert_handover_info(current_record, update_data: dict):
+        carrier = update_data.get("carrier") if "carrier" in update_data else getattr(current_record, "carrier", None)
+        tracking_number = (
+            update_data.get("trackingNumber")
+            if "trackingNumber" in update_data
+            else getattr(current_record, "trackingNumber", None)
+        )
+        if not str(carrier or "").strip() or not str(tracking_number or "").strip():
+            raise HTTPException(400, "Carrier and tracking number are required before shipment handover")
+
+    @staticmethod
+    def _normalize_next_status(current_status: str, status: str | None):
+        if not status:
+            return None
+
+        next_status = ShipmentService._normalize_status(status)
+        if next_status == current_status:
+            if current_status in TRACKING_LOCKED_STATUSES:
+                raise HTTPException(400, f"Shipment is already {current_status}")
+            return None
+
+        ShipmentService._assert_status_transition(current_status, next_status)
+        return next_status
 
     @staticmethod
     async def _get_seller_shop(user_id: int):
@@ -245,17 +290,23 @@ class ShipmentService:
             update_data = data.model_dump(exclude_unset=True)
             status = update_data.get("status")
             current_status = ShipmentService._normalize_status(ShipmentService._to_value(package.status))
+            ShipmentService._assert_tracking_editable(current_status, package, update_data)
 
+            status = ShipmentService._normalize_next_status(current_status, status)
             if status:
-                status = ShipmentService._normalize_status(status)
-                ShipmentService._assert_status_transition(current_status, status)
                 update_data["status"] = status
+            else:
+                update_data.pop("status", None)
 
             if status == "SHIPPED":
+                ShipmentService._assert_handover_info(package, update_data)
                 update_data["shippedAt"] = datetime.utcnow()
 
             if status == "DELIVERED":
                 update_data["deliveredAt"] = datetime.utcnow()
+
+            if not update_data:
+                return package
 
             updated_package = await prisma.ordershoppackage.update(
                 where={"id": package.id},
@@ -281,17 +332,23 @@ class ShipmentService:
         update_data = data.model_dump(exclude_unset=True)
         status = update_data.get("status")
         current_status = ShipmentService._normalize_status(ShipmentService._to_value(shipment.status))
+        ShipmentService._assert_tracking_editable(current_status, shipment, update_data)
 
+        status = ShipmentService._normalize_next_status(current_status, status)
         if status:
-            status = ShipmentService._normalize_status(status)
-            ShipmentService._assert_status_transition(current_status, status)
             update_data["status"] = status
+        else:
+            update_data.pop("status", None)
 
         if status == "SHIPPED":
+            ShipmentService._assert_handover_info(shipment, update_data)
             update_data["shippedAt"] = datetime.utcnow()
 
         if status == "DELIVERED":
             update_data["deliveredAt"] = datetime.utcnow()
+
+        if not update_data:
+            return shipment
 
         updated = await prisma.shipment.update(
             where={"orderId": order_id},

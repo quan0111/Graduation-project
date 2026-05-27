@@ -2,6 +2,7 @@ import { Star } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import type { IProduct } from "@/modules/product/types";
+import { getProductImageUrl } from "@/modules/product/utils/image";
 
 interface RecommendationCardProps {
   product: IProduct;
@@ -12,9 +13,6 @@ const TEXT = {
   fallbackCategory: "G\u1ee3i \u00fd cho b\u1ea1n",
   new: "M\u1edbi",
 };
-
-const getImageUrl = (product: IProduct) =>
-  product.images?.find((image) => image.is_primary)?.url ?? product.images?.[0]?.url ?? "/placeholder.png";
 
 const getRating = (product: IProduct) => {
   if (!product.reviews?.length) {
@@ -38,7 +36,7 @@ export const RecommendationCard = ({ product, onClick }: RecommendationCardProps
     >
       <div className="relative aspect-square overflow-hidden bg-orange-50">
         <img
-          src={getImageUrl(product)}
+          src={getProductImageUrl(product)}
           alt={product.name}
           className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
           loading="lazy"

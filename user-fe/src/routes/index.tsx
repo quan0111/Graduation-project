@@ -38,6 +38,7 @@ import SellerMarketingPage from "@/modules/seller/view/marketing";
 import SellerAnalyticsPage from "@/modules/seller/view/analytics";
 import SellerShippingPage from "@/modules/seller/view/shipping";
 import SellerCustomersPage from "@/modules/seller/view/customers";
+import SellerSettingsPage from "@/modules/seller/view/settings";
 import { RequireAuth, RequireSeller } from "./guards";
 export const router = createBrowserRouter([
   {
@@ -136,6 +137,10 @@ export const router = createBrowserRouter([
   {
     path: "/seller/support",
     element: <RequireSeller><SellerSupportPage /></RequireSeller>,
+  },
+  {
+    path: "/seller/settings",
+    element: <RequireSeller><SellerSettingsPage /></RequireSeller>,
   },
   {
     path: "/seller/reviews",

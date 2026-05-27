@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/common/app-dialog";
 import {
   useCreateSellerPayout,
   useSellerInventoryLedger,
@@ -16,8 +17,23 @@ import { SellerDashboardLayout } from "@/modules/seller/component/shop-layout";
 import { formatCurrency } from "@/modules/seller/utils/dashboard";
 import { formatDate, formatDateTime } from "@/lib/date";
 
+const payoutStatusLabel: Record<string, string> = {
+  PENDING: "Chờ duyệt",
+  PROCESSING: "Đang xử lý",
+  PAID: "Đã thanh toán",
+  FAILED: "Từ chối",
+  CANCELLED: "Đã hủy",
+};
+
+const payoutStatusClass = (status: string) => {
+  if (status === "PAID") return "bg-emerald-50 text-emerald-700";
+  if (status === "FAILED" || status === "CANCELLED") return "bg-rose-50 text-rose-700";
+  return "bg-amber-50 text-amber-700";
+};
+
 export default function SellerFinancePage() {
   const [payoutAmount, setPayoutAmount] = useState("");
+  const [confirmPayoutAmount, setConfirmPayoutAmount] = useState<number | null>(null);
   const { data: wallet, isLoading: walletLoading } = useSellerWallet();
   const { data: report, isLoading: reportLoading } = useSellerReport(30);
   const { data: ledger = [] } = useSellerInventoryLedger();
@@ -39,10 +55,16 @@ export default function SellerFinancePage() {
       toast.error("Số tiền rút không hợp lệ");
       return;
     }
+    setConfirmPayoutAmount(amount);
+  };
+
+  const confirmPayout = async () => {
+    if (!wallet || !confirmPayoutAmount) return;
     try {
-      await payoutMutation.mutateAsync({ shopId: wallet.shopId, amount });
+      await payoutMutation.mutateAsync({ shopId: wallet.shopId, amount: confirmPayoutAmount });
       toast.success("Đã gửi yêu cầu rút tiền");
       setPayoutAmount("");
+      setConfirmPayoutAmount(null);
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || "Không thể gửi yêu cầu rút tiền");
     }
@@ -107,13 +129,27 @@ export default function SellerFinancePage() {
               />
               <Button className="w-full bg-[#ee4d2d] hover:bg-[#d93f21]" onClick={submitPayout} disabled={payoutMutation.isPending}>
                 <Landmark className="mr-2 size-4" />
-                Gửi yêu cầu payout
+                Gửi yêu cầu rút tiền
               </Button>
+              <p className="text-xs leading-5 text-slate-500">
+                Sau khi xác nhận, yêu cầu sẽ chuyển sang trạng thái chờ admin duyệt. Số tiền pending sẽ được giữ lại khi tính số dư có thể rút.
+              </p>
               <div className="space-y-2">
                 {(wallet?.payouts ?? []).slice(0, 5).map((payout) => (
                   <div key={payout.id} className="flex items-center justify-between rounded-xl bg-slate-50 p-3 text-sm">
-                    <span>{formatCurrency(payout.amount)}</span>
-                    <span className="font-medium text-slate-600">{payout.status}</span>
+                    <div>
+                      <p className="font-medium">{formatCurrency(payout.amount)}</p>
+                      <p className="text-xs text-slate-500">{formatDateTime(payout.createdAt)}</p>
+                      {payout.reviewedBy ? (
+                        <p className="text-xs text-slate-500">
+                          Duyệt bởi {payout.reviewedBy.fullName || payout.reviewedBy.email}
+                          {payout.reviewedAt ? ` · ${formatDateTime(payout.reviewedAt)}` : ""}
+                        </p>
+                      ) : null}
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${payoutStatusClass(payout.status)}`}>
+                      {payoutStatusLabel[payout.status] ?? payout.status}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -162,6 +198,18 @@ export default function SellerFinancePage() {
           </Card>
         </div>
       </section>
+      <ConfirmDialog
+        open={confirmPayoutAmount !== null}
+        title="Xác nhận yêu cầu rút tiền"
+        description={`Bạn muốn gửi yêu cầu rút ${formatCurrency(confirmPayoutAmount ?? 0)}. Số dư hiện có thể rút là ${formatCurrency(wallet?.availableBalance ?? 0)}. Sau khi gửi, admin sẽ kiểm tra và duyệt thanh toán cho seller.`}
+        confirmLabel="Xác nhận gửi yêu cầu"
+        cancelLabel="Kiểm tra lại"
+        isPending={payoutMutation.isPending}
+        onOpenChange={(open) => {
+          if (!open && !payoutMutation.isPending) setConfirmPayoutAmount(null);
+        }}
+        onConfirm={confirmPayout}
+      />
     </SellerDashboardLayout>
   );
 }

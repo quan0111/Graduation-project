@@ -22,8 +22,8 @@ const initialMessages: ChatMessage[] = [
   {
     id: "welcome",
     role: "assistant",
-    content: "Chào bạn, mình là trợ lý MarketHub. Mình có thể gợi ý sản phẩm theo thói quen mua sắm, tìm sản phẩm theo ngân sách, giải thích chính sách thanh toán/vận chuyển hoặc hỗ trợ giỏ hàng và đơn hàng. Bạn cứ mô tả nhu cầu, mình sẽ trả lời cụ thể hơn từng bước.",
-    suggestions: ["Gợi ý sản phẩm cho tôi", "Sản phẩm hợp thói quen của tôi", "Kiểm tra giỏ hàng", "Chính sách đổi trả"],
+    content: "Chào bạn, mình là trợ lý MarketHub. Bạn cần tìm sản phẩm, hỏi đơn hàng hay xem chính sách đổi trả thì nhắn mình nhé.",
+    suggestions: ["Tìm sản phẩm dưới 500k", "Kiểm tra đơn hàng", "Chính sách đổi trả"],
   },
 ];
 
@@ -227,8 +227,8 @@ export function ChatbotWidget() {
             {
               id: makeId(),
               role: "assistant",
-              content: "Hiện chưa thể trả lời. Bạn thử lại sau ít phút.",
-              suggestions: ["Gợi ý sản phẩm cho tôi", "Tìm sản phẩm giá tốt", "Chính sách đổi trả"],
+              content: "Mình chưa trả lời được lúc này. Bạn thử hỏi lại sau một chút nhé.",
+              suggestions: ["Tìm sản phẩm giá tốt", "Kiểm tra đơn hàng", "Chính sách đổi trả"],
             },
           ]);
         },

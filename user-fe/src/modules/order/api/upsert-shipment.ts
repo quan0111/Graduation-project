@@ -27,6 +27,34 @@ const mapShipment = (shipment: any): IShipment => ({
   created_at: shipment.createdAt,
 });
 
+const isShipmentNotFound = (error: any) =>
+  error?.response?.status === 404 && error?.response?.data?.detail === "Shipment not found";
+
+const createShipment = async (orderId: number, carrier?: string, trackingNumber?: string): Promise<IShipment> => {
+  const response = await apiClient.post(API_URL_SHIPMENT, {
+    orderId,
+    carrier,
+    trackingNumber,
+  });
+
+  return mapShipment(response.data);
+};
+
+const patchShipment = async (
+  orderId: number,
+  carrier?: string,
+  trackingNumber?: string,
+  status?: ShipmentStatusType,
+): Promise<IShipment> => {
+  const response = await apiClient.patch(`${API_URL_SHIPMENT}/order/${orderId}`, {
+    carrier,
+    trackingNumber,
+    status: normalizeStatus(status),
+  });
+
+  return mapShipment(response.data);
+};
+
 const upsertShipment = async ({
   orderId,
   carrier,
@@ -35,24 +63,27 @@ const upsertShipment = async ({
   hasExisting,
 }: ShipmentPayload): Promise<IShipment> => {
   if (!hasExisting) {
-    const createRes = await apiClient.post(API_URL_SHIPMENT, {
-      orderId,
-      carrier,
-      trackingNumber,
-    });
+    const createdShipment = await createShipment(orderId, carrier, trackingNumber);
 
     if (!status || status === "ready_to_ship") {
-      return mapShipment(createRes.data);
+      return createdShipment;
     }
   }
 
-  const patchRes = await apiClient.patch(`${API_URL_SHIPMENT}/order/${orderId}`, {
-    carrier,
-    trackingNumber,
-    status: normalizeStatus(status),
-  });
+  try {
+    return await patchShipment(orderId, carrier, trackingNumber, status);
+  } catch (error: any) {
+    if (!isShipmentNotFound(error)) {
+      throw error;
+    }
 
-  return mapShipment(patchRes.data);
+    const createdShipment = await createShipment(orderId, carrier, trackingNumber);
+    if (!status || status === "ready_to_ship") {
+      return createdShipment;
+    }
+
+    return await patchShipment(orderId, carrier, trackingNumber, status);
+  }
 };
 
 export const useUpsertShipment = () => {

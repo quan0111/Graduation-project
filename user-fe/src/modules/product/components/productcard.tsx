@@ -7,6 +7,7 @@ import { getStoredStorefrontUser } from "@/lib/auth-storage";
 import { addGuestCartItem } from "@/lib/guest-cart";
 import { useAddItem } from "@/modules/cart/api/add-item";
 import type { IProduct } from "@/modules/product/types";
+import { getProductImageUrl } from "@/modules/product/utils/image";
 import { useTrackProductBehavior } from "@/modules/recommendation/hooks/useTrackProductBehavior";
 
 interface ProductCardProps {
@@ -39,9 +40,6 @@ const getAvgRating = (reviews?: Array<{ rating?: number }>) => {
   const total = reviews.reduce((sum, review) => sum + (review.rating ?? 0), 0);
   return total / reviews.length;
 };
-
-const getImageUrl = (product: IProduct) =>
-  product.images?.find((image) => image.is_primary)?.url ?? product.images?.[0]?.url ?? "/placeholder.png";
 
 const formatVnd = (value: number) => `${value.toLocaleString("vi-VN")}đ`;
 
@@ -149,7 +147,7 @@ export const ProductCard = ({
         <Link to={`/product/${product.id}`} onClick={() => trackClick(product.id, { page: "products", source: "grid_card" })}>
           <div className="aspect-square overflow-hidden bg-orange-50">
             <img
-              src={getImageUrl(product)}
+              src={getProductImageUrl(product)}
               alt={product.name}
               className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
               loading="lazy"

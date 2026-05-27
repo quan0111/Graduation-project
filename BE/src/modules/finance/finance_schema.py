@@ -9,12 +9,21 @@ class PayoutCreate(BaseModel):
 
 
 class PayoutUpdate(BaseModel):
-    status: str   # PENDING | PAID | FAILED
+    status: str
+    note: Optional[str] = None
 
 
 class ShopShort(BaseModel):
     id: int
     name: str
+
+    model_config = {"from_attributes": True}
+
+
+class UserShort(BaseModel):
+    id: int
+    email: str
+    fullName: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -33,6 +42,15 @@ class OrderShort(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class OrderItemShort(BaseModel):
+    id: int
+    productName: str
+    quantity: int
+    price: float
+
+    model_config = {"from_attributes": True}
+
+
 class CommissionOut(BaseModel):
     orderId: int
     total: float
@@ -45,11 +63,50 @@ class PayoutOut(BaseModel):
     shopId: int
     amount: float
     status: str
+    paidAt: Optional[datetime] = None
+    reviewedAt: Optional[datetime] = None
+    reviewedById: Optional[int] = None
+    note: Optional[str] = None
     createdAt: datetime
 
     shop: Optional[ShopShort] = None
+    reviewedBy: Optional[UserShort] = None
 
     model_config = {"from_attributes": True}
+
+
+class PlatformCommissionOut(BaseModel):
+    id: int
+    orderId: int
+    orderItemId: Optional[int] = None
+    shopId: int
+    commissionRate: float
+    grossAmount: float
+    commissionAmount: float
+    sellerNetAmount: float
+    status: str
+    note: Optional[str] = None
+    createdAt: datetime
+    updatedAt: datetime
+    shop: Optional[ShopShort] = None
+    order: Optional[OrderShort] = None
+    orderItem: Optional[OrderItemShort] = None
+
+    model_config = {"from_attributes": True}
+
+
+class AdminFinanceSummaryOut(BaseModel):
+    grossRevenue: float
+    commissionAmount: float
+    sellerNetAmount: float
+    availableBalance: float
+    pendingPayoutAmount: float
+    paidPayoutAmount: float
+    failedPayoutAmount: float
+    pendingPayoutCount: int
+    payoutCount: int
+    commissionCount: int
+    shopsCount: int
 
 
 class ShopCommissionConfigUpsert(BaseModel):

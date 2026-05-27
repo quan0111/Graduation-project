@@ -75,6 +75,7 @@ class VariantService:
             include={"images": True}
         )
 
+        await CacheManager.invalidate_product_cache(data.productId)
         return VariantOut.from_orm(variant)
 
     @staticmethod
@@ -110,6 +111,8 @@ class VariantService:
                     where={"id": product.id},
                     data={"price": min(prices)},
                 )
+
+        if product:
             await CacheManager.invalidate_product_cache(product.id)
 
         return VariantOut.from_orm(updated)
@@ -190,7 +193,7 @@ class VariantService:
     @staticmethod
     async def delete_variant(variant_id: int, viewer=None):
         if viewer is not None:
-            await VariantService._assert_variant_access(variant_id, viewer)
+            variant, _ = await VariantService._assert_variant_access(variant_id, viewer)
         else:
             variant = await prisma.productvariant.find_unique(where={"id": variant_id})
             if not variant:
@@ -200,25 +203,28 @@ class VariantService:
             where={"id": variant_id},
             data={"deletedAt": datetime.utcnow()}
         )
+        await CacheManager.invalidate_product_cache(variant.productId)
 
         return {"message": "Variant deleted"}
 
     @staticmethod
     async def add_variant_image(variant_id: int, url: str, position: int = 1, viewer=None):
         if viewer is not None:
-            await VariantService._assert_variant_access(variant_id, viewer)
+            variant, _ = await VariantService._assert_variant_access(variant_id, viewer)
         else:
             variant = await prisma.productvariant.find_unique(where={"id": variant_id})
             if not variant:
                 raise HTTPException(404, "Variant not found")
 
-        return await prisma.variantimage.create(
+        image = await prisma.variantimage.create(
             data={
                 "variant": {"connect": {"id": variant_id}},
                 "url": url,
                 "position": position
             }
         )
+        await CacheManager.invalidate_product_cache(variant.productId)
+        return image
 
     @staticmethod
     async def get_variant_images(variant_id: int):
@@ -255,9 +261,12 @@ class VariantService:
     @staticmethod
     async def update_variant_image(image_id: int, url: str = None, position: int = None, viewer=None):
         if viewer is not None:
-            await VariantService._assert_variant_image_access(image_id, viewer)
+            image = await VariantService._assert_variant_image_access(image_id, viewer)
         else:
-            image = await prisma.variantimage.find_unique(where={"id": image_id})
+            image = await prisma.variantimage.find_unique(
+                where={"id": image_id},
+                include={"variant": True},
+            )
             if not image:
                 raise HTTPException(404, "Image not found")
 
@@ -269,17 +278,22 @@ class VariantService:
         if position is not None:
             data["position"] = position
 
-        return await prisma.variantimage.update(
+        updated = await prisma.variantimage.update(
             where={"id": image_id},
             data=data
         )
+        await CacheManager.invalidate_product_cache(image.variant.productId)
+        return updated
 
     @staticmethod
     async def delete_variant_image(image_id: int, viewer=None):
         if viewer is not None:
-            await VariantService._assert_variant_image_access(image_id, viewer)
+            image = await VariantService._assert_variant_image_access(image_id, viewer)
         else:
-            image = await prisma.variantimage.find_unique(where={"id": image_id})
+            image = await prisma.variantimage.find_unique(
+                where={"id": image_id},
+                include={"variant": True},
+            )
             if not image:
                 raise HTTPException(404, "Image not found")
 
@@ -287,14 +301,19 @@ class VariantService:
             where={"id": image_id},
             data={"deletedAt": datetime.utcnow()}
         )
+        await CacheManager.invalidate_product_cache(image.variant.productId)
 
         return {"message": "Image deleted"}
 
     @staticmethod
     async def set_primary_image(variant_id: int, image_id: int, viewer=None):
         if viewer is not None:
-            await VariantService._assert_variant_access(variant_id, viewer)
+            variant, _ = await VariantService._assert_variant_access(variant_id, viewer)
             await VariantService._assert_variant_image_access(image_id, viewer)
+        else:
+            variant = await prisma.productvariant.find_unique(where={"id": variant_id})
+            if not variant:
+                raise HTTPException(404, "Variant not found")
 
         await prisma.variantimage.update_many(
             where={"variantId": variant_id},
@@ -305,6 +324,7 @@ class VariantService:
             where={"id": image_id},
             data={"position": 1}
         )
+        await CacheManager.invalidate_product_cache(variant.productId)
 
         return {"message": "Primary image updated"}
     @staticmethod
@@ -317,5 +337,8 @@ class VariantService:
                 where={"id": img["id"]},
                 data={"position": img["position"]}
             )
+        variant = await prisma.productvariant.find_unique(where={"id": variant_id})
+        if variant:
+            await CacheManager.invalidate_product_cache(variant.productId)
 
         return {"message": "Images reordered"}

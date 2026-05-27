@@ -39,6 +39,37 @@ const shipmentStatusValues = allShipmentStatuses.map((item) => item.value);
 const isShipmentStatus = (value?: string | null): value is ShipmentStatusType =>
   Boolean(value && shipmentStatusValues.includes(value as ShipmentStatusType));
 
+const trackingLockedStatuses: ShipmentStatusType[] = [
+  "shipped",
+  "in_transit",
+  "out_for_delivery",
+  "delivered",
+  "delivery_failed",
+  "return_to_sender",
+];
+
+const shipmentTransitions: Partial<Record<ShipmentStatusType, ShipmentStatusType[]>> = {
+  ready_to_ship: ["shipped"],
+  shipped: ["in_transit"],
+  in_transit: ["out_for_delivery", "delivery_failed"],
+  out_for_delivery: ["delivered", "delivery_failed"],
+  delivery_failed: ["return_to_sender"],
+};
+
+const isTrackingLocked = (value?: ShipmentStatusType | null) =>
+  Boolean(value && trackingLockedStatuses.includes(value));
+
+const getNextShipmentStatuses = (value: ShipmentStatusType) => shipmentTransitions[value] ?? [];
+
+const shippingWorkflowStatuses = new Set<OrderStatusType>([
+  "shipped",
+  "in_transit",
+  "out_for_delivery",
+  "delivered",
+  "delivery_failed",
+  "return_to_sender",
+]);
+
 const sellerOrderTransitions: Partial<Record<OrderStatusType, Array<{ status: OrderStatusType; label: string }>>> = {
   pending: [{ status: "confirmed", label: "Xác nhận đơn" }],
   paid: [
@@ -104,18 +135,39 @@ export default function SellerOrderDetailPage() {
         : null,
     [order?.shop_package],
   );
-  const activeShipment = order?.shipment ?? packageShipment;
+  const activeShipment = packageShipment ?? order?.shipment;
   const hasExistingShipment = Boolean(order?.shipment || packageShipment);
+  const activeShipmentStatus = activeShipment?.status ?? "ready_to_ship";
+  const trackingLocked = isTrackingLocked(activeShipment?.status);
+  const nextShipmentStatuses = getNextShipmentStatuses(activeShipmentStatus);
+  const hasHandoverInfo = Boolean(carrier.trim() && trackingNumber.trim());
+  const shipmentStatusOptions = useMemo(() => {
+    const values = trackingLocked
+      ? nextShipmentStatuses
+      : [activeShipmentStatus, ...nextShipmentStatuses];
+    const uniqueValues = Array.from(new Set(values));
+    return allShipmentStatuses.filter((option) => uniqueValues.includes(option.value));
+  }, [activeShipmentStatus, nextShipmentStatuses, trackingLocked]);
+  const canSaveTracking =
+    (!trackingLocked || (nextShipmentStatuses.length > 0 && status !== activeShipmentStatus)) &&
+    (status !== "shipped" || hasHandoverInfo);
 
   useEffect(() => {
     if (!activeShipment) {
+      if (order?.status === "ready_to_ship") {
+        setStatus("shipped");
+      }
       return;
     }
 
     setCarrier(activeShipment.carrier || "");
     setTrackingNumber(activeShipment.tracking_number || "");
+    if (isTrackingLocked(activeShipment.status)) {
+      setStatus(getNextShipmentStatuses(activeShipment.status)[0] ?? activeShipment.status);
+      return;
+    }
     setStatus(activeShipment.status);
-  }, [activeShipment]);
+  }, [activeShipment, order?.status]);
 
   if (isLoading) {
     return (
@@ -134,7 +186,9 @@ export default function SellerOrderDetailPage() {
   }
 
   const statusMeta = getStatusMeta(order.status);
-  const nextOrderStatuses = getSellerNextStatuses(order.status);
+  const nextOrderStatuses = getSellerNextStatuses(order.status).filter(
+    (option) => !shippingWorkflowStatuses.has(option.status),
+  );
 
   const handleUpdateOrderStatus = async (nextStatus: OrderStatusType) => {
     try {
@@ -152,11 +206,21 @@ export default function SellerOrderDetailPage() {
   };
 
   const handleSaveTracking = async () => {
+    if (status === "shipped" && !hasHandoverInfo) {
+      toast.error("Cần nhập đơn vị vận chuyển và mã vận đơn trước khi đánh dấu đã gửi hàng");
+      return;
+    }
+
+    if (!canSaveTracking) {
+      toast.error("Không thể sửa tracking sau khi đã bàn giao vận chuyển");
+      return;
+    }
+
     try {
       await shipmentMutation.mutateAsync({
         orderId: order.id,
-        carrier,
-        trackingNumber,
+        carrier: trackingLocked ? undefined : carrier,
+        trackingNumber: trackingLocked ? undefined : trackingNumber,
         status,
         hasExisting: hasExistingShipment,
       });
@@ -251,6 +315,12 @@ export default function SellerOrderDetailPage() {
                 Với đơn nhiều shop, tracking được lưu riêng cho package của shop hiện tại.
               </p>
 
+              {trackingLocked ? (
+                <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  Đã bàn giao vận chuyển nên không thể sửa đơn vị hoặc mã vận đơn. Bạn chỉ có thể cập nhật bước vận chuyển tiếp theo.
+                </p>
+              ) : null}
+
               <div className="mt-5 space-y-4">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">Đơn vị vận chuyển</label>
@@ -258,6 +328,7 @@ export default function SellerOrderDetailPage() {
                     value={carrier}
                     onChange={(event) => setCarrier(event.target.value)}
                     placeholder="VD: GHN, GHTK, SPX Express"
+                    disabled={trackingLocked}
                   />
                 </div>
 
@@ -266,6 +337,7 @@ export default function SellerOrderDetailPage() {
                   <Input
                     value={trackingNumber}
                     onChange={(event) => setTrackingNumber(event.target.value)}
+                    disabled={trackingLocked}
                     placeholder="Nhập tracking number"
                   />
                 </div>
@@ -275,40 +347,25 @@ export default function SellerOrderDetailPage() {
                   <select
                     value={status}
                     onChange={(event) => setStatus(event.target.value as ShipmentStatusType)}
+                    disabled={shipmentStatusOptions.length === 0}
                     className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-[#ee4d2d]"
                   >
-                    {(() => {
-                      const currentBase = (activeShipment?.status || "ready_to_ship").toUpperCase();
-                      const transitions: Record<string, string[]> = {
-                        READY_TO_SHIP: ["SHIPPED"],
-                        SHIPPED: ["IN_TRANSIT"],
-                        IN_TRANSIT: ["OUT_FOR_DELIVERY", "DELIVERY_FAILED"],
-                        OUT_FOR_DELIVERY: ["DELIVERED", "DELIVERY_FAILED"],
-                        DELIVERY_FAILED: ["RETURN_TO_SENDER"],
-                      };
-
-                      const allowedNextBase = transitions[currentBase] || [];
-
-                      return allShipmentStatuses
-                        .filter((option) => {
-                          if (option.value === status) return true;
-                          const optionBase = option.value.toUpperCase();
-                          if (optionBase === currentBase) return true;
-                          return allowedNextBase.includes(optionBase);
-                        })
-                        .map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ));
-                    })()}
+                    {shipmentStatusOptions.length === 0 ? (
+                      <option value={status}>Không còn bước cập nhật</option>
+                    ) : (
+                      shipmentStatusOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
                 <Button
                   className="w-full bg-[#ee4d2d] hover:bg-[#d93f21]"
                   onClick={handleSaveTracking}
-                  disabled={shipmentMutation.isPending}
+                  disabled={shipmentMutation.isPending || !canSaveTracking}
                 >
                   <Save className="size-4" />
                   {shipmentMutation.isPending ? "Đang lưu..." : "Lưu tracking"}

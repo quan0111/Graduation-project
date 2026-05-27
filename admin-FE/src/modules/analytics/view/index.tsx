@@ -53,8 +53,30 @@ const getOrderTotal = (order: any) => Number(order.totalAmount ?? order.total_am
 
 const getOrderItems = (order: any) => order.items || order.Items || [];
 
+const getOrderStatus = (order: any) => String(order.status || '').toUpperCase();
+
+const statusLabels: Record<string, string> = {
+  PENDING: 'Chờ xác nhận',
+  PENDING_PAYMENT: 'Chờ thanh toán',
+  PAYMENT_FAILED: 'Thanh toán lỗi',
+  PAYMENT_EXPIRED: 'Thanh toán hết hạn',
+  CONFIRMED: 'Đã xác nhận',
+  PAID: 'Đã thanh toán',
+  PROCESSING: 'Đang xử lý',
+  READY_TO_SHIP: 'Chờ giao hàng',
+  SHIPPED: 'Đang giao',
+  IN_TRANSIT: 'Đang vận chuyển',
+  DELIVERED: 'Đã giao',
+  COMPLETED: 'Hoàn tất',
+  CANCELLED: 'Đã hủy',
+  RETURN_REQUESTED: 'Yêu cầu trả hàng',
+  RETURNED: 'Đã trả hàng',
+};
+
 const isRevenueOrder = (order: any) =>
-  ['DELIVERED', 'COMPLETED', 'delivered', 'completed'].includes(order.status);
+  ['DELIVERED', 'COMPLETED'].includes(getOrderStatus(order));
+
+const getStatusLabel = (status: string) => statusLabels[status] || status || 'Không rõ';
 
 const formatDateKey = (date: Date) => date.toISOString().slice(0, 10);
 
@@ -173,11 +195,25 @@ export default function AnalyticsPage() {
     const ranking = topProductsData?.ranking || [];
     return new Map(ranking.map((item: any, index: number) => [item.productId, { rank: index + 1, count: item._count?.productId ?? 0 }]));
   }, [topProductsData]);
+  const orderStatusData = useMemo(() => {
+    const statusCount = new Map<string, number>();
+    orders.forEach((order: any) => {
+      const status = getOrderStatus(order);
+      statusCount.set(status, (statusCount.get(status) || 0) + 1);
+    });
+
+    return Array.from(statusCount.entries())
+      .map(([status, count]) => ({ status, label: getStatusLabel(status), count }))
+      .sort((a, b) => b.count - a.count);
+  }, [orders]);
+
   const totalRevenue = Number(dashboard?.totalRevenue || 0);
   const totalOrders = Number(dashboard?.totalOrders || 0);
   const averageOrder = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-  const completedOrders = orders.filter((order: any) => ['DELIVERED', 'COMPLETED', 'delivered', 'completed'].includes(order.status)).length;
+  const completedOrders = orders.filter(isRevenueOrder).length;
   const completionRate = orders.length > 0 ? Math.round((completedOrders / orders.length) * 100) : 0;
+  const nonRevenueOrders = Math.max(orders.length - completedOrders, 0);
+  const hasOrdersWithoutRevenue = totalOrders > 0 && totalRevenue === 0 && completedOrders === 0;
 
   return (
     <div className="flex h-screen bg-background">
@@ -203,6 +239,18 @@ export default function AnalyticsPage() {
           </div>
 
           <RecommendationOpsCard />
+
+          {hasOrdersWithoutRevenue && (
+            <Card className="mb-6 border-amber-200 bg-amber-50 text-amber-950">
+              <CardContent className="p-4">
+                <p className="font-semibold">Có dữ liệu đơn hàng thật, nhưng chưa phát sinh doanh thu được ghi nhận.</p>
+                <p className="mt-1 text-sm">
+                  Dashboard đang có {totalOrders.toLocaleString('vi-VN')} đơn. Doanh thu, biểu đồ doanh thu và top shop chỉ tính đơn
+                  ở trạng thái DELIVERED/COMPLETED, hiện chưa có đơn nào đạt trạng thái này nên số tiền đang là 0.
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="mb-8 grid grid-cols-4 gap-4">
             <Card>
@@ -239,6 +287,57 @@ export default function AnalyticsPage() {
               <CardContent>
                 <p className="text-2xl font-bold text-foreground">{completionRate}%</p>
                 <p className="mt-1 text-xs text-muted-foreground">Đơn đã giao / hoàn tất</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="mb-8 grid grid-cols-3 gap-4">
+            <Card className="col-span-2">
+              <CardHeader>
+                <CardTitle>Trạng thái đơn hàng</CardTitle>
+                <CardDescription>Dữ liệu lấy từ order API, giúp kiểm tra vì sao doanh thu đang bằng 0</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {orderStatusData.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Chưa có dữ liệu đơn hàng</p>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {orderStatusData.map((item) => (
+                      <div key={item.status} className="flex items-center justify-between rounded-lg border p-3">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{item.label}</p>
+                          <p className="text-xs text-muted-foreground">{item.status}</p>
+                        </div>
+                        <span className="text-lg font-semibold text-foreground">{item.count.toLocaleString('vi-VN')}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Nguồn dữ liệu</CardTitle>
+                <CardDescription>Các khối trên trang đang gọi API thật</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Dashboard API</span>
+                  <span className="font-medium">{totalOrders.toLocaleString('vi-VN')} đơn</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Order API</span>
+                  <span className="font-medium">{orders.length.toLocaleString('vi-VN')} đơn tải lên UI</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Đơn tính doanh thu</span>
+                  <span className="font-medium">{completedOrders.toLocaleString('vi-VN')}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Đơn chưa tính doanh thu</span>
+                  <span className="font-medium">{nonRevenueOrders.toLocaleString('vi-VN')}</span>
+                </div>
               </CardContent>
             </Card>
           </div>

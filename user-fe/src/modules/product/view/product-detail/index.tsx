@@ -53,13 +53,15 @@ export default function ProductDetailPage() {
 
   const { selectedVariant, setSelectedVariant, price, originalPrice, stock } = useProductDetail(product as IProduct);
   const galleryImages = useMemo(() => {
-    const productImages = product?.images?.map((image) => image.url).filter(Boolean) ?? [];
-    const variantImages = (selectedVariant?.variantImages ?? selectedVariant?.images ?? [])
-      .map((image) => image.url)
-      .filter(Boolean);
+    const getImageUrls = (images?: Array<{ url?: string | null }>) =>
+      images?.map((image) => image.url).filter((url): url is string => Boolean(url)) ?? [];
+    const productImages = getImageUrls(product?.images);
+    const selectedVariantImages = getImageUrls(selectedVariant?.variantImages ?? selectedVariant?.images);
+    const allVariantImages =
+      product?.variants?.flatMap((variant) => getImageUrls(variant.variantImages ?? variant.images)) ?? [];
 
-    return Array.from(new Set([...variantImages, ...productImages]));
-  }, [product?.images, selectedVariant]);
+    return Array.from(new Set([...selectedVariantImages, ...productImages, ...allVariantImages]));
+  }, [product?.images, product?.variants, selectedVariant]);
 
   useEffect(() => {
     if (!product) {

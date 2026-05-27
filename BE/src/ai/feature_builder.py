@@ -57,6 +57,54 @@ class FeatureBuilder:
         ]
         return interactions
 
+    async def build_timed_interactions(
+        self,
+        days_back: int = 180,
+        min_weight: float = 0.5,
+    ) -> List[Tuple[int, int, float, datetime]]:
+        since = datetime.now(timezone.utc) - timedelta(days=days_back)
+        interaction_weights: Dict[Tuple[int, int], float] = defaultdict(float)
+        latest_seen_at: Dict[Tuple[int, int], datetime] = {}
+
+        behaviors = await prisma.userbehavior.find_many(
+            where={"createdAt": {"gte": since}, "deletedAt": None},
+        )
+
+        for behavior in behaviors:
+            key = (behavior.userId, behavior.productId)
+            action_value = self._to_action_value(behavior.action)
+            interaction_weights[key] += self.ACTION_WEIGHTS.get(action_value, 1.0)
+            created_at = self._as_naive_utc(behavior.createdAt)
+            latest_seen_at[key] = max(latest_seen_at.get(key, created_at), created_at)
+
+        orders = await prisma.order.find_many(
+            where={"createdAt": {"gte": since}, "deletedAt": None},
+        )
+        order_user_map = {order.id: order.userId for order in orders}
+        order_created_at_map = {order.id: self._as_naive_utc(order.createdAt) for order in orders}
+
+        if order_user_map:
+            order_items = await prisma.orderitem.find_many(
+                where={"orderId": {"in": list(order_user_map.keys())}, "deletedAt": None},
+            )
+
+            for order_item in order_items:
+                user_id = order_user_map.get(order_item.orderId)
+                if user_id is None:
+                    continue
+                key = (user_id, order_item.productId)
+                quantity = max(order_item.quantity or 1, 1)
+                interaction_weights[key] += self.ORDER_PURCHASE_BASE_WEIGHT + min(quantity, 5) * 0.4
+                event_time = self._as_naive_utc(order_item.createdAt) if order_item.createdAt else order_created_at_map.get(order_item.orderId)
+                if event_time:
+                    latest_seen_at[key] = max(latest_seen_at.get(key, event_time), event_time)
+
+        return [
+            (user_id, product_id, weight, latest_seen_at[(user_id, product_id)])
+            for (user_id, product_id), weight in interaction_weights.items()
+            if weight >= min_weight and (user_id, product_id) in latest_seen_at
+        ]
+
     async def build_ranking_rows(self, days_back: int = 180) -> List[Tuple[int, int, float, Dict[str, float]]]:
         interactions = await self.build_interactions(days_back=days_back, min_weight=0.1)
         if not interactions:
@@ -113,3 +161,9 @@ class FeatureBuilder:
 
     def _to_action_value(self, action: str) -> str:
         return action.value if hasattr(action, "value") else str(action)
+
+    @staticmethod
+    def _as_naive_utc(value: datetime) -> datetime:
+        if getattr(value, "tzinfo", None):
+            return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value

@@ -9,7 +9,10 @@ MAX_IMAGE_SIZE = 5 * 1024 * 1024
 MAX_VIDEO_SIZE = 50 * 1024 * 1024
 ALLOWED_FOLDERS = {
     "datn",
+    "datn/admins",
     "datn/banners",
+    "datn/shops",
+    "datn/users",
     "reviews",
     "returns",
     "products",

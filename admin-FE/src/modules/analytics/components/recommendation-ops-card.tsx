@@ -17,6 +17,9 @@ type RecommendationMetrics = {
   conversionRate: number;
   usersEvaluated: number;
   interactionsEvaluated: number;
+  evaluationMode?: string;
+  trainInteractions?: number;
+  syntheticSeedEvents?: number;
   events: {
     views: number;
     clicks: number;
@@ -44,6 +47,19 @@ const percent = (value: number) => `${Math.round(value * 10000) / 100}%`;
 
 const compactNumber = (value: number) =>
   new Intl.NumberFormat("vi-VN", { notation: "compact", maximumFractionDigits: 1 }).format(value || 0);
+
+const isEvaluationReady = (metrics?: RecommendationMetrics) =>
+  Boolean(metrics && metrics.usersEvaluated > 0 && metrics.interactionsEvaluated > 0);
+
+const evaluationMetricValue = (
+  metrics: RecommendationMetrics | undefined,
+  value: number | undefined,
+  loading: boolean,
+) => {
+  if (loading) return "...";
+  if (!isEvaluationReady(metrics)) return "Chưa đủ dữ liệu";
+  return percent(value ?? 0);
+};
 
 const getRecommendationMetrics = async (): Promise<RecommendationMetrics> => {
   const response = await apiClient.get<RecommendationMetrics>(`${API_URL_ANALYTICS}/recommend/evaluate?k=10&days_back=180`);
@@ -89,6 +105,7 @@ export function RecommendationOpsCard() {
   const trainResult = trainMutation.data;
   const syncResult = syncMutation.data;
   const isBusy = trainMutation.isPending || syncMutation.isPending;
+  const evaluationReady = isEvaluationReady(metrics);
 
   return (
     <Card className="mb-8">
@@ -115,18 +132,51 @@ export function RecommendationOpsCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 md:grid-cols-4">
-          <Metric label="HitRate@10" value={metricsQuery.isLoading ? "..." : percent(metrics?.hitRateAtK ?? 0)} />
-          <Metric label="NDCG@10" value={metricsQuery.isLoading ? "..." : percent(metrics?.ndcgAtK ?? 0)} />
-          <Metric label="CTR" value={metricsQuery.isLoading ? "..." : percent(metrics?.ctr ?? 0)} />
-          <Metric label="Conversion" value={metricsQuery.isLoading ? "..." : percent(metrics?.conversionRate ?? 0)} />
+          <Metric
+            label="HitRate@10"
+            value={evaluationMetricValue(metrics, metrics?.hitRateAtK, metricsQuery.isLoading)}
+            hint="Cần mỗi user có tối thiểu 2 tương tác để tách holdout và chấm gợi ý."
+            muted={!metricsQuery.isLoading && !evaluationReady}
+          />
+          <Metric
+            label="NDCG@10"
+            value={evaluationMetricValue(metrics, metrics?.ndcgAtK, metricsQuery.isLoading)}
+            hint="Đo sản phẩm holdout có nằm đúng thứ hạng cao trong top 10 hay không."
+            muted={!metricsQuery.isLoading && !evaluationReady}
+          />
+          <Metric
+            label="CTR"
+            value={metricsQuery.isLoading ? "..." : percent(metrics?.ctr ?? 0)}
+            hint="Click / view từ bảng hành vi."
+          />
+          <Metric
+            label="Conversion"
+            value={metricsQuery.isLoading ? "..." : percent(metrics?.conversionRate ?? 0)}
+            hint="Purchase / click từ bảng hành vi."
+          />
         </div>
+
+        {!metricsQuery.isLoading && metrics && !evaluationReady ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            Chưa đủ dữ liệu để đánh giá HitRate/NDCG. Hiện có {compactNumber(metrics.usersEvaluated)} user đủ điều kiện và{" "}
+            {compactNumber(metrics.interactionsEvaluated)} interaction holdout. Hãy tạo thêm view/click/add-to-cart/mua hàng cho nhiều sản phẩm trên cùng một user, rồi train lại.
+          </div>
+        ) : null}
+
+        {!metricsQuery.isLoading && (metrics?.syntheticSeedEvents ?? 0) > 0 ? (
+          <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">
+            Đang có {compactNumber(metrics?.syntheticSeedEvents ?? 0)} behavior do script seed tạo trong DB. Metric này được tính lại từ dữ liệu đó, chưa phải số liệu production thật.
+          </div>
+        ) : null}
 
         <div className="grid gap-4 text-sm md:grid-cols-3">
           <div className="rounded-lg border p-3">
             <p className="font-medium">Tập đánh giá</p>
             <p className="mt-1 text-muted-foreground">
-              {compactNumber(metrics?.usersEvaluated ?? 0)} người dùng · {compactNumber(metrics?.interactionsEvaluated ?? 0)} tương tác
+              {compactNumber(metrics?.usersEvaluated ?? 0)} người dùng · {compactNumber(metrics?.interactionsEvaluated ?? 0)} holdout ·{" "}
+              {compactNumber(metrics?.trainInteractions ?? 0)} train
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">{metrics?.evaluationMode ?? "chronological_holdout"}</p>
           </div>
           <div className="rounded-lg border p-3">
             <p className="font-medium">Hành vi</p>
@@ -162,11 +212,22 @@ export function RecommendationOpsCard() {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({
+  label,
+  value,
+  hint,
+  muted = false,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  muted?: boolean;
+}) {
   return (
-    <div className="rounded-lg border p-3">
+    <div className={muted ? "rounded-lg border border-amber-200 bg-amber-50/60 p-3" : "rounded-lg border p-3"}>
       <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-2 text-2xl font-semibold">{value}</p>
+      <p className={muted ? "mt-2 text-lg font-semibold text-amber-800" : "mt-2 text-2xl font-semibold"}>{value}</p>
+      {hint ? <p className="mt-2 text-xs leading-5 text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }

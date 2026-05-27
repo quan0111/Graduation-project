@@ -50,6 +50,7 @@ model User {
   resolvedSecurityIncidents  SecurityIncident[]  @relation("SecurityIncidentResolvedBy")
   moderationCasesAsSeller    ProductModerationCase[] @relation("ProductModerationSeller")
   reviewedModerationCases    ProductModerationCase[] @relation("ProductModerationReviewer")
+  reviewedPayouts            SellerPayout[]      @relation("SellerPayoutReviewedBy")
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -830,14 +831,18 @@ model SellerPayout {
   periodStart DateTime?
   periodEnd   DateTime?
   paidAt      DateTime?
+  reviewedAt  DateTime?
+  reviewedById Int?
   note        String?
 
-  shop Shop @relation(fields: [shopId], references: [id])
+  shop       Shop  @relation(fields: [shopId], references: [id])
+  reviewedBy User? @relation("SellerPayoutReviewedBy", fields: [reviewedById], references: [id])
 
   createdAt DateTime @default(now())
 
   @@index([shopId])
   @@index([status])
+  @@index([reviewedById])
 }
 
 model SellerApplication {

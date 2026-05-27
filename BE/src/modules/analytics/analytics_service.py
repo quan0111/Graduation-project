@@ -1,10 +1,12 @@
 from typing import List, Optional
 
+from prisma import Json
+
 from src.ai.recommendation_engine import RecommendationEngine
 from src.ai.feature_builder import FeatureBuilder
 from src.ai.model import ItemBasedRecommendationModel
 from src.ai.pgvector_store import PGVectorStore
-from src.ai.recommendation_metrics import behavior_rates, offline_evaluate
+from src.ai.recommendation_metrics import behavior_rates, evaluate_holdout, split_train_holdout_chronological
 from src.ai.train import train_model
 from src.core.database import prisma
 from src.modules.analytics.analytics_schema import BehaviorTrackPayload, BehaviorType
@@ -23,6 +25,18 @@ class AnalyticsService:
     }
 
     @staticmethod
+    def _json_safe(value):
+        if hasattr(value, "model_dump"):
+            return value.model_dump()
+        if isinstance(value, dict):
+            return {str(key): AnalyticsService._json_safe(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple, set)):
+            return [AnalyticsService._json_safe(item) for item in value]
+        if hasattr(value, "value"):
+            return value.value
+        return value
+
+    @staticmethod
     async def track_event(data):
         create_data = {
             "action": data.action,
@@ -32,7 +46,7 @@ class AnalyticsService:
             "product": {"connect": {"id": data.productId}},
         }
         if data.metadata is not None:
-            create_data["metadata"] = data.metadata
+            create_data["metadata"] = Json(AnalyticsService._json_safe(data.metadata))
         behavior = await prisma.userbehavior.create(data=create_data)
         await SecurityService.inspect_behavior(data.userId)
         return behavior
@@ -47,7 +61,7 @@ class AnalyticsService:
             "product": {"connect": {"id": payload.productId}},
         }
         if payload.metadata is not None:
-            create_data["metadata"] = payload.metadata
+            create_data["metadata"] = Json(AnalyticsService._json_safe(payload.metadata))
         behavior = await prisma.userbehavior.create(data=create_data)
         await SecurityService.inspect_behavior(user_id)
         return behavior
@@ -74,14 +88,42 @@ class AnalyticsService:
     async def get_top_products(limit: int = 10):
         grouped = await prisma.userbehavior.group_by(
             by=["productId"],
-            _count={"productId": True},
-            order={"_count": {"productId": "desc"}},
-            take=limit,
+            where={"deletedAt": None},
+            count={"productId": True},
         )
-        product_ids = [group["productId"] for group in grouped if group.get("productId") is not None]
+        ranking = AnalyticsService._rank_product_groups(grouped, limit)
+        product_ids = [group["productId"] for group in ranking]
         products = await AnalyticsService._get_products_by_rank(product_ids)
 
-        return {"ranking": grouped, "products": products}
+        return {"ranking": ranking, "products": products}
+
+    @staticmethod
+    def _rank_product_groups(grouped, limit: int):
+        ranking = []
+        for group in grouped:
+            product_id = AnalyticsService._read_group_value(group, "productId")
+            if product_id is None:
+                continue
+            count_data = AnalyticsService._read_group_value(group, "_count") or {}
+            count = AnalyticsService._read_group_value(count_data, "productId")
+            if count is None:
+                count = AnalyticsService._read_group_value(count_data, "_all") or 0
+            ranking.append(
+                {
+                    "productId": product_id,
+                    "count": int(count or 0),
+                    "_count": {"productId": int(count or 0)},
+                }
+            )
+
+        ranking.sort(key=lambda item: item["count"], reverse=True)
+        return ranking[: max(1, min(int(limit or 10), 100))]
+
+    @staticmethod
+    def _read_group_value(group, key: str):
+        if isinstance(group, dict):
+            return group.get(key)
+        return getattr(group, key, None)
 
     @staticmethod
     async def recommend_products(user_id: int, top_k: int = 10, context_product_id: Optional[int] = None):
@@ -166,11 +208,12 @@ class AnalyticsService:
     @staticmethod
     async def evaluate_recommendations(k: int = 10, days_back: int = 180):
         builder = FeatureBuilder()
-        interactions = await builder.build_interactions(days_back=days_back, min_weight=0.1)
+        interactions = await builder.build_timed_interactions(days_back=days_back, min_weight=0.1)
+        train_interactions, holdout_by_user = split_train_holdout_chronological(interactions)
 
         model = ItemBasedRecommendationModel(k_items=40)
-        model.fit(interactions)
-        metrics = offline_evaluate(interactions, lambda user_id, top_k: model.recommend(user_id=user_id, top_k=top_k), k=k)
+        model.fit(train_interactions)
+        metrics = evaluate_holdout(holdout_by_user, lambda user_id, top_k: model.recommend(user_id=user_id, top_k=top_k), k=k)
 
         views = await prisma.userbehavior.count(where={"action": BehaviorType.VIEW.value, "deletedAt": None})
         clicks = await prisma.userbehavior.count(where={"action": BehaviorType.CLICK.value, "deletedAt": None})
@@ -186,6 +229,9 @@ class AnalyticsService:
             "conversionRate": conversion_rate,
             "usersEvaluated": metrics.users_evaluated,
             "interactionsEvaluated": metrics.interactions_evaluated,
+            "evaluationMode": "chronological_holdout",
+            "trainInteractions": len(train_interactions),
+            "syntheticSeedEvents": await prisma.userbehavior.count(where={"sessionId": {"startsWith": "rec-seed-"}}),
             "events": {"views": views, "clicks": clicks, "purchases": purchases},
         }
 

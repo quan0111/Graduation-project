@@ -3,7 +3,6 @@ import { Link, useLocation } from "react-router-dom";
 import {
   BadgeDollarSign,
   BarChart3,
-  ChevronDown,
   ClipboardList,
   HelpCircle,
   Home,
@@ -22,10 +21,11 @@ import {
   UserRound,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/modules/notification/components/notification-bell";
+import { useGetShopByOwnerId } from "@/modules/shop/api/myshop";
 
 const menuGroups = [
   {
@@ -54,7 +54,7 @@ const menuGroups = [
   {
     label: "Hệ thống",
     items: [
-      { label: "Cài đặt shop", href: "/seller/dashboard#settings", icon: Settings, match: "/seller/dashboard" },
+      { label: "Cài đặt shop", href: "/seller/settings", icon: Settings, match: "/seller/settings" },
       { label: "Trợ giúp", href: "/seller/support", icon: HelpCircle, match: "/seller/support" },
     ],
   },
@@ -66,6 +66,9 @@ interface SellerDashboardLayoutProps {
 
 export function SellerDashboardLayout({ children }: SellerDashboardLayoutProps) {
   const location = useLocation();
+  const { data: shop, isLoading: isShopLoading } = useGetShopByOwnerId({ retry: false });
+  const shopName = shop?.name?.trim() || (isShopLoading ? "Đang tải shop..." : "Shop của bạn");
+  const publicShopHref = shop?.id ? `/shop/${shop.id}` : "/seller/settings";
 
   return (
     <div className="min-h-screen bg-[#f5f5f5] text-slate-900">
@@ -78,7 +81,7 @@ export function SellerDashboardLayout({ children }: SellerDashboardLayoutProps) 
             <p className="text-sm font-semibold uppercase tracking-wide text-[#ee4d2d]">
               Kênh người bán
             </p>
-            <p className="text-xs text-slate-500">Kênh người bán</p>
+            <p className="max-w-40 truncate text-xs text-slate-500">{shopName}</p>
           </div>
         </div>
 
@@ -129,7 +132,10 @@ export function SellerDashboardLayout({ children }: SellerDashboardLayoutProps) 
               <div className="flex size-9 items-center justify-center rounded-xl bg-[#ee4d2d] text-white">
                 <Store className="size-4" />
               </div>
+              <div className="min-w-0">
                 <span className="text-sm font-semibold text-[#ee4d2d]">Kênh người bán</span>
+                <p className="max-w-36 truncate text-xs text-slate-500">{shopName}</p>
+              </div>
             </div>
 
             <div className="hidden w-full max-w-xl items-center gap-2 rounded-full border border-orange-100 bg-orange-50/60 px-4 py-2 md:flex">
@@ -146,19 +152,33 @@ export function SellerDashboardLayout({ children }: SellerDashboardLayoutProps) 
                 <MessageCircle className="size-5 text-slate-600" />
               </Link>
               <NotificationBell />
-              <Button variant="outline" className="hidden gap-2 rounded-full md:inline-flex">
-                <Home className="size-4" />
-                Xem shop
-              </Button>
               <Link
                 to="/"
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "size-9 rounded-full px-0 md:size-auto md:gap-2 md:px-3",
+                )}
+                aria-label="Về trang người dùng"
+              >
+                <Home className="size-4" />
+                <span className="hidden md:inline">Trang người dùng</span>
+              </Link>
+              <Link
+                to={publicShopHref}
+                className={cn(buttonVariants({ variant: "outline" }), "hidden gap-2 rounded-full md:inline-flex")}
+              >
+                <Store className="size-4" />
+                Xem shop
+              </Link>
+              <Link
+                to="/seller/settings"
                 className="flex items-center gap-2 rounded-full border border-orange-100 bg-white px-2 py-1.5 text-sm font-medium text-slate-700"
               >
                 <div className="flex size-8 items-center justify-center rounded-full bg-orange-100 text-[#ee4d2d]">
                   <UserRound className="size-4" />
                 </div>
-                <span className="hidden sm:inline">TechMall Official</span>
-                <ChevronDown className="hidden size-4 text-slate-400 sm:block" />
+                <span className="hidden max-w-40 truncate sm:inline">{shopName}</span>
+                <Settings className="hidden size-4 text-slate-400 sm:block" />
               </Link>
             </div>
           </div>

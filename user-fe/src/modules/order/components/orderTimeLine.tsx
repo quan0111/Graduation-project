@@ -43,7 +43,7 @@ const addEvent = (events: Array<{ at: string; title: string; detail?: string }>,
 };
 
 const getStepTime = (stepKey: IOrder["status"], order: IOrder, isCurrent: boolean) => {
-  const trackingSource = order.shipment ?? order.shop_package ?? order.packages?.[0] ?? null;
+  const trackingSource = order.shop_package ?? order.packages?.[0] ?? order.shipment ?? null;
 
   if (stepKey === "pending") return order.created_at;
   if (stepKey === "pending_payment") return order.payment?.created_at ?? (isCurrent ? order.updated_at : null);

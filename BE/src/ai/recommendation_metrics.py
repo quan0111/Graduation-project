@@ -1,11 +1,14 @@
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Callable, Dict, Iterable, List, Sequence, Tuple
 
 import numpy as np
 
 
 Interaction = Tuple[int, int, float]
+TimedInteraction = Tuple[int, int, float, datetime]
+HoldoutMap = Dict[int, Dict[int, float]]
 
 
 @dataclass
@@ -71,6 +74,96 @@ def offline_evaluate(
         ctr=0.0,
         conversion_rate=0.0,
         users_evaluated=users_evaluated,
+        interactions_evaluated=evaluated_interactions,
+    )
+
+
+def split_train_holdout(
+    interactions: Iterable[Interaction],
+    holdout_ratio: float = 0.2,
+) -> Tuple[List[Interaction], HoldoutMap]:
+    by_user: Dict[int, List[Tuple[int, float]]] = defaultdict(list)
+    for user_id, product_id, weight in interactions:
+        by_user[int(user_id)].append((int(product_id), float(weight)))
+
+    train_rows: List[Interaction] = []
+    holdout_by_user: HoldoutMap = {}
+
+    for user_id, rows in by_user.items():
+        if len(rows) < 2:
+            train_rows.extend((user_id, product_id, weight) for product_id, weight in rows)
+            continue
+
+        rows = sorted(rows, key=lambda item: item[1], reverse=True)
+        holdout_size = max(1, int(len(rows) * holdout_ratio))
+        holdout = rows[:holdout_size]
+        train = rows[holdout_size:]
+
+        if not train:
+            train = rows[1:]
+            holdout = rows[:1]
+
+        train_rows.extend((user_id, product_id, weight) for product_id, weight in train)
+        if train:
+            holdout_by_user[user_id] = {product_id: min(weight, 5.0) for product_id, weight in holdout}
+
+    return train_rows, holdout_by_user
+
+
+def split_train_holdout_chronological(
+    interactions: Iterable[TimedInteraction],
+    holdout_ratio: float = 0.2,
+) -> Tuple[List[Interaction], HoldoutMap]:
+    by_user: Dict[int, List[Tuple[int, float, datetime]]] = defaultdict(list)
+    for user_id, product_id, weight, seen_at in interactions:
+        by_user[int(user_id)].append((int(product_id), float(weight), seen_at))
+
+    train_rows: List[Interaction] = []
+    holdout_by_user: HoldoutMap = {}
+
+    for user_id, rows in by_user.items():
+        if len(rows) < 2:
+            train_rows.extend((user_id, product_id, weight) for product_id, weight, _ in rows)
+            continue
+
+        rows = sorted(rows, key=lambda item: item[2])
+        holdout_size = max(1, int(len(rows) * holdout_ratio))
+        train = rows[:-holdout_size]
+        holdout = rows[-holdout_size:]
+
+        if not train:
+            train = rows[:-1]
+            holdout = rows[-1:]
+
+        train_rows.extend((user_id, product_id, weight) for product_id, weight, _ in train)
+        if train:
+            holdout_by_user[user_id] = {product_id: min(weight, 5.0) for product_id, weight, _ in holdout}
+
+    return train_rows, holdout_by_user
+
+
+def evaluate_holdout(
+    holdout_by_user: HoldoutMap,
+    recommend_fn: Callable[[int, int], Sequence[int]],
+    k: int = 10,
+) -> RecommendationMetrics:
+    hit_rates = []
+    ndcgs = []
+    evaluated_interactions = 0
+
+    for user_id, relevance in holdout_by_user.items():
+        recommended_ids = list(recommend_fn(user_id, k))
+        relevant_ids = set(relevance)
+        hit_rates.append(hit_rate_at_k(recommended_ids, relevant_ids, k))
+        ndcgs.append(ndcg_at_k(recommended_ids, relevance, k))
+        evaluated_interactions += len(relevance)
+
+    return RecommendationMetrics(
+        hit_rate_at_k=float(np.mean(hit_rates)) if hit_rates else 0.0,
+        ndcg_at_k=float(np.mean(ndcgs)) if ndcgs else 0.0,
+        ctr=0.0,
+        conversion_rate=0.0,
+        users_evaluated=len(hit_rates),
         interactions_evaluated=evaluated_interactions,
     )
 

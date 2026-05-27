@@ -2,6 +2,7 @@ import { Star } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import type { IProduct } from "@/modules/product/types";
+import { getProductImageUrl } from "@/modules/product/utils/image";
 
 interface ProductCardProps {
   product: IProduct;
@@ -12,9 +13,6 @@ const TEXT = {
   new: "M\u1edbi",
   marketplace: "Marketplace",
 };
-
-const getImageUrl = (product: IProduct) =>
-  product.images?.find((img) => img.is_primary)?.url ?? product.images?.[0]?.url ?? "/placeholder.png";
 
 const getRating = (product: IProduct) => {
   if (!product.reviews?.length) {
@@ -41,7 +39,7 @@ export const ProductCard = ({ product, onClick }: ProductCardProps) => {
     >
       <div className="aspect-square overflow-hidden bg-orange-50">
         <img
-          src={getImageUrl(product)}
+          src={getProductImageUrl(product)}
           alt={product.name}
           className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
           loading="lazy"

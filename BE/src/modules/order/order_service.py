@@ -7,6 +7,7 @@ from src.core.database import prisma
 from src.core.dependencies import get_role_value
 from src.modules.audit.audit_service import AuditService
 from src.modules.coupon.coupon_service import CouponService
+from src.modules.finance.finance_service import FinanceService
 from src.modules.inventory.inventory_service import InventoryService
 from src.modules.notification.notification_schema import NotificationCreate
 from src.modules.notification.notification_service import NotificationService
@@ -1175,8 +1176,12 @@ class OrderService:
         current_status = OrderService._to_value(order.status)
         role = get_role_value(current_user)
         shop = None
+        is_customer_action = order.userId == current_user.id and next_status in CUSTOMER_TRANSITIONS.get(current_status, set())
 
-        if role == "ADMIN":
+        if is_customer_action:
+            role = "CUSTOMER"
+            transitions = CUSTOMER_TRANSITIONS
+        elif role == "ADMIN":
             transitions = ADMIN_TRANSITIONS
         elif role == "SELLER":
             shop = await OrderService._assert_seller_order_access(order, current_user)
@@ -1190,6 +1195,8 @@ class OrderService:
             transitions = CUSTOMER_TRANSITIONS
 
         OrderService._assert_transition(current_status, next_status, transitions)
+        if role == "CUSTOMER" and next_status == "COMPLETED" and len(getattr(order, "packages", []) or []) > 1:
+            raise HTTPException(400, "Vui lòng xác nhận đã nhận hàng theo từng shop")
 
         # Shopee-like flow: online payments must be paid before seller confirms.
         if current_status == "PENDING" and next_status == "CONFIRMED":
@@ -1206,6 +1213,8 @@ class OrderService:
         async with prisma.tx() as tx:
             if role == "SELLER":
                 package = await OrderService._ensure_shop_package(tx, order_id, shop.id, current_status)
+                if next_status == "SHIPPED":
+                    raise HTTPException(400, "Cần cập nhật Đã gửi hàng trong mục vận chuyển kèm đơn vị vận chuyển và mã vận đơn")
                 if next_status == "CANCELLED_BY_SELLER" and current_status not in TERMINAL_CANCEL_STATUSES:
                     if order.payment and OrderService._to_value(order.payment.status) in {"SUCCESS", "PAYMENT_SUCCESS"}:
                         raise HTTPException(400, "Paid orders must be refunded before cancellation")
@@ -1267,6 +1276,7 @@ class OrderService:
                 )
                 updated = await tx.order.find_unique(where={"id": order_id}, include=ORDER_INCLUDE)
 
+        await FinanceService.ensure_order_commissions(order_id)
         await AuditService.create(
             actor_id=current_user.id,
             action="ORDER.STATUS_UPDATED",
@@ -1279,6 +1289,43 @@ class OrderService:
         await OrderService._notify_order_update(order_id, next_status, actor_id=current_user.id)
         if role == "SELLER" and shop is not None:
             return OrderService._filter_order_items_for_shop(updated, shop.id)
+        return updated
+
+    @staticmethod
+    async def confirm_package_received(order_id: int, package_id: int, current_user):
+        order = await OrderService._get_order_or_404(order_id)
+        if order.userId != current_user.id:
+            raise HTTPException(403, "Forbidden")
+
+        package = await prisma.ordershoppackage.find_first(
+            where={"id": package_id, "orderId": order_id},
+        )
+        if not package:
+            raise HTTPException(404, "Shop package not found")
+
+        current_status = OrderService._to_value(package.status)
+        if current_status == "COMPLETED":
+            return await prisma.order.find_unique(where={"id": order_id}, include=ORDER_INCLUDE)
+        if current_status != "DELIVERED":
+            raise HTTPException(400, "Only delivered shop packages can be confirmed as received")
+
+        async with prisma.tx() as tx:
+            await tx.ordershoppackage.update(
+                where={"id": package_id},
+                data={"status": "COMPLETED"},
+            )
+            updated = await OrderService._sync_order_status_from_packages(tx, order_id)
+
+        await FinanceService.ensure_order_commissions(order_id)
+        await AuditService.create(
+            actor_id=current_user.id,
+            action="ORDER.PACKAGE_RECEIVED",
+            entity_type="OrderShopPackage",
+            entity_id=package_id,
+            target_user_id=order.userId,
+            severity="INFO",
+            metadata={"orderId": order_id, "shopId": package.shopId, "from": current_status, "to": "COMPLETED"},
+        )
         return updated
 
     @staticmethod
@@ -1336,6 +1383,7 @@ class OrderService:
                 data={"status": next_status},
             )
 
+        await FinanceService.ensure_order_commissions(order_id)
         await AuditService.create(
             actor_id=current_user.id,
             action="ORDER.CANCEL_REQUESTED" if next_status == "CANCEL_REQUESTED" else "ORDER.CANCELLED",

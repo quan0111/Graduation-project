@@ -1,3 +1,4 @@
+from copy import deepcopy
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
@@ -197,13 +198,20 @@ class ProductService:
         }
 
     @staticmethod
+    def _visible_positioned_items(items):
+        return sorted(
+            [item for item in items or [] if not item.get("deletedAt")],
+            key=lambda item: item.get("position") or 0,
+        )
+
+    @staticmethod
     def _serialize_product_dict(product):
-        data = product.model_dump()
+        data = deepcopy(product) if isinstance(product, dict) else product.model_dump()
         now = datetime.utcnow()
-        data["variants"] = data.get("variants") or []
+        data["variants"] = [variant for variant in data.get("variants") or [] if not variant.get("deletedAt")]
         data["tags"] = data.get("tags") or []
-        data["images"] = data.get("images") or []
-        data["attributes"] = data.get("attributes") or []
+        data["images"] = ProductService._visible_positioned_items(data.get("images"))
+        data["attributes"] = [attribute for attribute in data.get("attributes") or [] if not attribute.get("deletedAt")]
         product_level_sale = ProductService._active_flash_sale_payload(
             [item for item in data.get("flashSaleItems", []) if item.get("variantId") is None],
             now,
@@ -211,6 +219,7 @@ class ProductService:
         card_sale = ProductService._active_flash_sale_payload(data.get("flashSaleItems", []), now)
         data["activeFlashSale"] = card_sale or product_level_sale
         for variant in data["variants"]:
+            variant["images"] = ProductService._visible_positioned_items(variant.get("images"))
             variant_sale = ProductService._active_flash_sale_payload(variant.get("flashSaleItems", []), now)
             variant["activeFlashSale"] = variant_sale or product_level_sale
         data["totalStock"] = sum((variant.get("stock") or 0) for variant in data["variants"])
@@ -330,7 +339,7 @@ class ProductService:
 
     @staticmethod
     @cache_invalidate(f"{CacheManager.PRODUCT_LIST}*")
-    @cache_invalidate(f"{CacheManager.PRODUCT_DETAIL}:"+"{product_id}")
+    @cache_invalidate(f"{CacheManager.PRODUCT_DETAIL}*")
     @cache_invalidate(f"{CacheManager.SHOP_PRODUCTS}*")
     async def update_product(product_id: int, product_data: ProductUpdate, viewer) -> ProductOut:
         existing = await prisma.product.find_unique(
@@ -428,7 +437,7 @@ class ProductService:
 
     @staticmethod
     @cache_invalidate(f"{CacheManager.PRODUCT_LIST}*")
-    @cache_invalidate(f"{CacheManager.PRODUCT_DETAIL}:"+"{product_id}")
+    @cache_invalidate(f"{CacheManager.PRODUCT_DETAIL}*")
     @cache_invalidate(f"{CacheManager.SHOP_PRODUCTS}*")
     async def delete_product(product_id: int, viewer):
         await ProductService._assert_product_access(product_id, viewer)
@@ -448,7 +457,7 @@ class ProductService:
             if not product:
                 raise HTTPException(404, "Product not found")
 
-        return await prisma.productimage.create(
+        image = await prisma.productimage.create(
             data={
                 "product": {"connect": {"id": product_id}},
                 "url": url,
@@ -456,6 +465,8 @@ class ProductService:
                 "isPrimary": isPrimary,
             }
         )
+        await CacheManager.invalidate_product_cache(product_id)
+        return image
 
     @staticmethod
     async def update_product_image(image_id: int, url: str = None, position: int = None, isPrimary: bool = None, viewer=None):
@@ -474,15 +485,17 @@ class ProductService:
         if isPrimary is not None:
             data["isPrimary"] = isPrimary
 
-        return await prisma.productimage.update(
+        updated = await prisma.productimage.update(
             where={"id": image_id},
             data=data,
         )
+        await CacheManager.invalidate_product_cache(updated.productId)
+        return updated
 
     @staticmethod
     async def delete_product_image(image_id: int, viewer=None):
         if viewer is not None:
-            await ProductService._assert_product_image_access(image_id, viewer)
+            image = await ProductService._assert_product_image_access(image_id, viewer)
         else:
             image = await prisma.productimage.find_unique(where={"id": image_id})
             if not image:
@@ -492,6 +505,7 @@ class ProductService:
             where={"id": image_id},
             data={"deletedAt": datetime.utcnow()}
         )
+        await CacheManager.invalidate_product_cache(image.productId)
 
         return {"message": "Image deleted"}
 
@@ -510,6 +524,7 @@ class ProductService:
             where={"id": image_id},
             data={"isPrimary": True}
         )
+        await CacheManager.invalidate_product_cache(image.productId)
 
         return {"message": "Primary image updated"}
 
@@ -523,5 +538,6 @@ class ProductService:
                 where={"id": image["id"]},
                 data={"position": image["position"]}
             )
+        await CacheManager.invalidate_product_cache(product_id)
 
         return {"message": "Images reordered"}

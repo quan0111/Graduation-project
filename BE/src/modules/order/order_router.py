@@ -166,6 +166,15 @@ async def update_order(
     return await OrderService.update_order(order_id, user, order_data)
 
 
+@router.patch("/{order_id}/packages/{package_id}/complete", response_model=OrderOut)
+async def confirm_package_received(
+    order_id: int,
+    package_id: int,
+    user=Depends(get_current_user),
+):
+    return await OrderService.confirm_package_received(order_id, package_id, user)
+
+
 @router.patch("/{order_id}/cancel")
 async def cancel_order(order_id: int, data: CancelOrderRequest | None = None, user=Depends(get_current_user)):
     await OrderService.cancel_order(order_id, user, data.reason if data else None, data.note if data else None)

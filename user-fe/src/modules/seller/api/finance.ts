@@ -9,6 +9,15 @@ export interface SellerPayout {
   amount: number;
   status: string;
   createdAt: string;
+  paidAt?: string | null;
+  reviewedAt?: string | null;
+  reviewedById?: number | null;
+  reviewedBy?: {
+    id: number;
+    email: string;
+    fullName?: string | null;
+  } | null;
+  note?: string | null;
 }
 
 export interface SellerWallet {

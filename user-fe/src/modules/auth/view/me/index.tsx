@@ -1,24 +1,9 @@
 import { type ReactNode, useEffect, useState } from "react";
-import {
-  Camera,
-  LogOut,
-  Save,
-  Shield,
-  Sparkles,
-  Store,
-  UserRound,
-} from "lucide-react";
+import { Camera, KeyRound, LogOut, Save, ShieldCheck, Store, UserRound } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,14 +21,13 @@ type PasswordForm = {
 export default function AccountPage() {
   const { data: user, isLoading } = useGetCurrentUser();
   const isSeller = user?.role === "SELLER";
-
   const { data: shop } = useGetShopByOwnerId({
     enabled: isSeller,
     retry: false,
     throwOnError: false as never,
   });
 
-  const { mutateAsync: logout, isPending: isLogoutPending } = useLogout();
+  const { mutateAsync: logout, isPending: isLoggingOut } = useLogout();
   const { mutateAsync: updateProfile, isPending: isSavingProfile } = useUpdateProfile();
   const { mutateAsync: changePassword, isPending: isChangingPassword } = useChangePassword();
   const { mutateAsync: uploadImage, isPending: isUploadingImage } = useUploadImage();
@@ -51,7 +35,6 @@ export default function AccountPage() {
 
   const [profileForm, setProfileForm] = useState({
     fullName: "",
-    email: "",
     phone: "",
     avatarUrl: "",
   });
@@ -68,23 +51,16 @@ export default function AccountPage() {
   });
 
   useEffect(() => {
-    if (!user) {
-      return;
-    }
-
+    if (!user) return;
     setProfileForm({
       fullName: user.fullName || "",
-      email: user.email || "",
       phone: user.phone || "",
       avatarUrl: user.avatarUrl || "",
     });
   }, [user]);
 
   useEffect(() => {
-    if (!shop) {
-      return;
-    }
-
+    if (!shop) return;
     setShopForm({
       name: shop.name || "",
       slug: shop.slug || "",
@@ -93,67 +69,40 @@ export default function AccountPage() {
     });
   }, [shop]);
 
-  const uploadAvatar = async (file: File, folder: string) => {
-    const result = await uploadImage({ file, folder });
-    return result.url;
-  };
-
-  const handleProfileAvatarChange = async (file?: File) => {
-    if (!file) {
-      return;
-    }
-
+  const handleUpload = async (file: File | undefined, folder: string, onDone: (url: string) => void) => {
+    if (!file) return;
     try {
-      const avatarUrl = await uploadAvatar(file, "datn/users");
-      setProfileForm((current) => ({ ...current, avatarUrl }));
-      toast.success("Đã tải avatar lên");
+      const result = await uploadImage({ file, folder });
+      onDone(result.url);
+      toast.success("Đã tải ảnh lên");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Không tải được avatar";
-      toast.error(message);
-    }
-  };
-
-  const handleShopAvatarChange = async (file?: File) => {
-    if (!file) {
-      return;
-    }
-
-    try {
-      const avatarUrl = await uploadAvatar(file, "datn/shops");
-      setShopForm((current) => ({ ...current, avatarUrl }));
-      toast.success("Đã tải ảnh shop lên thành công");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Không tải được ảnh shop";
-      toast.error(message);
+      toast.error(error instanceof Error ? error.message : "Không tải được ảnh");
     }
   };
 
   const handleSaveProfile = async () => {
     try {
       await updateProfile(profileForm);
-      toast.success("Cập nhật thành công");
+      toast.success("Đã lưu hồ sơ");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Không cập nhật được profile";
-      toast.error(message);
+      toast.error(error instanceof Error ? error.message : "Không lưu được hồ sơ");
     }
   };
 
   const handleSaveShop = async () => {
     try {
       await updateMyShop(shopForm);
-      toast.success("Cập nhật shop thành công");
+      toast.success("Đã lưu thông tin shop");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Không cập nhật được shop";
-      toast.error(message);
+      toast.error(error instanceof Error ? error.message : "Không lưu được shop");
     }
   };
 
   const handleChangePassword = async () => {
     if (!passwordForm.currentPassword || !passwordForm.newPassword) {
-      toast.error("Nhập đầy đủ mật khẩu hiện tại và mật khẩu mới");
+      toast.error("Nhập mật khẩu hiện tại và mật khẩu mới");
       return;
     }
-
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       toast.error("Mật khẩu xác nhận không khớp");
       return;
@@ -164,26 +113,21 @@ export default function AccountPage() {
         currentPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword,
       });
-      setPasswordForm({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-      toast.success("Đổi mật khẩu thành công");
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      toast.success("Đã đổi mật khẩu");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Không đổi được mật khẩu";
-      toast.error(message);
+      toast.error(error instanceof Error ? error.message : "Không đổi được mật khẩu");
     }
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-[70vh] bg-[radial-gradient(circle_at_top,#ffe5d8,transparent_45%),linear-gradient(180deg,#fff7f3_0%,#ffffff_40%)] px-4 py-10">
-        <div className="mx-auto max-w-6xl space-y-6">
-          <div className="h-56 animate-pulse rounded-4xl bg-white/70 ring-1 ring-orange-100" />
-          <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-            <div className="h-96 animate-pulse rounded-[28px] bg-white/70 ring-1 ring-orange-100" />
-            <div className="h-96 animate-pulse rounded-[28px] bg-white/70 ring-1 ring-orange-100" />
+      <div className="min-h-[70vh] bg-[#fff7f2] px-4 py-8">
+        <div className="mx-auto max-w-6xl space-y-5">
+          <div className="h-44 animate-pulse rounded-3xl bg-white" />
+          <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <div className="h-72 animate-pulse rounded-3xl bg-white" />
+            <div className="h-72 animate-pulse rounded-3xl bg-white" />
           </div>
         </div>
       </div>
@@ -191,298 +135,163 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="min-h-[70vh] bg-[radial-gradient(circle_at_top,#ffe1d1,transparent_38%),linear-gradient(180deg,#fff7f2_0%,#ffffff_45%)] px-4 py-10">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <section className="relative overflow-hidden rounded-[36px] bg-[linear-gradient(135deg,#1f2937_0%,#111827_36%,#ea580c_100%)] p-8 text-white shadow-[0_30px_80px_rgba(234,88,12,0.18)]">
-          <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.18),transparent_55%)]" />
-          <div className="relative flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-            <div className="flex items-center gap-5">
-              <ProfileImage
-                imageUrl={profileForm.avatarUrl}
-                fallback={profileForm.fullName || user?.email || "User"}
-                size="lg"
-              />
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white/80">
-                  <Sparkles className="size-3.5" />
-                  trung tâm tài khoản
-                </div>
-                <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                  {profileForm.fullName || "Tài khoản của bạn"}
-                </h1>
-                <p className="max-w-2xl text-sm leading-6 text-white/78">
-                  Quản lý thông tin cá nhân, bảo mật tài khoản và nếu bạn là seller thì có thể cập nhật bảo mật shop ngay tại đây.
-                </p>
+    <div className="min-h-[70vh] bg-[#fff7f2] px-4 py-8">
+      <div className="mx-auto max-w-6xl space-y-5">
+        <section className="rounded-3xl bg-[#ee4d2d] p-6 text-white shadow-sm">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-4">
+              <AvatarImage imageUrl={profileForm.avatarUrl} fallback={profileForm.fullName || user?.email || "U"} size="lg" />
+              <div>
+                <p className="text-sm uppercase tracking-[0.18em] text-white/75">Tài khoản</p>
+                <h1 className="mt-1 text-3xl font-semibold">{profileForm.fullName || user?.email || "Hồ sơ của bạn"}</h1>
+                <p className="mt-2 text-sm text-white/80">{user?.email}</p>
               </div>
             </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              <HeroMetric label="Vai trò" value={user?.role || "CUSTOMER"} />
-              <HeroMetric label="Trạng thái" value={user?.isActive ? "ACTIVE" : "LOCKED"} />
-              <HeroMetric label="Seller" value={isSeller ? "SHOP MODE" : "USER MODE"} />
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <HeroBadge label="Vai trò" value={user?.role || "CUSTOMER"} />
+              <HeroBadge label="Trạng thái" value={user?.isActive ? "Đang hoạt động" : "Bị khóa"} />
+              <HeroBadge label="Shop" value={isSeller ? "Seller" : "User"} />
             </div>
           </div>
         </section>
 
-        <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <aside className="space-y-6">
-            <Card className="rounded-[28px] border-0 bg-white/90 shadow-[0_20px_50px_rgba(15,23,42,0.06)] ring-1 ring-orange-100/80">
+        <div className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+          <aside className="space-y-5">
+            <Card className="border-0 bg-white shadow-sm ring-1 ring-orange-100">
               <CardContent className="space-y-5 pt-6">
                 <div className="flex items-center gap-4">
-                  <ProfileImage
-                    imageUrl={profileForm.avatarUrl}
-                    fallback={profileForm.fullName || user?.email || "User"}
-                  />
-                  <div>
-                    <p className="font-semibold text-slate-900">{profileForm.fullName || "Chưa đặt tên"}</p>
-                    <p className="text-sm text-slate-500">{profileForm.email}</p>
+                  <AvatarImage imageUrl={profileForm.avatarUrl} fallback={profileForm.fullName || user?.email || "U"} />
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-900">{profileForm.fullName || "Chưa đặt tên"}</p>
+                    <p className="truncate text-sm text-slate-500">{user?.email}</p>
                   </div>
                 </div>
-
-                <div className="space-y-3 rounded-3xl bg-orange-50/70 p-4">
-                  <InfoRow icon={<UserRound className="size-4" />} label="Số điện thoại" value={profileForm.phone || "Chưa cập nhật"} />
-                  <InfoRow icon={<Shield className="size-4" />} label="Bảo mật" value="Mật khẩu do người dùng quản lý" />
+                <div className="space-y-3 rounded-2xl bg-orange-50 p-4">
+                  <InfoRow icon={<UserRound className="size-4" />} label="Điện thoại" value={profileForm.phone || "Chưa cập nhật"} />
+                  <InfoRow icon={<ShieldCheck className="size-4" />} label="Bảo mật" value="Đổi mật khẩu thủ công" />
                   <InfoRow icon={<Store className="size-4" />} label="Kênh bán" value={isSeller ? "Đã kích hoạt" : "Chưa đăng ký"} />
                 </div>
-
-                <Button
-                  variant="destructive"
-                  className="w-full"
-                  disabled={isLogoutPending}
-                  onClick={() => logout(undefined)}
-                >
+                <Button variant="destructive" className="w-full gap-2" disabled={isLoggingOut} onClick={() => logout(undefined)}>
                   <LogOut className="size-4" />
                   Đăng xuất
                 </Button>
               </CardContent>
             </Card>
-
-            {isSeller && (
-              <Card className="rounded-[28px] border-0 bg-[#fff6ec] shadow-[0_20px_50px_rgba(234,88,12,0.08)] ring-1 ring-orange-100/90">
-                <CardHeader>
-                  <CardTitle>Công cụ người bán</CardTitle>
-                  <CardDescription>
-                    Chỉnh avatar và thông tin shop để gian hàng trong, rõ và đồng bộ hơn.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4 text-sm text-slate-600">
-                  <p>Avatar shop và mô tả shop được cập nhật ngay từ profile seller.</p>
-                  <p>Slug shop cho phép tạo URL gọn gàng hơn để chia sẻ gian hàng.</p>
-                </CardContent>
-              </Card>
-            )}
           </aside>
 
-          <div className="space-y-6">
-            <Card className="rounded-[30px] border-0 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.07)] ring-1 ring-slate-200/70">
+          <div className="space-y-5">
+            <Card className="border-0 bg-white shadow-sm ring-1 ring-orange-100">
               <CardHeader>
-                <div>
-                  <CardTitle>Thông tin Người dùng</CardTitle>
-                  <CardDescription>Chỉnh sửa thông tin cá nhân</CardDescription>
-                </div>
-                <CardAction>
-                  <FilePicker
-                    label={isUploadingImage ? "Đang tải" : "Sửa avatar"}
-                    disabled={isUploadingImage}
-                    onPick={handleProfileAvatarChange}
-                  />
-                </CardAction>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid gap-6 lg:grid-cols-[180px_minmax(0,1fr)]">
-                  <div className="space-y-4">
-                    <ProfileImage
-                      imageUrl={profileForm.avatarUrl}
-                      fallback={profileForm.fullName || user?.email || "User"}
-                      size="xl"
-                    />
-                    <p className="text-center text-xs leading-5 text-slate-500">
-                      Chọn ảnh đại diện.
-                    </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <CardTitle>Thông tin người dùng</CardTitle>
+                    <CardDescription>Cập nhật tên, số điện thoại và ảnh đại diện.</CardDescription>
                   </div>
-
+                  <FilePicker
+                    label={isUploadingImage ? "Đang tải..." : "Tải avatar"}
+                    disabled={isUploadingImage}
+                    onPick={(file) => handleUpload(file, "datn/users", (url) => setProfileForm((current) => ({ ...current, avatarUrl: url })))}
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="grid gap-5 lg:grid-cols-[150px_minmax(0,1fr)]">
+                  <AvatarImage imageUrl={profileForm.avatarUrl} fallback={profileForm.fullName || user?.email || "U"} size="xl" />
                   <div className="grid gap-4 md:grid-cols-2">
                     <Field label="Họ tên">
-                      <Input
-                        value={profileForm.fullName}
-                        onChange={(event) =>
-                          setProfileForm((current) => ({ ...current, fullName: event.target.value }))
-                        }
-                        placeholder="Nguyen Van A"
-                      />
+                      <Input value={profileForm.fullName} onChange={(event) => setProfileForm((current) => ({ ...current, fullName: event.target.value }))} />
                     </Field>
                     <Field label="Email">
-                      <Input
-                        value={profileForm.email}
-                        onChange={(event) =>
-                          setProfileForm((current) => ({ ...current, email: event.target.value }))
-                        }
-                        placeholder="name@example.com"
-                      />
+                      <Input value={user?.email || ""} disabled />
                     </Field>
                     <Field label="Số điện thoại">
-                      <Input
-                        value={profileForm.phone}
-                        onChange={(event) =>
-                          setProfileForm((current) => ({ ...current, phone: event.target.value }))
-                        }
-                        placeholder="09xxxxxxxx"
-                      />
+                      <Input value={profileForm.phone} onChange={(event) => setProfileForm((current) => ({ ...current, phone: event.target.value }))} />
                     </Field>
                     <Field label="Avatar URL">
-                      <Input
-                        value={profileForm.avatarUrl}
-                        onChange={(event) =>
-                          setProfileForm((current) => ({ ...current, avatarUrl: event.target.value }))
-                        }
-                        placeholder="https://..."
-                      />
+                      <Input value={profileForm.avatarUrl} onChange={(event) => setProfileForm((current) => ({ ...current, avatarUrl: event.target.value }))} />
                     </Field>
                   </div>
                 </div>
-              </CardContent>
-              <div className="px-6 pb-6">
-                <Button disabled={isSavingProfile || isUploadingImage} onClick={handleSaveProfile}>
+                <Button className="gap-2 bg-[#ee4d2d] hover:bg-[#d93f21]" disabled={isSavingProfile || isUploadingImage} onClick={handleSaveProfile}>
                   <Save className="size-4" />
                   Lưu hồ sơ
                 </Button>
-              </div>
+              </CardContent>
             </Card>
 
-            {isSeller && shop && (
-              <Card className="rounded-[30px] border-0 bg-[linear-gradient(180deg,#ffffff_0%,#fffaf6_100%)] shadow-[0_24px_60px_rgba(15,23,42,0.07)] ring-1 ring-orange-100/90">
+            {isSeller ? (
+              <Card className="border-0 bg-white shadow-sm ring-1 ring-orange-100">
                 <CardHeader>
-                  <div>
-                    <CardTitle>Hồ sơ shop</CardTitle>
-                    <CardDescription>Cập nhật thông tin shop của bạn</CardDescription>
-                  </div>
-                  <CardAction>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <CardTitle>Hồ sơ shop</CardTitle>
+                      <CardDescription>Thông tin hiển thị ở trang shop và sản phẩm.</CardDescription>
+                    </div>
                     <FilePicker
-                      label={isUploadingImage ? "Đang tải..." : "Ảnh shop"}
+                      label={isUploadingImage ? "Đang tải..." : "Tải ảnh shop"}
                       disabled={isUploadingImage}
-                      onPick={handleShopAvatarChange}
+                      onPick={(file) => handleUpload(file, "datn/shops", (url) => setShopForm((current) => ({ ...current, avatarUrl: url })))}
                     />
-                  </CardAction>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid gap-6 lg:grid-cols-[180px_minmax(0,1fr)]">
-                    <div className="space-y-4">
-                      <ProfileImage
-                        imageUrl={shopForm.avatarUrl}
-                        fallback={shopForm.name || "Shop"}
-                        size="xl"
-                      />
-                      <p className="text-center text-xs leading-5 text-slate-500">
-                        Ảnh shop sẽ hiển thị trên trang shop và các trang sản phẩm, nên chọn ảnh có kích thước vuông và rõ nét để gian hàng chuyên nghiệp hơn.
-                      </p>
-                    </div>
-
-                    <div className="grid gap-4">
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <Field label="Tên shop">
-                          <Input
-                            value={shopForm.name}
-                            onChange={(event) =>
-                              setShopForm((current) => ({ ...current, name: event.target.value }))
-                            }
-                            placeholder="TechMall Official"
-                          />
-                        </Field>
-                        <Field label="Slug">
-                          <Input
-                            value={shopForm.slug}
-                            onChange={(event) =>
-                              setShopForm((current) => ({ ...current, slug: event.target.value }))
-                            }
-                            placeholder="techmall-official"
-                          />
-                        </Field>
-                      </div>
-                      <Field label="Avatar URL shop">
-                        <Input
-                          value={shopForm.avatarUrl}
-                          onChange={(event) =>
-                            setShopForm((current) => ({ ...current, avatarUrl: event.target.value }))
-                          }
-                          placeholder="https://..."
-                        />
-                      </Field>
-                      <Field label="Mô tả shop">
-                        <Textarea
-                          value={shopForm.description}
-                          onChange={(event) =>
-                            setShopForm((current) => ({ ...current, description: event.target.value }))
-                          }
-                          placeholder="Shop chuyên bán các sản phẩm công nghệ chính hãng với giá tốt và dịch vụ uy tín."
-                          className="min-h-32"
-                        />
-                      </Field>
-                    </div>
                   </div>
-                </CardContent>
-                <div className="px-6 pb-6">
-                  <Button disabled={isSavingShop || isUploadingImage} onClick={handleSaveShop}>
-                    <Store className="size-4" />
-                    Lưu thông tin shop
-                  </Button>
-                </div>
-              </Card>
-            )}
-
-            {isSeller && !shop && (
-              <Card className="rounded-[30px] border-0 bg-[linear-gradient(180deg,#ffffff_0%,#fffaf6_100%)] shadow-[0_24px_60px_rgba(15,23,42,0.07)] ring-1 ring-orange-100/90">
-                <CardHeader>
-                  <CardTitle>Hồ sơ shop</CardTitle>
-                  <CardDescription>
-                    Tài khoản của bạn đã có quyền seller nhưng chưa có shop. Vui lòng liên hệ bộ phận hỗ trợ để được kích hoạt shop và bắt đầu bán hàng.
-                  </CardDescription>
                 </CardHeader>
+                <CardContent className="space-y-5">
+                  {shop ? (
+                    <>
+                      <div className="grid gap-5 lg:grid-cols-[150px_minmax(0,1fr)]">
+                        <AvatarImage imageUrl={shopForm.avatarUrl} fallback={shopForm.name || "S"} size="xl" />
+                        <div className="space-y-4">
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <Field label="Tên shop">
+                              <Input value={shopForm.name} onChange={(event) => setShopForm((current) => ({ ...current, name: event.target.value }))} />
+                            </Field>
+                            <Field label="Slug">
+                              <Input value={shopForm.slug} onChange={(event) => setShopForm((current) => ({ ...current, slug: event.target.value }))} />
+                            </Field>
+                          </div>
+                          <Field label="Avatar URL shop">
+                            <Input value={shopForm.avatarUrl} onChange={(event) => setShopForm((current) => ({ ...current, avatarUrl: event.target.value }))} />
+                          </Field>
+                          <Field label="Mô tả shop">
+                            <Textarea className="min-h-28" value={shopForm.description} onChange={(event) => setShopForm((current) => ({ ...current, description: event.target.value }))} />
+                          </Field>
+                        </div>
+                      </div>
+                      <Button className="gap-2 bg-[#ee4d2d] hover:bg-[#d93f21]" disabled={isSavingShop || isUploadingImage} onClick={handleSaveShop}>
+                        <Store className="size-4" />
+                        Lưu thông tin shop
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-orange-200 bg-orange-50 p-4 text-sm text-orange-800">
+                      Tài khoản seller chưa có shop hoạt động.
+                    </div>
+                  )}
+                </CardContent>
               </Card>
-            )}
+            ) : null}
 
-            <Card className="rounded-[30px] border-0 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.07)] ring-1 ring-slate-200/70">
+            <Card className="border-0 bg-white shadow-sm ring-1 ring-orange-100">
               <CardHeader>
-                <CardTitle>Bảo mật </CardTitle>
-                <CardDescription>Đổi mật khẩu giúp tài khoản của bạn an toàn hơn.</CardDescription>
+                <CardTitle>Bảo mật</CardTitle>
+                <CardDescription>Đổi mật khẩu định kỳ để bảo vệ tài khoản.</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-3">
-                <Field label="Mật khẩu hiện tại">
-                  <Input
-                    type="password"
-                    value={passwordForm.currentPassword}
-                    onChange={(event) =>
-                      setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))
-                    }
-                    placeholder="Nhập mật khẩu hiện tại"
-                  />
-                </Field>
-                <Field label="Mật khẩu mới">
-                  <Input
-                    type="password"
-                    value={passwordForm.newPassword}
-                    onChange={(event) =>
-                      setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))
-                    }
-                    placeholder="Tối thiểu 6 ký tự"
-                  />
-                </Field>
-                <Field label="Xác nhận mật khẩu mới">
-                  <Input
-                    type="password"
-                    value={passwordForm.confirmPassword}
-                    onChange={(event) =>
-                      setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))
-                    }
-                    placeholder="Xác nhận mật khẩu mới"
-                  />
-                </Field>
-              </CardContent>
-              <div className="px-6 pb-6">
-                <Button disabled={isChangingPassword} onClick={handleChangePassword}>
-                  <Shield className="size-4" />
+              <CardContent className="space-y-5">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Field label="Mật khẩu hiện tại">
+                    <Input type="password" value={passwordForm.currentPassword} onChange={(event) => setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))} />
+                  </Field>
+                  <Field label="Mật khẩu mới">
+                    <Input type="password" value={passwordForm.newPassword} onChange={(event) => setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))} />
+                  </Field>
+                  <Field label="Xác nhận mật khẩu">
+                    <Input type="password" value={passwordForm.confirmPassword} onChange={(event) => setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))} />
+                  </Field>
+                </div>
+                <Button variant="outline" className="gap-2" disabled={isChangingPassword} onClick={handleChangePassword}>
+                  <KeyRound className="size-4" />
                   Đổi mật khẩu
                 </Button>
-              </div>
+              </CardContent>
             </Card>
           </div>
         </div>
@@ -513,43 +322,24 @@ function FilePicker({
     <label className={`inline-flex cursor-pointer items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-medium text-orange-700 transition hover:bg-orange-100 ${disabled ? "pointer-events-none opacity-60" : ""}`}>
       <Camera className="size-4" />
       {label}
-      <input
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(event) => onPick(event.target.files?.[0])}
-      />
+      <input type="file" accept="image/*" className="hidden" onChange={(event) => onPick(event.target.files?.[0])} />
     </label>
   );
 }
 
-function ProfileImage({
-  imageUrl,
-  fallback,
-  size = "md",
-}: {
-  imageUrl?: string;
-  fallback: string;
-  size?: "md" | "lg" | "xl";
-}) {
+function AvatarImage({ imageUrl, fallback, size = "md" }: { imageUrl?: string; fallback: string; size?: "md" | "lg" | "xl" }) {
   const sizes = {
     md: "size-16 text-lg",
-    lg: "size-24 text-3xl",
+    lg: "size-24 text-2xl",
     xl: "size-36 text-4xl",
   };
 
   if (imageUrl) {
-    return (
-      <img
-        src={imageUrl}
-        alt={fallback}
-        className={`${sizes[size]} rounded-[28px] object-cover shadow-[0_12px_35px_rgba(15,23,42,0.16)]`}
-      />
-    );
+    return <img src={imageUrl} alt={fallback} className={`${sizes[size]} rounded-3xl object-cover shadow-sm`} />;
   }
 
   return (
-    <div className={`${sizes[size]} flex items-center justify-center rounded-[28px] bg-[linear-gradient(135deg,#fed7aa,#fdba74,#fb923c)] font-semibold uppercase text-white shadow-[0_12px_35px_rgba(234,88,12,0.18)]`}>
+    <div className={`${sizes[size]} flex items-center justify-center rounded-3xl bg-orange-100 font-semibold uppercase text-[#ee4d2d]`}>
       {fallback
         .split(" ")
         .filter(Boolean)
@@ -560,30 +350,22 @@ function ProfileImage({
   );
 }
 
-function HeroMetric({ label, value }: { label: string; value: string }) {
+function HeroBadge({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-3xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
-      <p className="text-xs uppercase tracking-[0.18em] text-white/60">{label}</p>
-      <p className="mt-2 text-sm font-semibold text-white">{value}</p>
+    <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3">
+      <p className="text-xs uppercase tracking-[0.16em] text-white/65">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-white">{value}</p>
     </div>
   );
 }
 
-function InfoRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-}) {
+function InfoRow({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-start gap-3">
-      <div className="mt-0.5 rounded-full bg-white p-2 text-orange-600 shadow-sm">{icon}</div>
+    <div className="flex gap-3">
+      <div className="rounded-full bg-white p-2 text-[#ee4d2d] shadow-sm">{icon}</div>
       <div>
         <p className="text-xs uppercase tracking-[0.14em] text-slate-400">{label}</p>
-        <p className="mt-1 text-sm font-medium text-slate-700">{value}</p>
+        <p className="text-sm font-medium text-slate-700">{value}</p>
       </div>
     </div>
   );

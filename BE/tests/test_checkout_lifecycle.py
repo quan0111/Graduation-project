@@ -1,6 +1,6 @@
 import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 from fastapi import HTTPException
 
@@ -66,6 +66,28 @@ class CheckoutLifecycleTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(exc.exception.status_code, 400)
         client.couponredemption.create.assert_not_awaited()
+
+    async def test_customer_must_confirm_multi_shop_packages_separately(self):
+        current_user = SimpleNamespace(id=1)
+        order = SimpleNamespace(
+            userId=1,
+            status="DELIVERED",
+            packages=[SimpleNamespace(id=1), SimpleNamespace(id=2)],
+            payment=None,
+        )
+        order_data = SimpleNamespace(
+            model_dump=lambda exclude_unset=True: {"status": "COMPLETED"},
+        )
+
+        with (
+            patch("src.modules.order.order_service.get_role_value", return_value="CUSTOMER"),
+            patch.object(OrderService, "assert_order_visibility", AsyncMock(return_value=order)),
+        ):
+            with self.assertRaises(HTTPException) as exc:
+                await OrderService.update_order(10, current_user, order_data)
+
+        self.assertEqual(exc.exception.status_code, 400)
+        self.assertIn("từng shop", exc.exception.detail)
 
     async def test_flash_sale_quota_update_is_atomic(self):
         client = SimpleNamespace(

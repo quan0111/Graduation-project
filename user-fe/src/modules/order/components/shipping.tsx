@@ -12,7 +12,7 @@ interface OrderShippingProps {
 export const OrderShipping: React.FC<OrderShippingProps> = ({ order }) => {
   const shipment = order.shipment;
   const address = order.shipping_address;
-  const packages = order.shop_package ? [order.shop_package] : order.packages ?? [];
+  const packageTrackings = order.shop_package ? [order.shop_package] : order.packages ?? [];
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -45,30 +45,9 @@ export const OrderShipping: React.FC<OrderShippingProps> = ({ order }) => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {shipment ? (
-            <>
-              <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                <span className="text-sm text-slate-500">Mã vận đơn</span>
-                <span className="font-semibold text-slate-950">
-                  {shipment.tracking_number || "Chưa cập nhật"}
-                </span>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Đơn vị vận chuyển</p>
-                  <p className="mt-2 font-medium text-slate-950">{shipment.carrier || "Đang chờ gán"}</p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Mốc cập nhật</p>
-                  <p className="mt-2 font-medium text-slate-950">
-                    {formatDateTime(shipment.delivered_at || shipment.shipped_at || shipment.created_at)}
-                  </p>
-                </div>
-              </div>
-            </>
-          ) : packages.length > 0 ? (
+          {packageTrackings.length > 0 ? (
             <div className="space-y-3">
-              {packages.map((shopPackage) => {
+              {packageTrackings.map((shopPackage) => {
                 const meta = getStatusMeta(shopPackage.status);
                 return (
                   <div key={shopPackage.id} className="rounded-2xl border border-slate-200 p-4">
@@ -100,6 +79,27 @@ export const OrderShipping: React.FC<OrderShippingProps> = ({ order }) => {
                 );
               })}
             </div>
+          ) : shipment ? (
+            <>
+              <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                <span className="text-sm text-slate-500">Mã vận đơn</span>
+                <span className="font-semibold text-slate-950">
+                  {shipment.tracking_number || "Chưa cập nhật"}
+                </span>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Đơn vị vận chuyển</p>
+                  <p className="mt-2 font-medium text-slate-950">{shipment.carrier || "Đang chờ gán"}</p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Mốc cập nhật</p>
+                  <p className="mt-2 font-medium text-slate-950">
+                    {formatDateTime(shipment.delivered_at || shipment.shipped_at || shipment.created_at)}
+                  </p>
+                </div>
+              </div>
+            </>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
               <div className="mb-2 flex items-center gap-2 font-medium text-slate-700">
