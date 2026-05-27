@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 from fastapi import HTTPException
+from prisma import Json
 
 from src.core.database import prisma
 from src.modules.audit.audit_service import AuditService
@@ -86,6 +87,7 @@ class ModerationService:
 
     @staticmethod
     async def seller_submit_appeal(product_id: int, seller_user_id: int, seller_note: str, evidence: Optional[list[Dict[str, Any]]] = None):
+        evidence_payload = Json(evidence or [])
         product = await prisma.product.find_unique(
             where={"id": product_id},
             include={"shop": True},
@@ -110,7 +112,7 @@ class ModerationService:
                     "status": "SELLER_SUBMITTED",
                     "reason": "Seller yêu cầu xem xét lại sản phẩm bị khóa/từ chối.",
                     "sellerNote": seller_note,
-                    "evidence": evidence or [],
+                    "evidence": evidence_payload,
                 }
             )
         else:
@@ -119,7 +121,7 @@ class ModerationService:
                 data={
                     "status": "SELLER_SUBMITTED",
                     "sellerNote": seller_note,
-                    "evidence": evidence or [],
+                    "evidence": evidence_payload,
                 },
             )
 

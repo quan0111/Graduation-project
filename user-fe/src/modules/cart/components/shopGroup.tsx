@@ -10,6 +10,7 @@ type CartItemType = {
   variant?: string;
   price: number;
   quantity: number;
+  stock?: number;
 };
 
 type ShopGroupProps = {
@@ -19,6 +20,7 @@ type ShopGroupProps = {
   onSelect: (id: string) => void;
   onQty: (id: string, value: number) => void;
   onRemove: (id: string) => void;
+  syncingIds?: Set<string>;
 };
 
 export const ShopGroup: React.FC<ShopGroupProps> = ({
@@ -28,6 +30,7 @@ export const ShopGroup: React.FC<ShopGroupProps> = ({
   onSelect,
   onQty,
   onRemove,
+  syncingIds = new Set(),
 }) => {
   return (
     <section className="overflow-hidden rounded-4xl bg-white shadow-sm ring-1 ring-slate-200/80">
@@ -50,6 +53,7 @@ export const ShopGroup: React.FC<ShopGroupProps> = ({
             onSelect={onSelect}
             onQty={onQty}
             onRemove={onRemove}
+            isSyncing={syncingIds.has(item.id)}
           />
         ))}
       </div>

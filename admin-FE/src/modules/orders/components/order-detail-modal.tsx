@@ -129,6 +129,16 @@ export function OrderDetailModal({
   const cancellation = order.cancellation || order.Cancellation;
   const shippingAddress = order.shippingAddress || order.ShippingAddress || order.shipping_address;
   const packages = order.packages || order.Packages || [];
+  const checkoutGroup = order.checkoutGroup || order.CheckoutGroup;
+  const checkoutGroupCode = pick(order.checkoutGroupCode, checkoutGroup?.code);
+  const checkoutGroupText = checkoutGroupCode
+    ? [
+        checkoutGroupCode,
+        order.checkoutGroupPrimary ? "payment chính" : null,
+        checkoutGroup?.totalAmount !== undefined && checkoutGroup?.totalAmount !== null ? `Tổng group: ${formatCurrency(checkoutGroup.totalAmount)}` : null,
+        checkoutGroup?.status ? `TT group: ${getOrderStatusLabel(checkoutGroup.status)}` : null,
+      ].filter(Boolean).join(" | ")
+    : "Không";
   const customer = pick(
     order.user?.fullName,
     order.User?.fullName,
@@ -183,6 +193,7 @@ export function OrderDetailModal({
           <Info label="Khách hàng" value={customer} />
           <Info label="Shop" value={shopNames.join(", ") || "N/A"} />
           <Info label="Trạng thái" value={getOrderStatusLabel(order.status)} />
+          <Info label="Nhóm checkout" value={checkoutGroupText} />
           <Info label="Ngày tạo" value={formatDateTime(pick(order.createdAt, order.created_at))} />
           <Info label="Cập nhật" value={formatDateTime(pick(order.updatedAt, order.updated_at), "N/A")} />
           <Info label="PT vận chuyển" value={pick(order.shippingMethod, order.shipping_method) || "N/A"} />

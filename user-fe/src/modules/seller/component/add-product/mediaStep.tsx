@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
+import { CategoryPicker } from "./categoryPicker";
 import { Field } from "./field";
 import { ValidationList } from "./validationList";
 import type { Category, UploadedImage } from "../../types/addproduct";
@@ -108,18 +109,7 @@ export function MediaStep({
           </Field>
 
           <Field label="Ngành hàng">
-            <select
-              value={categoryId}
-              onChange={(event) => onCategoryChange(event.target.value ? Number(event.target.value) : "")}
-              className="h-10 w-full rounded-3xl border border-input bg-input/30 px-3 text-sm outline-none focus:border-ring focus:ring-[3px] focus:ring-ring/40"
-            >
-              <option value="">Chọn ngành hàng</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
+            <CategoryPicker categories={categories} value={categoryId} onChange={onCategoryChange} />
           </Field>
         </div>
 

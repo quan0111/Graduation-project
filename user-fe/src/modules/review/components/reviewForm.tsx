@@ -11,6 +11,8 @@ import { useCreateReview } from "../api/create-review";
 interface ReviewFormProps {
   productId: number;
   userId: number;
+  orderId?: number;
+  orderItemId?: number;
   productName?: string | null;
   productImage?: string | null;
   variantName?: string | null;
@@ -39,6 +41,8 @@ const ratingCopy: Record<number, { label: string; hint: string }> = {
 export const ReviewForm: React.FC<ReviewFormProps> = ({
   productId,
   userId,
+  orderId,
+  orderItemId,
   productName,
   productImage,
   variantName,
@@ -118,6 +122,8 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({
       await createMutation.mutateAsync({
         userId,
         productId,
+        orderId,
+        orderItemId,
         rating,
         comment: comment.trim() || undefined,
         media: mediaFiles.length > 0 ? mediaFiles : undefined,

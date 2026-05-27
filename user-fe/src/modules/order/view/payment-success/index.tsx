@@ -12,6 +12,9 @@ type Payment = {
   method: string;
   status: string;
   amount?: number | null;
+  checkoutGroupCode?: string | null;
+  checkoutGroupId?: number | null;
+  orderIds?: number[];
   providerOrderId?: string | null;
   transactionId?: string | null;
   providerMessage?: string | null;
@@ -60,6 +63,10 @@ export default function PaymentSuccessPage() {
   });
 
   const status = normalize(payment?.status) || statusParam;
+  const orderCount = payment?.orderIds?.length ?? 0;
+  const ordersHref = payment?.checkoutGroupCode
+    ? `/orders?checkoutGroup=${encodeURIComponent(payment.checkoutGroupCode)}`
+    : "/orders";
   const isSuccess = SUCCESS_STATUSES.has(status) || statusParam === "SUCCESS";
   const isFailed = FAILED_STATUSES.has(status) || statusParam === "FAILED";
   const isPending = !isSuccess && !isFailed;
@@ -70,7 +77,9 @@ export default function PaymentSuccessPage() {
         Icon: CheckCircle2,
         iconClass: "text-emerald-600",
         title: "Thanh toán thành công",
-        description: "Hệ thống đã xác nhận thanh toán và hóa đơn đã được tạo. Giỏ hàng của các sản phẩm đã thanh toán cũng đã được xóa.",
+        description: orderCount > 1
+          ? `Hệ thống đã xác nhận thanh toán và tạo ${orderCount} hóa đơn theo từng shop.`
+          : "Hệ thống đã xác nhận thanh toán và hóa đơn đã được tạo. Giỏ hàng của các sản phẩm đã thanh toán cũng đã được xóa.",
       };
     }
 
@@ -89,7 +98,7 @@ export default function PaymentSuccessPage() {
       title: "Đang chờ xác nhận thanh toán",
       description: "Cổng thanh toán đã trả người dùng về website. Hệ thống đang kiểm tra IPN/callback trước khi tạo hóa đơn.",
     };
-  }, [isFailed, isSuccess]);
+  }, [isFailed, isSuccess, orderCount]);
 
   const Icon = view.Icon;
   const displayProviderOrderId = payment?.providerOrderId || providerOrderId;
@@ -120,9 +129,9 @@ export default function PaymentSuccessPage() {
         </div>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          {isSuccess && orderId ? (
+          {isSuccess ? (
             <Link
-              to={`/orders/${orderId}`}
+              to={ordersHref}
               className="flex-1 rounded-full bg-[#ee4d2d] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#d93f21]"
             >
               Xem hóa đơn
@@ -158,7 +167,7 @@ export default function PaymentSuccessPage() {
 
           {!isFailed ? (
             <Link
-              to="/orders"
+              to={ordersHref}
               className="flex-1 rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
               Danh sách đơn hàng

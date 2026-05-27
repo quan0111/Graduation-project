@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MessageSquare, Send, X } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -10,13 +11,28 @@ import { SellerDashboardLayout } from "@/modules/seller/component/shop-layout";
 import { useAddSupportMessage, useSellerSupportTickets } from "@/modules/support/api/support";
 import { useSupportRealtime } from "@/modules/support/hooks/use-support-realtime";
 
+const parsePositiveInt = (value: string | null) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
 export default function SellerSupportPage() {
+  const [searchParams] = useSearchParams();
+  const ticketIdParam = parsePositiveInt(searchParams.get("ticketId"));
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [reply, setReply] = useState("");
   const { data: tickets = [], isLoading } = useSellerSupportTickets();
   const addMessage = useAddSupportMessage();
   const selectedTicket = tickets.find((ticket) => ticket.id === selectedTicketId) ?? null;
   useSupportRealtime();
+
+  useEffect(() => {
+    if (!ticketIdParam || isLoading) return;
+    const ticket = tickets.find((item) => item.id === ticketIdParam);
+    if (ticket) {
+      setSelectedTicketId(ticket.id);
+    }
+  }, [isLoading, ticketIdParam, tickets]);
 
   const sendReply = async () => {
     if (!selectedTicket || !reply.trim()) return;

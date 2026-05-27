@@ -1,18 +1,60 @@
 import { useState } from "react";
-import { ShieldAlert, Send } from "lucide-react";
+import { FileText, Send, ShieldAlert, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SellerDashboardLayout } from "@/modules/seller/component/shop-layout";
+import { useUploadFile } from "@/modules/upload/api/upload-image";
 
-import { useSellerModerationCases, useSubmitProductAppeal } from "../../api/moderation/cases";
+import { type ModerationEvidence, useSellerModerationCases, useSubmitProductAppeal } from "../../api/moderation/cases";
 
 export default function SellerViolationsPage() {
   const { data: cases = [], isLoading } = useSellerModerationCases();
   const appealMutation = useSubmitProductAppeal();
+  const uploadMutation = useUploadFile();
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [evidenceUrls, setEvidenceUrls] = useState<Record<number, string>>({});
+  const [evidenceFiles, setEvidenceFiles] = useState<Record<number, ModerationEvidence[]>>({});
+
+  const handleEvidenceUpload = async (productId: number, files: FileList | null) => {
+    if (!files?.length) return;
+
+    try {
+      const uploaded = await Promise.all(
+        Array.from(files).map(async (file) => {
+          const result = await uploadMutation.mutateAsync({
+            file,
+            folder: "moderation",
+          });
+
+          return {
+            type: "file" as const,
+            url: result.url,
+            name: result.originalFilename || file.name,
+            contentType: file.type,
+            resourceType: result.resourceType,
+            publicId: result.publicId,
+          };
+        }),
+      );
+
+      setEvidenceFiles((current) => ({
+        ...current,
+        [productId]: [...(current[productId] ?? []), ...uploaded],
+      }));
+      toast.success("Đã tải file bằng chứng");
+    } catch (error: any) {
+      toast.error(error?.message || error?.response?.data?.detail || "Không thể tải file bằng chứng");
+    }
+  };
+
+  const removeEvidenceFile = (productId: number, index: number) => {
+    setEvidenceFiles((current) => ({
+      ...current,
+      [productId]: (current[productId] ?? []).filter((_, itemIndex) => itemIndex !== index),
+    }));
+  };
 
   const submitAppeal = async (productId: number) => {
     const sellerNote = notes[productId]?.trim();
@@ -26,7 +68,10 @@ export default function SellerViolationsPage() {
         productId,
         sellerNote,
         evidenceUrl: evidenceUrls[productId],
+        evidence: evidenceFiles[productId] ?? [],
       });
+      setEvidenceUrls((current) => ({ ...current, [productId]: "" }));
+      setEvidenceFiles((current) => ({ ...current, [productId]: [] }));
       toast.success("Đã gửi giải trình cho admin");
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || "Không thể gửi giải trình");
@@ -80,9 +125,58 @@ export default function SellerViolationsPage() {
                     onChange={(event) => setEvidenceUrls((current) => ({ ...current, [item.productId]: event.target.value }))}
                     placeholder="Link ảnh/tài liệu bằng chứng (nếu có)"
                   />
+                  <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-[#ee4d2d] hover:bg-orange-50">
+                    <Upload className="size-4 text-[#ee4d2d]" />
+                    {uploadMutation.isPending ? "Đang tải file..." : "Upload file bằng chứng"}
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                      className="hidden"
+                      disabled={uploadMutation.isPending}
+                      onChange={(event) => {
+                        void handleEvidenceUpload(item.productId, event.target.files);
+                        event.target.value = "";
+                      }}
+                    />
+                  </label>
+                  {(evidenceFiles[item.productId] ?? []).length > 0 ? (
+                    <div className="space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-2">
+                      {(evidenceFiles[item.productId] ?? []).map((evidence, index) => {
+                        const isImage = evidence.contentType?.startsWith("image/");
+                        return (
+                          <div key={`${evidence.url}-${index}`} className="flex items-center gap-2 rounded-xl bg-white p-2 ring-1 ring-slate-100">
+                            {isImage ? (
+                              <img src={evidence.url} alt={evidence.name || "Bằng chứng"} className="size-10 rounded-lg object-cover" />
+                            ) : (
+                              <div className="flex size-10 items-center justify-center rounded-lg bg-orange-50 text-[#ee4d2d]">
+                                <FileText className="size-4" />
+                              </div>
+                            )}
+                            <a
+                              href={evidence.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="min-w-0 flex-1 truncate text-sm font-medium text-slate-700 hover:text-[#ee4d2d]"
+                            >
+                              {evidence.name || "File bằng chứng"}
+                            </a>
+                            <button
+                              type="button"
+                              className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-rose-500"
+                              onClick={() => removeEvidenceFile(item.productId, index)}
+                              aria-label="Xóa file bằng chứng"
+                            >
+                              <X className="size-4" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                   <Button
                     className="w-full bg-[#ee4d2d] hover:bg-[#d93f21]"
-                    disabled={appealMutation.isPending}
+                    disabled={appealMutation.isPending || uploadMutation.isPending}
                     onClick={() => submitAppeal(item.productId)}
                   >
                     <Send className="size-4" />

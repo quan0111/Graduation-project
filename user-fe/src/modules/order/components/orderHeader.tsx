@@ -39,6 +39,11 @@ export const OrderHeader: React.FC<OrderHeaderProps> = ({
               <p className="text-lg font-semibold text-slate-950">#{order.id}</p>
             </div>
             <Badge className={`bg-transparent ring-1 ${status.chip}`}>{status.label}</Badge>
+            {order.checkout_group_code ? (
+              <Badge className="bg-orange-50 text-[#ee4d2d] ring-1 ring-orange-200">
+                Cùng checkout
+              </Badge>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500">

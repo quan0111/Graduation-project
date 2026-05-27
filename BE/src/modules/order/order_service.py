@@ -1,4 +1,5 @@
 from datetime import datetime
+import uuid
 
 from fastapi import HTTPException
 from prisma import Json
@@ -90,6 +91,7 @@ ORDER_INCLUDE = {
     "payment": {"include": {"events": True}},
     "user": True,
     "shippingAddress": True,
+    "checkoutGroup": True,
     "shipment": True,
     "shipmentEvents": True,
     "cancellation": True,
@@ -367,6 +369,35 @@ class OrderService:
             )
 
     @staticmethod
+    def _allocate_checkout_amount(total_amount: float, weights_by_shop: dict[int, float]) -> dict[int, float]:
+        shop_ids = sorted(weights_by_shop)
+        if not shop_ids:
+            return {}
+
+        total_amount = round(float(total_amount or 0), 2)
+        if total_amount <= 0:
+            return {shop_id: 0.0 for shop_id in shop_ids}
+
+        total_weight = sum(max(float(weights_by_shop.get(shop_id, 0) or 0), 0) for shop_id in shop_ids)
+        allocations: dict[int, float] = {}
+        remaining = total_amount
+
+        for index, shop_id in enumerate(shop_ids):
+            if index == len(shop_ids) - 1:
+                allocations[shop_id] = round(remaining, 2)
+                break
+
+            if total_weight > 0:
+                share = total_amount * max(float(weights_by_shop.get(shop_id, 0) or 0), 0) / total_weight
+            else:
+                share = total_amount / len(shop_ids)
+            value = round(share, 2)
+            allocations[shop_id] = value
+            remaining = round(remaining - value, 2)
+
+        return allocations
+
+    @staticmethod
     async def _release_coupon_redemptions(client, order_id: int):
         redemptions = await client.couponredemption.find_many(where={"orderId": order_id})
         for redemption in redemptions:
@@ -413,6 +444,43 @@ class OrderService:
                     where={"id": sale_item.id, "soldCount": {"gte": quantity}},
                     data={"soldCount": {"decrement": quantity}},
                 )
+
+    @staticmethod
+    async def _discard_gateway_checkout_order(order_id: int):
+        async with prisma.tx() as tx:
+            order = await tx.order.find_unique(where={"id": order_id})
+            if not order:
+                return
+
+            checkout_group_code = getattr(order, "checkoutGroupCode", None)
+            if checkout_group_code:
+                orders = await tx.order.find_many(
+                    where={"checkoutGroupCode": checkout_group_code, "deletedAt": None},
+                    order={"id": "asc"},
+                )
+            else:
+                orders = [order]
+
+            hold_orders = [
+                group_order
+                for group_order in orders
+                if OrderService._to_value(group_order.status) in PAYMENT_HOLD_ORDER_STATUSES
+            ]
+            if not hold_orders:
+                return
+
+            checkout_group_ids = {
+                getattr(group_order, "checkoutGroupId", None)
+                for group_order in hold_orders
+                if getattr(group_order, "checkoutGroupId", None)
+            }
+            for group_order in hold_orders:
+                await PaymentService._release_order_reservation(tx, group_order.id)
+                await tx.paymentevent.delete_many(where={"orderId": group_order.id})
+                await tx.payment.delete_many(where={"orderId": group_order.id})
+                await tx.order.delete(where={"id": group_order.id})
+            if checkout_group_ids:
+                await tx.checkoutgroup.delete_many(where={"id": {"in": list(checkout_group_ids)}})
 
     @staticmethod
     def _filter_order_items_for_shop(order, shop_id: int):
@@ -731,7 +799,8 @@ class OrderService:
                 raise HTTPException(400, "Order must have items")
 
             subtotal = 0
-            order_items_data = []
+            order_items_by_shop: dict[int, list[dict]] = {}
+            shop_subtotals: dict[int, float] = {}
             inventory_logs = []
             flash_sale_logs = []
             discount_items = []
@@ -776,8 +845,10 @@ class OrderService:
                     raise HTTPException(400, "Variant does not match product")
 
                 price, flash_sale_item = await OrderService._resolve_checkout_price(tx, item, product, variant, now)
-                subtotal += price * item.quantity
+                line_total = price * item.quantity
+                subtotal += line_total
                 shop_ids.add(item.shopId)
+                shop_subtotals[item.shopId] = shop_subtotals.get(item.shopId, 0) + line_total
                 discount_items.append(
                     {
                         "productId": item.productId,
@@ -785,7 +856,7 @@ class OrderService:
                         "shopId": item.shopId,
                         "categoryId": product.categoryId,
                         "quantity": item.quantity,
-                        "lineTotal": price * item.quantity,
+                        "lineTotal": line_total,
                     }
                 )
                 if flash_sale_item:
@@ -803,7 +874,7 @@ class OrderService:
                 elif product.images and len(product.images) > 0:
                     image_url = product.images[0].url
 
-                order_items_data.append(
+                order_items_by_shop.setdefault(item.shopId, []).append(
                     {
                         "product": {"connect": {"id": item.productId}},
                         "variant": {"connect": {"id": item.variantId}} if item.variantId else None,
@@ -851,59 +922,116 @@ class OrderService:
                 user_id=current_user.id,
             )
             discount_amount = float(coupon_result["discountAmount"])
+            product_discount_amount = float(coupon_result.get("productDiscountAmount", discount_amount))
+            shipping_discount_amount = float(coupon_result.get("shippingDiscountAmount", 0))
 
             total_amount = max(subtotal + shipping_fee - discount_amount, 0)
 
-            create_data = {
-                "user": {"connect": {"id": current_user.id}},
-                "subtotal": subtotal,
-                "shippingFee": shipping_fee,
-                "shippingMethod": checkout_data.shippingMethod,
-                "discountAmount": discount_amount,
-                "totalAmount": total_amount,
-                "items": {"create": order_items_data},
-            }
-            if method in {"MOMO", "VNPAY"}:
-                create_data["status"] = "PENDING_PAYMENT"
+            shipping_by_shop = OrderService._allocate_checkout_amount(shipping_fee, shop_subtotals)
+            product_discount_by_shop = OrderService._allocate_checkout_amount(product_discount_amount, shop_subtotals)
+            shipping_discount_by_shop = OrderService._allocate_checkout_amount(shipping_discount_amount, shipping_by_shop)
+            checkout_group_code = f"CHK-{uuid.uuid4().hex[:16]}"
+            primary_shop_id = sorted(shop_ids)[0]
+            checkout_group = await tx.checkoutgroup.create(
+                data={
+                    "user": {"connect": {"id": current_user.id}},
+                    "code": checkout_group_code,
+                    "status": "PENDING_PAYMENT" if method in {"MOMO", "VNPAY"} else "PENDING",
+                    "method": method,
+                    "subtotal": float(subtotal),
+                    "shippingFee": float(shipping_fee),
+                    "discountAmount": float(discount_amount),
+                    "totalAmount": float(total_amount),
+                }
+            )
+            order_ids = []
 
-            if checkout_data.shippingAddressId:
-                create_data["shippingAddress"] = {"connect": {"id": checkout_data.shippingAddressId}}
+            for shop_id in sorted(shop_ids):
+                shop_subtotal = round(float(shop_subtotals.get(shop_id, 0) or 0), 2)
+                shop_shipping_fee = float(shipping_by_shop.get(shop_id, 0) or 0)
+                shop_discount_amount = min(
+                    float(product_discount_by_shop.get(shop_id, 0) or 0)
+                    + float(shipping_discount_by_shop.get(shop_id, 0) or 0),
+                    shop_subtotal + shop_shipping_fee,
+                )
+                shop_total_amount = max(shop_subtotal + shop_shipping_fee - shop_discount_amount, 0)
+                is_primary_order = shop_id == primary_shop_id
 
-            if coupon_ids:
-                create_data["coupon"] = {"connect": {"id": coupon_ids[0]}}
+                create_data = {
+                    "user": {"connect": {"id": current_user.id}},
+                    "subtotal": shop_subtotal,
+                    "shippingFee": shop_shipping_fee,
+                    "shippingMethod": checkout_data.shippingMethod,
+                    "discountAmount": shop_discount_amount,
+                    "totalAmount": shop_total_amount,
+                    "checkoutGroup": {"connect": {"id": checkout_group.id}},
+                    "checkoutGroupCode": checkout_group_code,
+                    "checkoutGroupPrimary": is_primary_order,
+                    "items": {"create": order_items_by_shop[shop_id]},
+                }
+                if method in {"MOMO", "VNPAY"}:
+                    create_data["status"] = "PENDING_PAYMENT"
 
-            order = await tx.order.create(data=create_data, include=ORDER_INCLUDE)
-            await OrderService._create_shop_packages(tx, order.id, shop_ids, OrderService._to_value(order.status))
+                if checkout_data.shippingAddressId:
+                    create_data["shippingAddress"] = {"connect": {"id": checkout_data.shippingAddressId}}
+
+                if coupon_ids and is_primary_order:
+                    create_data["coupon"] = {"connect": {"id": coupon_ids[0]}}
+
+                order = await tx.order.create(data=create_data, include=ORDER_INCLUDE)
+                order_ids.append(order.id)
+                await OrderService._create_shop_packages(tx, order.id, {shop_id}, OrderService._to_value(order.status))
+
+                for inventory_log in inventory_logs:
+                    if inventory_log["shopId"] != shop_id:
+                        continue
+                    inventory_log = {**inventory_log, "orderId": order.id}
+                    await InventoryService.record(tx, inventory_log)
+
+                if coupon_ids and is_primary_order:
+                    await OrderService._apply_coupon_redemptions(tx, coupon_result, order.id, current_user.id)
+
             await OrderService._apply_flash_sale_sales(tx, flash_sale_logs)
 
-            for inventory_log in inventory_logs:
-                inventory_log["orderId"] = order.id
-                await InventoryService.record(tx, inventory_log)
-
-            await OrderService._apply_coupon_redemptions(tx, coupon_result, order.id, current_user.id)
-
-            amount = int(round(float(order.totalAmount or 0)))
+            amount = int(round(float(total_amount or 0)))
             if method in {"MOMO", "VNPAY"} and amount <= 0:
                 raise HTTPException(400, "Order total amount must be greater than 0")
 
+            primary_order_id = order_ids[0]
             if method == "COD":
-                payment = await tx.payment.create(
-                    data={
-                        "order": {"connect": {"id": order.id}},
-                        "method": "COD",
-                        "status": "PENDING",
-                        "amount": float(amount),
-                    }
-                )
+                for order_id in order_ids:
+                    order = await tx.order.find_unique(where={"id": order_id})
+                    created_payment = await tx.payment.create(
+                        data={
+                            "order": {"connect": {"id": order_id}},
+                            "method": "COD",
+                            "status": "PENDING",
+                            "amount": float(order.totalAmount or 0) if order else 0,
+                        }
+                    )
+                    if order_id == primary_order_id:
+                        payment = created_payment
             else:
-                payment = await tx.payment.create(
-                    data={
-                        "order": {"connect": {"id": order.id}},
-                        "method": method,
-                        "status": "PENDING",
-                        "amount": float(amount),
-                    }
-                )
+                for order_id in order_ids:
+                    order = await tx.order.find_unique(where={"id": order_id})
+                    created_payment = await tx.payment.create(
+                        data={
+                            "order": {"connect": {"id": order_id}},
+                            "method": method,
+                            "status": "PENDING",
+                            "amount": float(amount) if order_id == primary_order_id else (float(order.totalAmount or 0) if order else 0),
+                        }
+                    )
+                    if order_id == primary_order_id:
+                        payment = created_payment
+
+            await tx.checkoutgroup.update(
+                where={"id": checkout_group.id},
+                data={
+                    "primaryOrderId": primary_order_id,
+                    "paymentId": payment.id if payment else None,
+                },
+            )
 
             if method == "COD" and checkout_data.cartItemIds:
                 cart = await tx.cart.find_unique(where={"userId": current_user.id})
@@ -915,7 +1043,12 @@ class OrderService:
                         }
                     )
 
-            created_order = await tx.order.find_unique(where={"id": order.id}, include=ORDER_INCLUDE)
+            created_orders = await tx.order.find_many(
+                where={"id": {"in": order_ids}},
+                include=ORDER_INCLUDE,
+                order={"id": "asc"},
+            )
+            created_order = created_orders[0]
 
         if method in {"MOMO", "VNPAY"} and payment:
             try:
@@ -943,6 +1076,15 @@ class OrderService:
                             "paidAt": None,
                         },
                     )
+                    if getattr(created_order, "checkoutGroupId", None):
+                        await prisma.checkoutgroup.update(
+                            where={"id": created_order.checkoutGroupId},
+                            data={
+                                "providerOrderId": gateway_data["providerOrderId"],
+                                "requestId": None,
+                                "paymentId": payment.id,
+                            },
+                        )
                     await PaymentService._create_event(
                         payment=payment,
                         event_type="CREATED",
@@ -976,6 +1118,15 @@ class OrderService:
                             "paidAt": None,
                         },
                     )
+                    if getattr(created_order, "checkoutGroupId", None):
+                        await prisma.checkoutgroup.update(
+                            where={"id": created_order.checkoutGroupId},
+                            data={
+                                "providerOrderId": gateway_data["providerOrderId"],
+                                "requestId": gateway_data["requestId"],
+                                "paymentId": payment.id,
+                            },
+                        )
                     await PaymentService._create_event(
                         payment=payment,
                         event_type="CREATED",
@@ -983,28 +1134,19 @@ class OrderService:
                         payload=response_data,
                         message=response_data.get("message"),
                     )
-            except HTTPException as exc:
-                failure_message = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
-                failed_payment = await prisma.payment.update(
-                    where={"id": payment.id},
-                    data={
-                        "status": "FAILED",
-                        "providerMessage": failure_message,
-                    },
-                )
-                await PaymentService._mark_payment_hold_failed(created_order.id, "PAYMENT_FAILED")
-                await PaymentService._create_event(
-                    payment=failed_payment,
-                    event_type="CREATED",
-                    status="FAILED",
-                    message=failure_message,
-                )
+            except HTTPException:
+                await OrderService._discard_gateway_checkout_order(created_order.id)
+                raise
+            except Exception:
+                await OrderService._discard_gateway_checkout_order(created_order.id)
                 raise
 
         if method == "COD":
-            await OrderService._notify_order_update(created_order.id, "CREATED", actor_id=current_user.id)
+            for order in created_orders:
+                await OrderService._notify_order_update(order.id, "CREATED", actor_id=current_user.id)
         return CheckoutOut(
             order=created_order,
+            orders=created_orders,
             payment=PaymentOut(**{
                 **payment.model_dump(),
                 "method": OrderService._to_value(payment.method),

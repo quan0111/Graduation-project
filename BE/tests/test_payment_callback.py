@@ -21,42 +21,104 @@ class AsyncTx:
 class PaymentCallbackTest(unittest.IsolatedAsyncioTestCase):
     async def test_success_callback_moves_pending_order_to_paid(self):
         original_prisma = payment_service.prisma
-        fake_order = SimpleNamespace(status="PENDING")
+        original_clear_cart = PaymentService._clear_paid_order_cart_items
+        original_notify = PaymentService._notify_order_visible
+        fake_order = SimpleNamespace(id=10, status="PENDING", checkoutGroupCode=None)
         fake_order_model = SimpleNamespace(
             find_unique=AsyncMock(return_value=fake_order),
-            update=AsyncMock(),
+            update_many=AsyncMock(return_value=1),
         )
         fake_package_model = SimpleNamespace(update_many=AsyncMock())
-        payment_service.prisma = SimpleNamespace(order=fake_order_model, ordershoppackage=fake_package_model)
+        fake_payment_model = SimpleNamespace(update_many=AsyncMock())
+        payment_service.prisma = SimpleNamespace(
+            order=fake_order_model,
+            ordershoppackage=fake_package_model,
+            payment=fake_payment_model,
+        )
+        PaymentService._clear_paid_order_cart_items = AsyncMock()
+        PaymentService._notify_order_visible = AsyncMock()
 
         try:
             await PaymentService._sync_order_payment_status(10, "SUCCESS")
         finally:
             payment_service.prisma = original_prisma
+            PaymentService._clear_paid_order_cart_items = original_clear_cart
+            PaymentService._notify_order_visible = original_notify
 
-        fake_order_model.update.assert_awaited_once_with(
-            where={"id": 10},
+        fake_order_model.update_many.assert_awaited_once_with(
+            where={
+                "id": {"in": [10]},
+                "status": {"in": ["PENDING", "PENDING_PAYMENT", "PAYMENT_FAILED", "PAYMENT_EXPIRED"]},
+            },
             data={"status": "PAID"},
         )
+        fake_payment_model.update_many.assert_awaited_once()
         fake_package_model.update_many.assert_awaited_once()
 
     async def test_failed_callback_does_not_regress_paid_order(self):
         original_prisma = payment_service.prisma
-        fake_order = SimpleNamespace(status="PAID")
+        fake_order = SimpleNamespace(id=10, status="PAID", checkoutGroupCode=None)
         fake_order_model = SimpleNamespace(
             find_unique=AsyncMock(return_value=fake_order),
-            update=AsyncMock(),
+            update_many=AsyncMock(),
         )
         fake_package_model = SimpleNamespace(update_many=AsyncMock())
-        payment_service.prisma = SimpleNamespace(order=fake_order_model, ordershoppackage=fake_package_model)
+        payment_service.prisma = SimpleNamespace(
+            order=fake_order_model,
+            ordershoppackage=fake_package_model,
+            payment=SimpleNamespace(update_many=AsyncMock()),
+        )
 
         try:
             await PaymentService._sync_order_payment_status(10, "FAILED")
         finally:
             payment_service.prisma = original_prisma
 
-        fake_order_model.update.assert_not_awaited()
+        fake_order_model.update_many.assert_not_awaited()
         fake_package_model.update_many.assert_not_awaited()
+
+    async def test_success_callback_moves_checkout_group_to_paid_once(self):
+        original_prisma = payment_service.prisma
+        original_clear_cart = PaymentService._clear_paid_order_cart_items
+        original_notify_group = PaymentService._notify_payment_group_visible
+
+        primary_order = SimpleNamespace(id=10, status="PENDING_PAYMENT", checkoutGroupCode="CHK-1", userId=5)
+        child_order = SimpleNamespace(id=11, status="PENDING_PAYMENT", checkoutGroupCode="CHK-1", userId=5)
+        fake_order_model = SimpleNamespace(
+            find_unique=AsyncMock(return_value=primary_order),
+            find_many=AsyncMock(return_value=[primary_order, child_order]),
+            update_many=AsyncMock(return_value=2),
+        )
+        fake_payment_model = SimpleNamespace(update_many=AsyncMock())
+        fake_package_model = SimpleNamespace(update_many=AsyncMock())
+        payment_service.prisma = SimpleNamespace(
+            order=fake_order_model,
+            payment=fake_payment_model,
+            ordershoppackage=fake_package_model,
+        )
+        clear_cart_mock = AsyncMock()
+        notify_group_mock = AsyncMock()
+        PaymentService._clear_paid_order_cart_items = clear_cart_mock
+        PaymentService._notify_payment_group_visible = notify_group_mock
+
+        try:
+            await PaymentService._sync_order_payment_status(10, "SUCCESS")
+        finally:
+            payment_service.prisma = original_prisma
+            PaymentService._clear_paid_order_cart_items = original_clear_cart
+            PaymentService._notify_payment_group_visible = original_notify_group
+
+        fake_order_model.update_many.assert_awaited_once_with(
+            where={
+                "id": {"in": [10, 11]},
+                "status": {"in": ["PENDING", "PENDING_PAYMENT", "PAYMENT_FAILED", "PAYMENT_EXPIRED"]},
+            },
+            data={"status": "PAID"},
+        )
+        fake_payment_model.update_many.assert_awaited_once()
+        fake_package_model.update_many.assert_awaited_once()
+        clear_cart_mock.assert_awaited_once_with(10)
+        notify_group_mock.assert_awaited_once_with([10, 11], "PAID")
 
     async def test_duplicate_gateway_callback_does_not_emit_side_effects(self):
         original_prisma = payment_service.prisma

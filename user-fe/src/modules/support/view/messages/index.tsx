@@ -42,6 +42,7 @@ const getLastMessage = (ticket: SupportTicket) => ticket.messages[ticket.message
 export default function CustomerMessagesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const paramKey = searchParams.toString();
+  const paramTicketId = parsePositiveInt(searchParams.get("ticketId"));
   const paramShopId = parsePositiveInt(searchParams.get("shopId"));
   const paramOrderId = parsePositiveInt(searchParams.get("orderId"));
   const paramShopName = searchParams.get("shopName") ?? "";
@@ -78,6 +79,17 @@ export default function CustomerMessagesPage() {
     [selectedTicketId, sortedTickets],
   );
   const selectedTicket = ticketDetail ?? selectedFromList;
+
+  useEffect(() => {
+    if (!paramTicketId || handledParamKey === paramKey || isLoading) return;
+
+    const existingTicket = sortedTickets.find((ticket) => ticket.id === paramTicketId);
+    if (existingTicket) {
+      setSelectedTicketId(existingTicket.id);
+      setShowComposer(false);
+      setHandledParamKey(paramKey);
+    }
+  }, [handledParamKey, isLoading, paramKey, paramTicketId, sortedTickets]);
 
   useEffect(() => {
     if (!paramShopId || handledParamKey === paramKey || isLoading) return;

@@ -136,7 +136,7 @@ export default function SellerInventoryPage() {
 
   return (
     <SellerDashboardLayout>
-      <div className="space-y-6">
+      <div className="mx-auto max-w-[1480px] min-w-0 space-y-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Quản lý kho và giá theo phân loại</h1>
@@ -146,7 +146,7 @@ export default function SellerInventoryPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-3xl border border-slate-200 bg-white p-6">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-blue-100 p-3">
@@ -213,17 +213,17 @@ export default function SellerInventoryPage() {
             Không có variant phù hợp
           </div>
         ) : (
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-260">
+          <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-[1320px] table-fixed">
                 <thead className="border-b border-slate-200 bg-slate-50">
                   <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Sản phẩm / Variant</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">SKU</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Tồn hiện tại</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Tăng thêm</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Giá variant</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Trạng thái</th>
+                    <th className="w-[360px] px-5 py-3.5 text-left text-sm font-semibold text-slate-700">Sản phẩm / Variant</th>
+                    <th className="w-[250px] px-4 py-3.5 text-left text-sm font-semibold text-slate-700">SKU</th>
+                    <th className="w-[110px] px-4 py-3.5 text-center text-sm font-semibold text-slate-700">Tồn kho</th>
+                    <th className="w-[210px] px-4 py-3.5 text-left text-sm font-semibold text-slate-700">Nhập thêm</th>
+                    <th className="w-[280px] px-4 py-3.5 text-left text-sm font-semibold text-slate-700">Giá bán</th>
+                    <th className="w-[110px] px-4 py-3.5 text-center text-sm font-semibold text-slate-700">Trạng thái</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -234,31 +234,42 @@ export default function SellerInventoryPage() {
                     const stockValue = stockIncrements[row.variantId] ?? "";
 
                     return (
-                      <tr key={row.variantId} className="border-b border-slate-100 hover:bg-slate-50">
-                        <td className="px-6 py-4">
+                      <tr key={row.variantId} className="border-b border-slate-100 align-middle transition hover:bg-slate-50/80">
+                        <td className="px-5 py-3.5">
                           <div className="flex items-center gap-3">
                             {row.imageUrl ? (
                               <img
                                 src={row.imageUrl}
                                 alt={row.productName}
-                                className="h-12 w-12 rounded-lg object-cover"
+                                className="h-14 w-14 shrink-0 rounded-lg object-cover ring-1 ring-slate-100"
                               />
                             ) : (
-                              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+                              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
                                 <Package className="h-5 w-5" />
                               </div>
                             )}
-                            <div>
-                              <p className="font-medium text-slate-900">{row.productName}</p>
-                              <p className="text-sm text-slate-500">{row.variantName}</p>
-                              <p className="text-xs text-slate-400">{row.categoryName || "Chưa có danh mục"}</p>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold leading-5 text-slate-900">{row.productName}</p>
+                              <p className="mt-1 truncate text-sm text-slate-500">{row.variantName}</p>
+                              <p className="truncate text-xs text-slate-400">{row.categoryName || "Chưa có danh mục"}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-600">{row.sku || "N/A"}</td>
-                        <td className="px-6 py-4 font-semibold text-slate-900">{row.stock}</td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
+                        <td className="px-4 py-3.5 text-sm text-slate-600">
+                          <span
+                            title={row.sku || "N/A"}
+                            className="block max-w-full truncate rounded-lg bg-slate-50 px-2.5 py-1.5 font-mono text-xs text-slate-600 ring-1 ring-slate-100"
+                          >
+                            {row.sku || "N/A"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <span className="inline-flex min-w-14 justify-center rounded-lg bg-slate-50 px-3 py-2 text-base font-semibold text-slate-900 ring-1 ring-slate-100">
+                            {row.stock}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="grid max-w-[180px] grid-cols-[88px_76px] items-center gap-2">
                             <Input
                               type="number"
                               min="1"
@@ -270,10 +281,11 @@ export default function SellerInventoryPage() {
                                 }))
                               }
                               placeholder="+10"
-                              className="w-24"
+                              className="h-9 rounded-lg text-center"
                             />
                             <Button
                               size="sm"
+                              className="h-9 rounded-lg bg-rose-400 px-4 font-semibold hover:bg-rose-500"
                               onClick={() => handleIncreaseStock(row)}
                               disabled={updateStockMutation.isPending || !stockValue}
                             >
@@ -281,8 +293,8 @@ export default function SellerInventoryPage() {
                             </Button>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
+                        <td className="px-4 py-3.5">
+                          <div className="grid max-w-[250px] grid-cols-[140px_88px] items-center gap-2">
                             <Input
                               type="number"
                               min="1"
@@ -293,32 +305,33 @@ export default function SellerInventoryPage() {
                                   [row.variantId]: event.target.value,
                                 }))
                               }
-                              className="w-32"
+                              className="h-9 rounded-lg"
                             />
                             <Button
                               size="sm"
                               variant="outline"
+                              className="h-9 rounded-lg px-3 font-semibold"
                               onClick={() => handleUpdatePrice(row)}
                               disabled={updateVariantMutation.isPending || Number(priceValue) === row.price}
                             >
                               Lưu giá
                             </Button>
                           </div>
-                          <p className="mt-1 text-xs text-slate-400">{formatCurrency(row.price)}</p>
+                          <p className="mt-1.5 text-xs text-slate-400">{formatCurrency(row.price)}</p>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-3.5 text-center">
                           {isOutOfStock && (
-                            <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-medium text-red-700">
+                            <span className="inline-flex min-w-20 justify-center whitespace-nowrap rounded-lg bg-red-100 px-3 py-1.5 text-xs font-semibold text-red-700">
                               Hết hàng
                             </span>
                           )}
                           {isLowStock && (
-                            <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
+                            <span className="inline-flex min-w-20 justify-center whitespace-nowrap rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-700">
                               Sắp hết
                             </span>
                           )}
                           {!isOutOfStock && !isLowStock && (
-                            <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
+                            <span className="inline-flex min-w-20 justify-center whitespace-nowrap rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-700">
                               Đủ hàng
                             </span>
                           )}

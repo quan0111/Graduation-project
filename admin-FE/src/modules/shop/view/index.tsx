@@ -2,10 +2,17 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Eye } from 'lucide-react';
+import { Copy, Eye, Lock, LockOpen, Mail, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { DataTable } from '@/components/common/data-table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ShopFilter } from '../component/filter-search-shop';
 import { ShopBadge } from '../component/shop-badge';
 import { useGetAllShop } from '../api/shop/get-all-shop';
@@ -14,6 +21,7 @@ import { useUpdateShop } from '../api/shop/update-shop';
 export const shopColumns = (
   onView: (shop: any) => void,
   onToggleActive: (shop: any) => void,
+  onCopy: (value: string, label: string) => void,
 ) => [
   {
     key: "name",
@@ -90,8 +98,64 @@ export const shopColumns = (
           }}
           title={shop.isActive ? "Tạm khóa shop" : "Mở khóa shop"}
         >
-          <MoreVertical className="w-4 h-4" />
+          {shop.isActive ? <Lock className="w-4 h-4" /> : <LockOpen className="w-4 h-4" />}
         </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="w-9 h-9 p-0"
+              aria-label="Mở menu thao tác"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <MoreVertical className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onClick={(event) => {
+                event.stopPropagation();
+                onView(shop);
+              }}
+            >
+              <Eye className="w-4 h-4" />
+              Xem chi tiết
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleActive(shop);
+              }}
+            >
+              {shop.isActive ? <Lock className="w-4 h-4" /> : <LockOpen className="w-4 h-4" />}
+              {shop.isActive ? "Tạm khóa shop" : "Mở khóa shop"}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onClick={(event) => {
+                event.stopPropagation();
+                onCopy(shop.email || "", "email shop");
+              }}
+            >
+              <Mail className="w-4 h-4" />
+              Copy email
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onClick={(event) => {
+                event.stopPropagation();
+                onCopy(String(shop.id), "ID shop");
+              }}
+            >
+              <Copy className="w-4 h-4" />
+              Copy ID
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     ),
   },
@@ -134,6 +198,15 @@ export default function ShopsPage() {
       }
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || "Không thể cập nhật shop");
+    }
+  };
+
+  const handleCopy = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`Đã copy ${label}`);
+    } catch {
+      toast.error(`Không thể copy ${label}`);
     }
   };
 
@@ -182,7 +255,7 @@ export default function ShopsPage() {
           />
 
           <DataTable
-            columns={shopColumns(setSelectedShop, handleToggleActive)}
+            columns={shopColumns(setSelectedShop, handleToggleActive, handleCopy)}
             data={filteredShops}
             title="Danh sách gian hàng"
           />
@@ -210,11 +283,12 @@ export default function ShopsPage() {
                   <p><span className="font-medium">Trạng thái:</span> {selectedShop.isActive ? "Hoạt động" : "Tạm khóa"}</p>
                   <p><span className="font-medium">Mô tả:</span> {selectedShop.description || "Chưa có mô tả"}</p>
                   <Button
-                    className="w-full"
+                    className="w-full gap-2"
                     variant={selectedShop.isActive ? "destructive" : "default"}
                     onClick={() => handleToggleActive(selectedShop)}
                     disabled={updateShopMutation.isPending}
                   >
+                    {selectedShop.isActive ? <Lock className="w-4 h-4" /> : <LockOpen className="w-4 h-4" />}
                     {selectedShop.isActive ? "Tạm khóa shop" : "Mở khóa shop"}
                   </Button>
                 </div>

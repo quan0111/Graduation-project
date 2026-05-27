@@ -82,6 +82,9 @@ export default function OrdersPage() {
     id: o.id,
     raw: o,
     orderId: `#${o.id}`,
+    checkoutGroupCode: o.checkoutGroupCode || o.checkoutGroup?.code || null,
+    checkoutGroupPrimary: Boolean(o.checkoutGroupPrimary),
+    checkoutGroupOrderCount: o.checkoutGroup?.orders?.length || null,
     shop:
       o.shop?.name ||
       o.Shop?.name ||

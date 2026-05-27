@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useLayoutEffect, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   BadgeDollarSign,
@@ -70,6 +70,10 @@ export function SellerDashboardLayout({ children }: SellerDashboardLayoutProps) 
   const shopName = shop?.name?.trim() || (isShopLoading ? "Đang tải shop..." : "Shop của bạn");
   const publicShopHref = shop?.id ? `/shop/${shop.id}` : "/seller/settings";
 
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location.pathname]);
+
   return (
     <div className="min-h-screen bg-[#f5f5f5] text-slate-900">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-orange-100 bg-white lg:flex">
@@ -125,7 +129,7 @@ export function SellerDashboardLayout({ children }: SellerDashboardLayoutProps) 
         </div>
       </aside>
 
-      <div className="lg:pl-64">
+      <div className="min-w-0 lg:pl-64">
         <header className="sticky top-0 z-20 border-b border-orange-100 bg-white/95 backdrop-blur">
           <div className="flex h-16 items-center justify-between gap-4 px-4 lg:px-8">
             <div className="flex items-center gap-3 lg:hidden">
@@ -184,7 +188,7 @@ export function SellerDashboardLayout({ children }: SellerDashboardLayoutProps) 
           </div>
         </header>
 
-        <main className="px-4 py-6 lg:px-8">{children}</main>
+        <main className="min-w-0 overflow-x-hidden px-4 py-6 lg:px-8">{children}</main>
       </div>
     </div>
   );

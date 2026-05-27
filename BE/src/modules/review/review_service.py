@@ -9,32 +9,71 @@ from src.modules.review.review_schema import ReviewCreate, ReviewUpdate
 
 class ReviewService:
     @staticmethod
+    def _to_value(value):
+        return value.value if hasattr(value, "value") else str(value)
+
+    @staticmethod
     async def create_review(data: ReviewCreate, current_user):
         if data.userId != current_user.id:
             raise HTTPException(403, "Forbidden")
 
-        existing = await prisma.review.find_first(
-            where={
-                "userId": current_user.id,
-                "productId": data.productId,
-                "deletedAt": None,
-            }
-        )
-        if existing:
-            raise HTTPException(400, "You already reviewed this product")
+        paid_order = None
+        paid_order_item = None
 
-        paid_order = await prisma.order.find_first(
-            where={
-                "userId": current_user.id,
-                "status": {"in": ["DELIVERED", "COMPLETED"]},
-                "items": {"some": {"productId": data.productId, "deletedAt": None}},
-            }
-        )
+        if data.orderItemId:
+            paid_order_item = await prisma.orderitem.find_unique(
+                where={"id": data.orderItemId},
+                include={"order": True},
+            )
+            paid_order = getattr(paid_order_item, "order", None) if paid_order_item else None
+            if (
+                not paid_order_item
+                or not paid_order
+                or paid_order_item.deletedAt is not None
+                or paid_order_item.productId != data.productId
+                or paid_order.userId != current_user.id
+                or ReviewService._to_value(paid_order.status) not in {"DELIVERED", "COMPLETED"}
+                or paid_order.deletedAt is not None
+            ):
+                raise HTTPException(400, "Only delivered or completed order items can be reviewed")
+            if data.orderId and paid_order.id != data.orderId:
+                raise HTTPException(400, "Review order does not match order item")
+        else:
+            paid_order = await prisma.order.find_first(
+                where={
+                    "userId": current_user.id,
+                    "status": {"in": ["DELIVERED", "COMPLETED"]},
+                    "items": {"some": {"productId": data.productId, "deletedAt": None}},
+                },
+                order={"createdAt": "desc"},
+            )
+            if paid_order:
+                paid_order_item = await prisma.orderitem.find_first(
+                    where={"orderId": paid_order.id, "productId": data.productId, "deletedAt": None},
+                    order={"createdAt": "desc"},
+                )
+
         if not paid_order:
             raise HTTPException(400, "Only buyers with delivered or completed orders can review this product")
 
-        payload = data.dict(exclude={"mediaUrls"})
+        existing_where = {
+            "userId": current_user.id,
+            "deletedAt": None,
+        }
+        if paid_order_item:
+            existing_where["orderItemId"] = paid_order_item.id
+        else:
+            existing_where["productId"] = data.productId
+
+        existing = await prisma.review.find_first(where=existing_where)
+        if existing:
+            raise HTTPException(400, "You already reviewed this order item")
+
+        payload = data.dict(exclude={"mediaUrls"}, exclude_none=True)
         payload["userId"] = current_user.id
+        payload["orderId"] = paid_order.id
+        if paid_order_item:
+            payload["orderItemId"] = paid_order_item.id
         payload["isVerifiedPurchase"] = True
         if data.mediaUrls:
             payload["media"] = {

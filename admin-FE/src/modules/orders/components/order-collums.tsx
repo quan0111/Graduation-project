@@ -89,6 +89,23 @@ export const orderColumns = (
   onUpdateStatus: (id: string, status: string) => void
 ) => [
   { key: "orderId", label: "Mã đơn" },
+  {
+    key: "checkoutGroupCode",
+    label: "Nhóm checkout",
+    exportValue: (o: any) => o.checkoutGroupCode || "",
+    render: (o: any) => (
+      o.checkoutGroupCode ? (
+        <div className="min-w-36">
+          <span className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 font-mono text-xs text-orange-700">
+            {o.checkoutGroupCode}
+          </span>
+          {o.checkoutGroupPrimary ? <p className="mt-1 text-[11px] text-muted-foreground">Payment chính</p> : null}
+        </div>
+      ) : (
+        <span className="text-muted-foreground">-</span>
+      )
+    ),
+  },
   { key: "shop", label: "Shop" },
   { key: "customer", label: "Khách hàng" },
 

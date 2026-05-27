@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ShoppingCart, Sparkles, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 
@@ -22,7 +23,10 @@ export default function CartPage() {
   const clearMutation = useClearCart();
 
   const [selected, setSelected] = useState<string[]>([]);
+  const [quantityDrafts, setQuantityDrafts] = useState<Record<string, number>>({});
+  const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
   const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const requestVersionRef = useRef<Record<string, number>>({});
 
   const cartItems = cartData?.items || [];
 
@@ -42,11 +46,35 @@ export default function CartPage() {
         image: item.product?.images?.[0]?.url || "",
         variant: item.variant?.name,
         price: item.variant?.price || item.product?.price || 0,
-        quantity: item.quantity,
+        quantity: quantityDrafts[String(item.id)] ?? item.quantity,
+        stock: Number(item.variant?.stock ?? item.product?.stock ?? Infinity),
         shopName,
       };
     });
+  }, [cartItems, quantityDrafts]);
+
+  useEffect(() => {
+    setQuantityDrafts((prev) => {
+      let changed = false;
+      const next = { ...prev };
+
+      for (const item of cartItems) {
+        const id = String(item.id);
+        if (next[id] !== undefined && Number(item.quantity) === next[id]) {
+          delete next[id];
+          changed = true;
+        }
+      }
+
+      return changed ? next : prev;
+    });
   }, [cartItems]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(debounceRef.current).forEach((timer) => clearTimeout(timer));
+    };
+  }, []);
 
   const grouped = useMemo(() => {
     const map: Record<string, typeof transformedItems> = {};
@@ -67,24 +95,66 @@ export default function CartPage() {
 
   const handleUpdateQty = (id: string, quantity: number) => {
     const itemId = Number(id);
+    const item = transformedItems.find((entry) => entry.id === id);
+    const maxQuantity = Number.isFinite(item?.stock) ? Math.max(Number(item?.stock), 1) : Infinity;
+    const nextQuantity = Math.min(Math.max(1, quantity), maxQuantity);
+
+    setQuantityDrafts((prev) => ({ ...prev, [id]: nextQuantity }));
+    setSyncingIds((prev) => new Set(prev).add(id));
+    requestVersionRef.current[id] = (requestVersionRef.current[id] ?? 0) + 1;
+    const version = requestVersionRef.current[id];
 
     if (debounceRef.current[id]) {
       clearTimeout(debounceRef.current[id]);
     }
 
     debounceRef.current[id] = setTimeout(() => {
-      updateMutation.mutate({ itemId, quantity });
+      updateMutation.mutate(
+        { itemId, quantity: nextQuantity },
+        {
+          onError: () => {
+            setQuantityDrafts((prev) => {
+              const next = { ...prev };
+              delete next[id];
+              return next;
+            });
+            toast.error("Không thể cập nhật số lượng. Sản phẩm có thể đã hết tồn kho.");
+          },
+          onSettled: () => {
+            if (requestVersionRef.current[id] !== version) {
+              return;
+            }
+            setSyncingIds((prev) => {
+              const next = new Set(prev);
+              next.delete(id);
+              return next;
+            });
+          },
+        },
+      );
     }, 350);
   };
 
   const handleRemove = async (id: string) => {
     await deleteMutation.mutateAsync(Number(id));
+    setQuantityDrafts((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setSyncingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
     setSelected((prev) => prev.filter((value) => value !== id));
   };
 
   const handleClear = async () => {
     if (!cartData?.id) return;
     await clearMutation.mutateAsync(cartData.id);
+    setQuantityDrafts({});
+    setSyncingIds(new Set());
     setSelected([]);
   };
 
@@ -173,6 +243,7 @@ export default function CartPage() {
               onSelect={handleSelect}
               onQty={handleUpdateQty}
               onRemove={handleRemove}
+              syncingIds={syncingIds}
             />
           </div>
 

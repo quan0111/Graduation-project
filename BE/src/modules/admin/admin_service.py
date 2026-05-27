@@ -335,6 +335,7 @@ class AdminService:
             normalized_order_id = search[1:] if search.startswith("#") else search
             if normalized_order_id.isdigit():
                 search_or.append({"id": int(normalized_order_id)})
+            search_or.append({"checkoutGroupCode": {"contains": search, "mode": "insensitive"}})
             where["OR"] = search_or or [{"id": -1}]
 
         skip = (pagination.page - 1) * pagination.limit
@@ -348,6 +349,7 @@ class AdminService:
                 "user": True,
                 "items": {"include": {"shop": True}},
                 "payment": {"include": {"events": True}},
+                "checkoutGroup": True,
                 "shippingAddress": True,
                 "shipment": True,
                 "shipmentEvents": True,

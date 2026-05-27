@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:15
@@ -31,6 +29,9 @@ services:
       - "8000:8000"
     env_file:
       - ./BE/.env
+    environment:
+      DATABASE_URL: postgresql://postgres:123456@db:5432/DATN
+      REDIS_URL: redis://redis:6379/0
     depends_on:
       - db
       - redis

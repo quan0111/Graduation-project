@@ -119,6 +119,9 @@ class PaymentOut(PaymentBase):
     id: int
     orderId: int
     amount: Optional[float] = None
+    checkoutGroupId: Optional[int] = None
+    checkoutGroupCode: Optional[str] = None
+    orderIds: List[int] = []
     providerOrderId: Optional[str] = None
     requestId: Optional[str] = None
     transactionId: Optional[str] = None
@@ -151,10 +154,14 @@ class PaymentGatewayOut(BaseModel):
     deeplink: Optional[str] = None
     providerOrderId: Optional[str] = None
     requestId: Optional[str] = None
+    checkoutGroupId: Optional[int] = None
+    checkoutGroupCode: Optional[str] = None
+    orderIds: List[int] = []
 
 
 class CheckoutOut(BaseModel):
     order: "OrderOut"
+    orders: List["OrderOut"] = []
     payment: Optional[PaymentOut] = None
     paymentUrl: Optional[str] = None
     qrCodeUrl: Optional[str] = None
@@ -209,6 +216,9 @@ class OrderOut(BaseModel):
     totalAmount: float
     shippingAddressId: Optional[int] = None
     couponId: Optional[int] = None
+    checkoutGroupId: Optional[int] = None
+    checkoutGroupCode: Optional[str] = None
+    checkoutGroupPrimary: bool = False
     createdAt: datetime
     updatedAt: datetime
     items: List[OrderItemOut] = []

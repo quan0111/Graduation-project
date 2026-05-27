@@ -203,12 +203,21 @@ export default function CheckOutPage() {
         const status = String(payment?.status ?? "").toUpperCase();
 
         if (PAYMENT_SUCCESS_STATUSES.has(status)) {
+          const orderIds = Array.isArray(paymentQrData?.orderIds) ? paymentQrData.orderIds : [orderId];
+          const checkoutGroupCode = paymentQrData?.checkoutGroupCode;
+          const ordersTarget = orderIds.length > 1 && checkoutGroupCode
+            ? `/orders?checkoutGroup=${encodeURIComponent(checkoutGroupCode)}`
+            : orderIds.length > 1
+              ? "/orders"
+              : `/orders/${orderId}`;
           paymentCompletedRef.current = true;
           setPaymentStatus("success");
-          setPaymentCheckMessage("Thanh toán đã được xác nhận. Hóa đơn đã được tạo, đang chuyển tới chi tiết đơn hàng...");
+          setPaymentCheckMessage(orderIds.length > 1
+            ? `Thanh toán đã được xác nhận. Đã tạo ${orderIds.length} hóa đơn theo từng shop, đang chuyển tới nhóm hóa đơn...`
+            : "Thanh toán đã được xác nhận. Hóa đơn đã được tạo, đang chuyển tới chi tiết đơn hàng...");
           window.sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
-          toast.success("Thanh toán thành công");
-          window.setTimeout(() => navigate(`/orders/${orderId}`), 900);
+          toast.success(orderIds.length > 1 ? `Thanh toán thành công, đã tạo ${orderIds.length} hóa đơn` : "Thanh toán thành công");
+          window.setTimeout(() => navigate(ordersTarget), 900);
           return;
         }
 
@@ -227,7 +236,7 @@ export default function CheckOutPage() {
         pollingInFlightRef.current = false;
       }
     },
-    [navigate, paymentQrData?.orderId],
+    [navigate, paymentQrData?.checkoutGroupCode, paymentQrData?.orderId, paymentQrData?.orderIds],
   );
 
   const expirePaymentHold = useCallback(async () => {
@@ -336,6 +345,9 @@ export default function CheckOutPage() {
           providerOrderId: checkoutResult.providerOrderId,
           requestId: checkoutResult.requestId,
           orderId: checkoutResult.order.id,
+          orderIds: checkoutResult.orders.map((order) => order.id),
+          checkoutGroupId: checkoutResult.order.checkout_group_id,
+          checkoutGroupCode: checkoutResult.order.checkout_group_code,
         });
         paymentCompletedRef.current = false;
         pollingInFlightRef.current = false;
@@ -347,8 +359,14 @@ export default function CheckOutPage() {
       }
 
       window.sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
-      toast.success("Đặt hàng thành công");
-      navigate(`/orders/${checkoutResult.order.id}`);
+      const createdOrderCount = checkoutResult.orders.length || 1;
+      toast.success(createdOrderCount > 1 ? `Đặt hàng thành công, đã tạo ${createdOrderCount} hóa đơn theo shop` : "Đặt hàng thành công");
+      const checkoutGroupCode = checkoutResult.order.checkout_group_code;
+      navigate(createdOrderCount > 1 && checkoutGroupCode
+        ? `/orders?checkoutGroup=${encodeURIComponent(checkoutGroupCode)}`
+        : createdOrderCount > 1
+          ? "/orders"
+          : `/orders/${checkoutResult.order.id}`);
     } catch (error: any) {
       const detail = error?.response?.data?.detail;
       toast.error(typeof detail === "string" ? detail : "Không thể tạo đơn hàng");

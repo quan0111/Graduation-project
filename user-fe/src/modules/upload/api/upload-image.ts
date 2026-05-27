@@ -16,6 +16,8 @@ export interface UploadImageResponse {
   height?: number;
   format?: string;
   resourceType?: string;
+  bytes?: number;
+  originalFilename?: string;
 }
 
 const getUploadError = (error: unknown, fallback: string) => {
@@ -69,4 +71,29 @@ export const uploadMedia = async ({ file, folder = "datn" }: UploadImageRequest)
   } catch (error) {
     throw new Error(getUploadError(error, "Không tải được media"));
   }
+};
+
+export const uploadFile = async ({ file, folder = "datn" }: UploadImageRequest): Promise<UploadImageResponse> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("folder", folder);
+
+  try {
+    const response = await apiClient.post("/uploads/file", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    throw new Error(getUploadError(error, "Không tải được file"));
+  }
+};
+
+export const useUploadFile = ({ config }: { config?: MutationConfig<typeof uploadFile> } = {}) => {
+  return useMutation({
+    mutationFn: uploadFile,
+    ...config,
+  });
 };

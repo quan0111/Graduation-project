@@ -299,6 +299,8 @@ export default function OrderDetailPage() {
         <ReviewForm
           productId={reviewItem.product_id}
           userId={order.user_id}
+          orderId={order.id}
+          orderItemId={reviewItem.id}
           productName={reviewItem.product_name}
           productImage={reviewItem.product_image}
           variantName={reviewItem.variant_name}

@@ -24,6 +24,7 @@ model User {
   addresses                  Address[]
   shops                      Shop?
   orders                     Order[]
+  checkoutGroups             CheckoutGroup[]
   reviews                    Review[]
   reviewReplies              ReviewReply[]
   wishlists                  Wishlist[]
@@ -274,13 +275,18 @@ model Order {
 
   shippingAddressId Int?
   couponId          Int?
+  checkoutGroupId   Int?
+  checkoutGroupCode String?
+  checkoutGroupPrimary Boolean @default(false)
 
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   shippingAddress Address? @relation("ShippingAddress", fields: [shippingAddressId], references: [id])
   coupon          Coupon?  @relation(fields: [couponId], references: [id])
+  checkoutGroup   CheckoutGroup? @relation(fields: [checkoutGroupId], references: [id], onDelete: SetNull)
   couponRedemptions CouponRedemption[]
 
   items          OrderItem[]
+  reviews        Review[]
   payment        Payment?
   shipment       Shipment?
   shipmentEvents ShipmentEvent[]
@@ -295,6 +301,36 @@ model Order {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@index([checkoutGroupId])
+  @@index([checkoutGroupCode])
+  @@index([checkoutGroupCode, checkoutGroupPrimary])
+  @@index([createdAt(sort: Desc)])
+}
+
+model CheckoutGroup {
+  id              Int           @id @default(autoincrement())
+  code            String        @unique
+  userId          Int
+  status          OrderStatus   @default(PENDING)
+  method          PaymentMethod
+  subtotal        Float
+  shippingFee     Float         @default(0)
+  discountAmount  Float         @default(0)
+  totalAmount     Float
+  primaryOrderId  Int?
+  paymentId       Int?
+  providerOrderId String?
+  requestId       String?
+  paidAt          DateTime?
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([status])
@@ -367,6 +403,7 @@ model OrderItem {
   shop    Shop            @relation(fields: [shopId], references:[id])
   returnItems ReturnItem[]
   commissions PlatformCommission[]
+  reviews Review[]
 
   createdAt DateTime  @default(now())
   deletedAt DateTime?
@@ -513,9 +550,13 @@ model Review {
   isVerifiedPurchase Boolean @default(false)
   userId             Int
   productId          Int
+  orderId            Int?
+  orderItemId        Int?
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  orderItem OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
   media   ReviewMedia[]
   replies ReviewReply[]
 
@@ -523,6 +564,8 @@ model Review {
   deletedAt DateTime?
 
   @@index([productId])
+  @@index([orderId])
+  @@index([orderItemId])
   @@index([userId, productId])
 }
 

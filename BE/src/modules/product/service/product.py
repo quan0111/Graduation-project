@@ -268,10 +268,11 @@ class ProductService:
 
         if viewer_role != "ADMIN":
             where["status"] = "ACTIVE"
-        if search:
+        if search and search.strip():
+            keyword = search.strip()
             where["OR"] = [
-                {"name": {"contains": search}},
-                {"description": {"contains": search}},
+                {"name": {"contains": keyword, "mode": "insensitive"}},
+                {"description": {"contains": keyword, "mode": "insensitive"}},
             ]
         if category_id:
             where["categoryId"] = category_id

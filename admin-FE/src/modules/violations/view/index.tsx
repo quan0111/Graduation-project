@@ -1,4 +1,4 @@
-import { ShieldAlert, Undo2, UserCheck } from "lucide-react";
+import { FileText, ShieldAlert, Undo2, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -73,6 +73,27 @@ export default function ViolationsPage() {
                   <p className="mt-2 text-sm text-slate-700">Lý do: {item.reason}</p>
                   {item.sellerNote ? <p className="mt-2 text-sm text-blue-700">Seller giải trình: {item.sellerNote}</p> : null}
                   {item.evidence?.length ? <p className="mt-1 text-xs text-slate-500">Có {item.evidence.length} bằng chứng đính kèm</p> : null}
+                  {item.evidence?.length ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {item.evidence.map((evidence, index) => {
+                        const url = typeof evidence.url === "string" ? evidence.url : "";
+                        if (!url) return null;
+                        const name = typeof evidence.name === "string" ? evidence.name : `Bằng chứng ${index + 1}`;
+                        return (
+                          <a
+                            key={`${url}-${index}`}
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex max-w-60 items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-orange-200 hover:bg-orange-50 hover:text-[#ee4d2d]"
+                          >
+                            <FileText className="size-3.5 shrink-0" />
+                            <span className="truncate">{name}</span>
+                          </a>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="flex shrink-0 gap-2">

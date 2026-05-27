@@ -1,28 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, CheckCheck } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { getStorefrontAccessToken } from "@/lib/auth-storage";
 import { formatDateTime } from "@/lib/date";
+import { useMe } from "@/modules/auth/api/get-auth-me";
 import {
   type Notification,
   useGetNotifications,
   useMarkAllAsRead,
   useMarkAsRead,
 } from "@/modules/notification/api/notification";
-
-const typeLabel: Record<string, string> = {
-  ORDER_UPDATE: "Đơn hàng",
-  PAYMENT_UPDATE: "Thanh toán",
-  RETURN_UPDATE: "Đổi trả",
-  REFUND_UPDATE: "Hoàn tiền",
-  PRODUCT_BANNED: "Sản phẩm",
-  SUPPORT_TICKET: "Hỗ trợ",
-  SYSTEM: "Hệ thống",
-  PROMOTION: "Khuyến mãi",
-  CHAT: "Chat",
-};
+import { buildNotificationDisplay } from "@/modules/notification/utils";
 
 const getWsUrl = () => {
   const baseUrl = import.meta.env.VITE_API_URL as string;
@@ -36,6 +27,8 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const socketRef = useRef<WebSocket | null>(null);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { data: user } = useMe();
   const { data: notifications = [] } = useGetNotifications();
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
@@ -108,6 +101,12 @@ export function NotificationBell() {
     if (!notification.isRead) {
       await markAsRead.mutateAsync(notification.id);
     }
+
+    const target = buildNotificationDisplay(notification, user?.role).href;
+    setOpen(false);
+    if (target) {
+      navigate(target);
+    }
   };
 
   return (
@@ -138,26 +137,30 @@ export function NotificationBell() {
             {notifications.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-slate-500">Chưa có thông báo mới.</div>
             ) : (
-              notifications.slice(0, 12).map((notification) => (
-                <button
-                  key={notification.id}
-                  type="button"
-                  onClick={() => handleOpenNotification(notification)}
-                  className="block w-full border-b border-slate-100 px-4 py-3 text-left transition hover:bg-orange-50/60"
-                >
-                  <div className="mb-1 flex items-center justify-between gap-3">
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                      {typeLabel[notification.type] ?? notification.type}
-                    </span>
-                    {!notification.isRead ? <span className="size-2 rounded-full bg-[#ee4d2d]" /> : null}
-                  </div>
-                  <p className="text-sm font-semibold text-slate-900">{notification.title}</p>
-                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{notification.content}</p>
-                  <p className="mt-2 text-[11px] text-slate-400">
-                    {formatDateTime(notification.createdAt)}
-                  </p>
-                </button>
-              ))
+              notifications.slice(0, 12).map((notification) => {
+                const display = buildNotificationDisplay(notification, user?.role);
+
+                return (
+                  <button
+                    key={notification.id}
+                    type="button"
+                    onClick={() => handleOpenNotification(notification)}
+                    className="block w-full border-b border-slate-100 px-4 py-3 text-left transition hover:bg-orange-50/60"
+                  >
+                    <div className="mb-1 flex items-center justify-between gap-3">
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                        {display.typeLabel}
+                      </span>
+                      {!notification.isRead ? <span className="size-2 rounded-full bg-[#ee4d2d]" /> : null}
+                    </div>
+                    <p className="text-sm font-semibold text-slate-900">{display.title}</p>
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{display.content}</p>
+                    <p className="mt-2 text-[11px] text-slate-400">
+                      {formatDateTime(notification.createdAt)}
+                    </p>
+                  </button>
+                );
+              })
             )}
           </div>
         </div>

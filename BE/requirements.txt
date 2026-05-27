@@ -2,6 +2,9 @@ fastapi
 uvicorn[standard]
 prisma
 python-dotenv
+pydantic-settings
+python-jose[cryptography]
+passlib[bcrypt]
 cloudinary
 python-multipart
 numpy

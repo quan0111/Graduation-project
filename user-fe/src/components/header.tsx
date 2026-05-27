@@ -1,25 +1,58 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Heart, Menu, MessageCircle, Search, ShoppingCart, User, X } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Heart, Loader2, Menu, MessageCircle, Search, ShoppingCart, User, X } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useDebounce } from "@/hook/useDebounce";
 import { useLogout } from "@/modules/auth/api/logout";
 import { useMe } from "@/modules/auth/api/get-auth-me";
 import { NotificationBell } from "@/modules/notification/components/notification-bell";
+import { useGetProduct } from "@/modules/product/api/get-product";
+import type { IProduct } from "@/modules/product/types";
+import { getProductImageUrl } from "@/modules/product/utils/image";
+import { normalizeProduct } from "@/modules/product/utils/normalize-product";
+
+const formatVnd = (value: number) => `${value.toLocaleString("vi-VN")} đ`;
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const debouncedSearchTerm = useDebounce(searchTerm, 250);
+  const suggestionKeyword = debouncedSearchTerm.trim();
 
   const { data: user } = useMe();
   const { mutate: logout } = useLogout();
   const cartCount = user?.cart?.totalItems ?? user?.cart?.itemCount ?? 0;
+  const shouldFetchSuggestions = suggestionKeyword.length >= 2;
+  const { data: rawSuggestions = [], isFetching: isSuggestionLoading } = useGetProduct(
+    {
+      page: 1,
+      limit: 6,
+      search: shouldFetchSuggestions ? suggestionKeyword : undefined,
+    },
+    {
+      enabled: shouldFetchSuggestions,
+      staleTime: 30_000,
+    },
+  );
+
+  const suggestions: IProduct[] = useMemo(
+    () => rawSuggestions.map((product) => normalizeProduct(product as Record<string, unknown>)),
+    [rawSuggestions],
+  );
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setSearchTerm(location.pathname === "/products" ? params.get("search") ?? "" : "");
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -32,11 +65,108 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSearch = () => {
-    const query = searchTerm.trim();
+  const closeSearch = () => {
+    setIsSearchOpen(false);
+  };
+
+  const handleSearch = (value = searchTerm) => {
+    const query = value.trim();
     navigate(query ? `/products?search=${encodeURIComponent(query)}` : "/products");
+    closeSearch();
     setIsMenuOpen(false);
   };
+
+  const handleSuggestionSelect = (product: IProduct) => {
+    navigate(`/product/${product.id}`);
+    closeSearch();
+    setIsMenuOpen(false);
+  };
+
+  const renderSearchBox = (inputClassName = "") => (
+    <div className="relative">
+      <Input
+        type="text"
+        placeholder="Tìm kiếm sản phẩm..."
+        className={inputClassName || "w-full pl-4 pr-12"}
+        value={searchTerm}
+        onChange={(event) => {
+          setSearchTerm(event.target.value);
+          setIsSearchOpen(true);
+        }}
+        onFocus={() => setIsSearchOpen(true)}
+        onBlur={() => window.setTimeout(closeSearch, 120)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            handleSearch();
+          }
+        }}
+      />
+
+      <button
+        type="button"
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => handleSearch()}
+        className="absolute right-1 top-1/2 -translate-y-1/2 rounded bg-primary p-2 text-white transition hover:bg-primary/90"
+        aria-label="Tìm kiếm"
+      >
+        <Search size={16} />
+      </button>
+
+      {isSearchOpen && shouldFetchSuggestions ? (
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-2xl border border-orange-100 bg-white shadow-xl">
+          <div className="border-b border-orange-50 px-4 py-2 text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
+            Gợi ý sản phẩm
+          </div>
+
+          {isSuggestionLoading ? (
+            <div className="flex items-center gap-2 px-4 py-4 text-sm text-slate-500">
+              <Loader2 className="size-4 animate-spin" />
+              Đang tìm sản phẩm...
+            </div>
+          ) : suggestions.length > 0 ? (
+            <div className="max-h-80 overflow-y-auto py-1">
+              {suggestions.map((product) => (
+                <button
+                  key={product.id}
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => handleSuggestionSelect(product)}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-orange-50"
+                >
+                  <img
+                    src={getProductImageUrl(product)}
+                    alt={product.name}
+                    className="size-12 shrink-0 rounded-lg border border-orange-100 object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="line-clamp-1 text-sm font-semibold text-slate-900">{product.name}</span>
+                    <span className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
+                      <span className="line-clamp-1">{product.shop?.name ?? product.category?.name ?? "Marketplace"}</span>
+                      <span className="font-semibold text-orange-600">{formatVnd(product.activeFlashSale?.salePrice ?? product.price)}</span>
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="px-4 py-4 text-sm text-slate-500">Không tìm thấy sản phẩm phù hợp.</div>
+          )}
+
+          <button
+            type="button"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => handleSearch(suggestionKeyword)}
+            className="flex w-full items-center justify-between border-t border-orange-50 px-4 py-3 text-sm font-semibold text-orange-600 transition hover:bg-orange-50"
+          >
+            <span>Xem tất cả kết quả cho "{suggestionKeyword}"</span>
+            <Search className="size-4" />
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-white">
@@ -78,31 +208,7 @@ export default function Header() {
             </div>
           </Link>
 
-          <div className="hidden max-w-2xl flex-1 md:block">
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="Tìm kiếm sản phẩm..."
-                className="w-full pl-4 pr-12"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    handleSearch();
-                  }
-                }}
-              />
-
-              <button
-                type="button"
-                onClick={handleSearch}
-                className="absolute right-1 top-1/2 -translate-y-1/2 rounded bg-primary p-2 text-white"
-                aria-label="Tìm kiếm"
-              >
-                <Search size={16} />
-              </button>
-            </div>
-          </div>
+          <div className="hidden max-w-2xl flex-1 md:block">{renderSearchBox()}</div>
 
           <div className="ml-auto flex items-center gap-2 md:gap-4">
             <Link to="/wishlist" className="rounded p-2 hover:bg-muted" aria-label="Yêu thích">
@@ -208,27 +314,7 @@ export default function Header() {
 
         {isMenuOpen ? (
           <div className="mt-3 space-y-3 md:hidden">
-            <div className="relative">
-              <Input
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    handleSearch();
-                  }
-                }}
-                placeholder="Tìm kiếm sản phẩm..."
-                className="pr-11"
-              />
-              <button
-                type="button"
-                onClick={handleSearch}
-                className="absolute right-1 top-1/2 -translate-y-1/2 rounded bg-primary p-2 text-white"
-                aria-label="Tìm kiếm"
-              >
-                <Search size={16} />
-              </button>
-            </div>
+            {renderSearchBox("pr-11")}
             <div className="grid grid-cols-2 gap-2 text-sm">
               <Link to="/products" onClick={() => setIsMenuOpen(false)} className="rounded-lg border px-3 py-2">
                 Sản phẩm

@@ -117,6 +117,9 @@ export interface IOrder {
   total_amount: number;
   shipping_address_id?: number | null;
   coupon_id?: number | null;
+  checkout_group_id?: number | null;
+  checkout_group_code?: string | null;
+  checkout_group_primary?: boolean;
   created_at: string;
   updated_at: string;
   user?: IOrderUser | null;

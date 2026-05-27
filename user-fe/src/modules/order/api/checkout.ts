@@ -12,6 +12,7 @@ export interface CheckoutPayload extends ICreateOrderFormInputs {
 
 export interface CheckoutResponse {
   order: IOrder;
+  orders: IOrder[];
   payment?: IPayment | null;
   paymentUrl?: string | null;
   qrCodeUrl?: string | null;
@@ -43,8 +44,12 @@ const mapPayment = (payment: any): IPayment | null =>
 
 export const checkout = async (payload: CheckoutPayload): Promise<CheckoutResponse> => {
   const response = await apiClient.post(`${API_URL_ORDER}/checkout`, payload);
+  const orders = Array.isArray(response.data.orders)
+    ? response.data.orders.map(mapOrder)
+    : [mapOrder(response.data.order)];
   return {
     order: mapOrder(response.data.order),
+    orders,
     payment: mapPayment(response.data.payment),
     paymentUrl: response.data.paymentUrl ?? null,
     qrCodeUrl: response.data.qrCodeUrl ?? null,

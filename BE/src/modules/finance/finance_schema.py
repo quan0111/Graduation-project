@@ -38,6 +38,8 @@ class CategoryShort(BaseModel):
 class OrderShort(BaseModel):
     id: int
     totalAmount: float
+    checkoutGroupCode: Optional[str] = None
+    checkoutGroupPrimary: bool = False
 
     model_config = {"from_attributes": True}
 

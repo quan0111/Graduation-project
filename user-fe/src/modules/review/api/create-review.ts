@@ -7,6 +7,8 @@ import { uploadMedia } from "@/modules/upload/api/upload-image";
 export interface ReviewCreatePayload {
   userId: number;
   productId: number;
+  orderId?: number;
+  orderItemId?: number;
   rating: number;
   comment?: string;
   images?: File[];
@@ -26,6 +28,8 @@ const createReview = async (payload: ReviewCreatePayload) => {
   const response = await apiClient.post(`${API_URL_REVIEW}/`, {
     userId: payload.userId,
     productId: payload.productId,
+    orderId: payload.orderId,
+    orderItemId: payload.orderItemId,
     rating: payload.rating,
     comment: payload.comment,
     mediaUrls,

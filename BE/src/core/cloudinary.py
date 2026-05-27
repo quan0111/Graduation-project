@@ -83,3 +83,31 @@ async def upload_media(file: UploadFile, folder: str = "datn") -> dict:
         "format": result.get("format"),
         "resourceType": resource_type,
     }
+
+
+async def upload_file(file: UploadFile, folder: str = "datn") -> dict:
+    if not is_cloudinary_configured():
+        raise HTTPException(500, "Cloudinary is not configured")
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(400, "Uploaded file is empty")
+
+    try:
+        result = cloudinary.uploader.upload(
+            content,
+            folder=folder,
+            resource_type="auto",
+            filename_override=file.filename,
+        )
+    except Exception as exc:
+        raise HTTPException(500, f"Upload failed: {exc}") from exc
+
+    return {
+        "url": result.get("secure_url"),
+        "publicId": result.get("public_id"),
+        "format": result.get("format"),
+        "resourceType": result.get("resource_type"),
+        "bytes": result.get("bytes"),
+        "originalFilename": file.filename,
+    }

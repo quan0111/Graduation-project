@@ -6,6 +6,8 @@ from datetime import datetime
 class ReviewCreate(BaseModel):
     userId: int
     productId: int
+    orderId: Optional[int] = None
+    orderItemId: Optional[int] = None
     rating: int = Field(ge=1, le=5)
     comment: Optional[str] = None
     mediaUrls: List[str] = []
@@ -60,6 +62,8 @@ class ReviewOut(BaseModel):
 
     userId: int
     productId: int
+    orderId: Optional[int] = None
+    orderItemId: Optional[int] = None
 
     rating: int
     comment: Optional[str]

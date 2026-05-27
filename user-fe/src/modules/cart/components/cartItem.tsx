@@ -10,6 +10,7 @@ type CartItemType = {
   variant?: string;
   price: number;
   quantity: number;
+  stock?: number;
 };
 
 type CartItemProps = {
@@ -18,6 +19,7 @@ type CartItemProps = {
   onSelect: (id: string) => void;
   onQty: (id: string, value: number) => void;
   onRemove: (id: string) => void;
+  isSyncing?: boolean;
 };
 
 const formatCurrency = (value: number) =>
@@ -33,6 +35,7 @@ export const CartItem: React.FC<CartItemProps> = ({
   onSelect,
   onQty,
   onRemove,
+  isSyncing = false,
 }) => {
   return (
     <div className="grid gap-4 rounded-[1.5rem] border border-slate-100 bg-white p-4 transition hover:border-orange-200 hover:bg-orange-50/40 md:grid-cols-[auto_88px_minmax(0,1fr)_auto_auto] md:items-center">
@@ -62,7 +65,12 @@ export const CartItem: React.FC<CartItemProps> = ({
         </div>
       </div>
 
-      <QuantityControl value={item.quantity} onChange={(value) => onQty(item.id, value)} />
+      <QuantityControl
+        value={item.quantity}
+        max={item.stock ?? Infinity}
+        isSyncing={isSyncing}
+        onChange={(value) => onQty(item.id, value)}
+      />
 
       <button
         type="button"

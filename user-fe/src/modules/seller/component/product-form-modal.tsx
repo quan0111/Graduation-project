@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import { X, Upload, Trash2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { apiClient } from "@/lib/api";
 import { useCreateProduct } from "@/modules/seller/api/create-product";
 import { useUpdateProduct } from "@/modules/seller/api/update-product";
+import { CategoryPicker } from "@/modules/seller/component/add-product/categoryPicker";
+import type { Category } from "@/modules/seller/types/addproduct";
 
 interface ProductFormModalProps {
   isOpen: boolean;
@@ -27,6 +31,13 @@ export const ProductFormModal = ({ isOpen, onClose, onSuccess, product }: Produc
   });
 
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ["seller", "categories"],
+    queryFn: async () => {
+      const response = await apiClient.get("/categories");
+      return response.data;
+    },
+  });
   const createMutation = useCreateProduct();
   const updateMutation = useUpdateProduct();
 
@@ -38,7 +49,7 @@ export const ProductFormModal = ({ isOpen, onClose, onSuccess, product }: Produc
         price: product.price?.toString() || "",
         stock: product.stock?.toString() || "",
         sku: product.sku || "",
-        category_id: product.category_id?.toString() || "",
+        category_id: product.category_id?.toString() || product.categoryId?.toString() || "",
         images: [],
       });
       if (product.images) {
@@ -202,11 +213,10 @@ export const ProductFormModal = ({ isOpen, onClose, onSuccess, product }: Produc
             </div>
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">Danh mục</label>
-              <Input
-                type="number"
-                value={formData.category_id}
-                onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                placeholder="ID danh mục"
+              <CategoryPicker
+                categories={categories}
+                value={formData.category_id ? Number(formData.category_id) : ""}
+                onChange={(value) => setFormData({ ...formData, category_id: value ? String(value) : "" })}
               />
             </div>
           </div>

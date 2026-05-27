@@ -66,6 +66,7 @@ type Commission = {
   createdAt: string;
   updatedAt: string;
   shop?: { id: number; name: string } | null;
+  order?: { id: number; checkoutGroupCode?: string | null; checkoutGroupPrimary?: boolean } | null;
   orderItem?: { id: number; productName: string; quantity: number; price: number } | null;
 };
 
@@ -324,6 +325,11 @@ export default function AdminFinancePage() {
                       <tr key={item.id} className="border-t">
                         <td className="px-4 py-3">
                           <p className="font-medium">Đơn #{item.orderId}</p>
+                          {item.order?.checkoutGroupCode ? (
+                            <p className="font-mono text-xs text-orange-700">
+                              {item.order.checkoutGroupCode}{item.order.checkoutGroupPrimary ? " · payment chính" : ""}
+                            </p>
+                          ) : null}
                           <p className="max-w-60 truncate text-xs text-muted-foreground">{item.orderItem?.productName ?? `Order item #${item.orderItemId}`}</p>
                           <p className="text-xs text-muted-foreground">{formatDateTime(item.createdAt)}</p>
                         </td>

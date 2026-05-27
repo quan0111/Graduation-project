@@ -97,7 +97,18 @@ export default function ProductPage() {
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      const matchSearch = debouncedSearch.length === 0 || product.name.toLowerCase().includes(debouncedSearch);
+      const searchableText = [
+        product.name,
+        product.description,
+        product.shop?.name,
+        product.category?.name,
+        product.category?.slug,
+        ...(product.tags?.map((tag) => tag.name) ?? []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      const matchSearch = debouncedSearch.length === 0 || searchableText.includes(debouncedSearch);
       if (!matchSearch) {
         return false;
       }

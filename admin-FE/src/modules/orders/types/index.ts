@@ -38,6 +38,9 @@ export interface IOrder {
 
   shippingAddressId?: number | null
   couponId?: number | null
+  checkoutGroupId?: number | null
+  checkoutGroupCode?: string | null
+  checkoutGroupPrimary?: boolean
 
   createdAt?: string
   updatedAt?: string

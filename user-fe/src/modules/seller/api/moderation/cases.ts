@@ -17,6 +17,15 @@ export interface SellerModerationCase {
   updatedAt: string;
 }
 
+export type ModerationEvidence = {
+  type: "url" | "file";
+  url: string;
+  name?: string;
+  contentType?: string;
+  resourceType?: string;
+  publicId?: string;
+};
+
 export const useSellerModerationCases = () =>
   useQuery({
     queryKey: ["seller-moderation-cases"],
@@ -29,8 +38,19 @@ export const useSellerModerationCases = () =>
 export const useSubmitProductAppeal = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ productId, sellerNote, evidenceUrl }: { productId: number; sellerNote: string; evidenceUrl?: string }) => {
-      const evidence = evidenceUrl?.trim() ? [{ type: "url", url: evidenceUrl.trim() }] : [];
+    mutationFn: async ({
+      productId,
+      sellerNote,
+      evidenceUrl,
+      evidence: uploadedEvidence,
+    }: {
+      productId: number;
+      sellerNote: string;
+      evidenceUrl?: string;
+      evidence?: ModerationEvidence[];
+    }) => {
+      const manualEvidence = evidenceUrl?.trim() ? [{ type: "url" as const, url: evidenceUrl.trim() }] : [];
+      const evidence = [...(uploadedEvidence ?? []), ...manualEvidence];
       const res = await apiClient.post(`${API_URL_MODERATION}/products/${productId}/appeal`, {
         sellerNote,
         evidence,

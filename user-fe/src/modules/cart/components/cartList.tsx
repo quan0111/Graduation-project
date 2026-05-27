@@ -10,6 +10,7 @@ type CartItemType = {
   price: number;
   quantity: number;
   shopName: string;
+  stock?: number;
 };
 
 type GroupedCart = Record<string, CartItemType[]>;
@@ -20,6 +21,7 @@ type CartListProps = {
   onSelect: (id: string) => void;
   onQty: (id: string, value: number) => void;
   onRemove: (id: string) => void;
+  syncingIds?: Set<string>;
 };
 
 export const CartList: React.FC<CartListProps> = ({
@@ -28,6 +30,7 @@ export const CartList: React.FC<CartListProps> = ({
   onSelect,
   onQty,
   onRemove,
+  syncingIds = new Set(),
 }) => {
   return (
     <div className="space-y-4">
@@ -43,6 +46,7 @@ export const CartList: React.FC<CartListProps> = ({
             onSelect={onSelect}
             onQty={onQty}
             onRemove={onRemove}
+            syncingIds={syncingIds}
           />
         );
       })}

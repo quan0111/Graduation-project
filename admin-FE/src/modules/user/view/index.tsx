@@ -2,7 +2,14 @@
 
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Eye, Shield, LockOpen, MoreVertical } from "lucide-react";
+import { Copy, Eye, Lock, LockOpen, Mail, MoreVertical } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { UserFilters } from "../components/filter-search-user";
 import { DataTable } from "@/components/common/data-table";
 import { RoleBadge, StatusBadge } from "../components/user-badge";
@@ -41,6 +48,15 @@ export default function UsersPage() {
         },
       }
     );
+  };
+
+  const handleCopy = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`Đã copy ${label}`);
+    } catch {
+      toast.error(`Không thể copy ${label}`);
+    }
   };
 
   const filteredUsers = useMemo(() => {
@@ -131,13 +147,36 @@ export default function UsersPage() {
               className="w-9 h-9 p-0"
               onClick={() => handleToggleStatus(u)}
             >
-              <Shield className="w-4 h-4" />
+              <Lock className="w-4 h-4" />
             </Button>
           )}
 
-          <Button size="sm" variant="ghost" className="w-9 h-9 p-0">
-            <MoreVertical className="w-4 h-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger>
+              <Button size="sm" variant="ghost" className="w-9 h-9 p-0" aria-label="Mở menu thao tác">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem className="cursor-pointer" onClick={() => handleViewDetail(u)}>
+                <Eye className="w-4 h-4" />
+                Xem chi tiết
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer" onClick={() => handleToggleStatus(u)}>
+                {u.isActive ? <Lock className="w-4 h-4" /> : <LockOpen className="w-4 h-4" />}
+                {u.isActive ? "Khóa người dùng" : "Mở khóa người dùng"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="cursor-pointer" onClick={() => handleCopy(u.email || "", "email")}>
+                <Mail className="w-4 h-4" />
+                Copy email
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer" onClick={() => handleCopy(String(u.id), "ID người dùng")}>
+                <Copy className="w-4 h-4" />
+                Copy ID
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       ),
     },

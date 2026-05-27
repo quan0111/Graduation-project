@@ -4,8 +4,21 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi import HTTPException
 
+from src.modules.order import order_service
 from src.modules.order.order_service import ADMIN_TRANSITIONS, OrderService, SELLER_TRANSITIONS
+from src.modules.order.payment_service import PaymentService
 from src.modules.product.service.product import ProductService
+
+
+class AsyncTx:
+    def __init__(self, client):
+        self.client = client
+
+    async def __aenter__(self):
+        return self.client
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
 
 
 class CheckoutLifecycleTest(unittest.IsolatedAsyncioTestCase):
@@ -101,6 +114,41 @@ class CheckoutLifecycleTest(unittest.IsolatedAsyncioTestCase):
             )
 
         self.assertEqual(exc.exception.status_code, 400)
+
+    async def test_discard_gateway_checkout_order_releases_and_deletes_hold(self):
+        original_prisma = order_service.prisma
+        original_release = PaymentService._release_order_reservation
+
+        order = SimpleNamespace(id=10, status="PENDING_PAYMENT", checkoutGroupCode="CHK-1", checkoutGroupId=7)
+        child_order = SimpleNamespace(id=11, status="PENDING_PAYMENT", checkoutGroupCode="CHK-1", checkoutGroupId=7)
+        tx_client = SimpleNamespace(
+            order=SimpleNamespace(
+                find_unique=AsyncMock(return_value=order),
+                find_many=AsyncMock(return_value=[order, child_order]),
+                delete=AsyncMock(),
+            ),
+            paymentevent=SimpleNamespace(delete_many=AsyncMock()),
+            payment=SimpleNamespace(delete_many=AsyncMock()),
+            checkoutgroup=SimpleNamespace(delete_many=AsyncMock()),
+        )
+        release_mock = AsyncMock()
+        order_service.prisma = SimpleNamespace(tx=lambda: AsyncTx(tx_client))
+        PaymentService._release_order_reservation = release_mock
+
+        try:
+            await OrderService._discard_gateway_checkout_order(10)
+        finally:
+            order_service.prisma = original_prisma
+            PaymentService._release_order_reservation = original_release
+
+        self.assertEqual(release_mock.await_count, 2)
+        tx_client.paymentevent.delete_many.assert_any_await(where={"orderId": 10})
+        tx_client.paymentevent.delete_many.assert_any_await(where={"orderId": 11})
+        tx_client.payment.delete_many.assert_any_await(where={"orderId": 10})
+        tx_client.payment.delete_many.assert_any_await(where={"orderId": 11})
+        tx_client.order.delete.assert_any_await(where={"id": 10})
+        tx_client.order.delete.assert_any_await(where={"id": 11})
+        tx_client.checkoutgroup.delete_many.assert_awaited_once_with(where={"id": {"in": [7]}})
 
 
 if __name__ == "__main__":

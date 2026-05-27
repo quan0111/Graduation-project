@@ -40,4 +40,9 @@ export type Category = {
   id: number;
   name: string;
   slug?: string | null;
+  parentId?: number | null;
+  parent_id?: number | null;
+  parent?: Category | null;
+  children?: Category[];
+  Children?: Category[];
 };
